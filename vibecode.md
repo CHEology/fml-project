@@ -1,7 +1,7 @@
 # Vibecode Context
 
 ## Project
-Resume Intelligence Dashboard — user uploads a resume PDF or pastes resume text (or both), app returns projected salary range (with uncertainty), matching job openings, and job market positioning. Built for NYU CSCI-UA 473 (Fundamentals of Machine Learning) final project.
+ResuMatch — user uploads a resume PDF or pastes resume text (or both), app returns projected salary range (with uncertainty), matching job openings, and job market positioning. Built for NYU CSCI-UA 473 (Fundamentals of Machine Learning) final project.
 
 ## Dataset
 LinkedIn Jobs & Skills 2024 from Kaggle (~1.3M rows). Fields include job title, description, skills, salary, location. Raw CSVs go in `data/raw/`, cleaned parquet in `data/processed/`.
