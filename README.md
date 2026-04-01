@@ -16,7 +16,7 @@ streamlit run app/app.py
 
 ## Data
 
-Download the dataset from [Kaggle: 1.3M LinkedIn Jobs and Skills 2024](https://www.kaggle.com/datasets/asaniczka/1-3m-linkedin-jobs-and-skills-2024/data) and place the CSVs in `data/raw/`.
+Download the dataset from [Kaggle: LinkedIn Job Postings (2023-2024)](https://www.kaggle.com/datasets/arshkon/linkedin-job-postings) and place the contents in `data/raw/`.
 
 ## Repo Structure
 
