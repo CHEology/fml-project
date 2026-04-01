@@ -20,24 +20,22 @@ env/
 *.ipynb_checkpoints
 
 # Data — download instructions in data/README.md
-data/raw/
-data/processed/
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 *.csv
 *.parquet
 *.json.gz
 
 # Models — too large for git
-models/
+models/*
+!models/.gitkeep
 *.pt
 *.pth
 *.index
 *.bin
 *.ckpt
-
-# Node / Next.js
-frontend/node_modules/
-frontend/.next/
-frontend/out/
 
 # OS
 .DS_Store

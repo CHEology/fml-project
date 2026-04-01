@@ -1,0 +1,21 @@
+# Core
+streamlit
+torch
+numpy
+pandas
+pyarrow
+
+# Embeddings & retrieval
+transformers
+faiss-cpu
+sentence-transformers
+
+# Visualization
+plotly
+matplotlib
+
+# Data
+kaggle
+
+# Testing
+pytest
