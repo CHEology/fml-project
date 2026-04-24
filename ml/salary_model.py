@@ -7,6 +7,8 @@ using a multi-head neural network with pinball loss.
 Grading constraint: raw PyTorch only — no sklearn regressors.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -21,6 +23,41 @@ QUANTILES = (0.10, 0.25, 0.50, 0.75, 0.90)
 DEFAULT_EMBEDDING_DIM = 384          # all-MiniLM-L6-v2
 NUM_EXTRA_FEATURES = 0               # placeholder; updated after preprocessing
 SEED = 42
+
+
+# ---------------------------------------------------------------------------
+# Salary Scaler (z-score normalisation)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SalaryScaler:
+    """Simple z-score scaler fit on training salaries.
+
+    Keeps salary targets near zero during training so the network
+    can learn effectively with standard weight initialisation.
+    """
+    mean: float = 0.0
+    std: float = 1.0
+
+    def fit(self, salaries: np.ndarray) -> "SalaryScaler":
+        self.mean = float(np.mean(salaries))
+        self.std = float(np.std(salaries))
+        if self.std < 1e-8:
+            self.std = 1.0
+        return self
+
+    def transform(self, salaries: np.ndarray) -> np.ndarray:
+        return (salaries - self.mean) / self.std
+
+    def inverse_transform(self, scaled: np.ndarray) -> np.ndarray:
+        return scaled * self.std + self.mean
+
+    def state_dict(self) -> dict:
+        return {"mean": self.mean, "std": self.std}
+
+    @classmethod
+    def from_state_dict(cls, d: dict) -> "SalaryScaler":
+        return cls(mean=d["mean"], std=d["std"])
 
 
 # ---------------------------------------------------------------------------
@@ -157,11 +194,16 @@ def split_data(
     train_frac: float = 0.8,
     val_frac: float = 0.1,
     seed: int = SEED,
-) -> tuple[SalaryDataset, SalaryDataset, SalaryDataset]:
+    scale: bool = True,
+) -> tuple[SalaryDataset, SalaryDataset, SalaryDataset, SalaryScaler]:
     """Randomly split data into train / val / test datasets.
 
+    When *scale* is True (default), a SalaryScaler is fit on the
+    training split and applied to all splits so that the network
+    trains on z-scored salary targets.
+
     Returns:
-        (train_ds, val_ds, test_ds)
+        (train_ds, val_ds, test_ds, scaler)
     """
     rng = np.random.default_rng(seed)
     n = len(salaries)
@@ -174,11 +216,18 @@ def split_data(
     val_idx = indices[n_train : n_train + n_val]
     test_idx = indices[n_train + n_val :]
 
+    scaler = SalaryScaler()
+    if scale:
+        scaler.fit(salaries[train_idx])
+        sal = scaler.transform(salaries)
+    else:
+        sal = salaries
+
     def _make(idx):
         ef = extra_features[idx] if extra_features is not None else None
-        return SalaryDataset(embeddings[idx], salaries[idx], ef)
+        return SalaryDataset(embeddings[idx], sal[idx], ef)
 
-    return _make(train_idx), _make(val_idx), _make(test_idx)
+    return _make(train_idx), _make(val_idx), _make(test_idx), scaler
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +255,7 @@ def predict_salary(
     model: SalaryQuantileNet,
     resume_embedding: np.ndarray,
     extra_features: np.ndarray | None = None,
+    scaler: SalaryScaler | None = None,
 ) -> dict[str, float]:
     """Run inference and return predicted salary quantiles in USD.
 
@@ -213,6 +263,8 @@ def predict_salary(
         model: A trained SalaryQuantileNet (already on the correct device).
         resume_embedding: (embedding_dim,) numpy vector.
         extra_features: Optional (n_extra,) numpy vector.
+        scaler: Optional SalaryScaler used during training. When provided,
+                predictions are inverse-transformed back to USD.
 
     Returns:
         Dict like {"q10": 60000.0, "q25": 75000.0, "q50": 95000.0,
@@ -228,6 +280,10 @@ def predict_salary(
 
     with torch.no_grad():
         preds = model(x).squeeze(0).cpu().numpy()
+
+    # Inverse-transform back to USD if a scaler was used
+    if scaler is not None:
+        preds = scaler.inverse_transform(preds)
 
     # Enforce monotonicity: sort so q10 <= q25 <= ... <= q90
     preds = np.sort(preds)

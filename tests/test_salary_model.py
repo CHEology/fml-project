@@ -18,6 +18,7 @@ from ml.salary_model import (
     PinballLoss,
     SalaryQuantileNet,
     SalaryDataset,
+    SalaryScaler,
     split_data,
     predict_salary,
     QUANTILES,
@@ -180,22 +181,27 @@ class TestSalaryDataset:
 
 class TestSplitData:
     def test_split_sizes(self, dummy_embeddings, dummy_salaries):
-        train_ds, val_ds, test_ds = split_data(dummy_embeddings, dummy_salaries)
+        train_ds, val_ds, test_ds, scaler = split_data(dummy_embeddings, dummy_salaries)
         total = len(train_ds) + len(val_ds) + len(test_ds)
         assert total == N_SAMPLES
         assert len(train_ds) == int(N_SAMPLES * 0.8)
         assert len(val_ds) == int(N_SAMPLES * 0.1)
 
     def test_no_data_leakage(self, dummy_embeddings, dummy_salaries):
-        train_ds, val_ds, test_ds = split_data(dummy_embeddings, dummy_salaries)
+        train_ds, val_ds, test_ds, _ = split_data(dummy_embeddings, dummy_salaries)
         # Check total count is preserved (no overlap or loss)
         assert len(train_ds) + len(val_ds) + len(test_ds) == N_SAMPLES
 
     def test_reproducibility(self, dummy_embeddings, dummy_salaries):
-        t1, v1, _ = split_data(dummy_embeddings, dummy_salaries, seed=123)
-        t2, v2, _ = split_data(dummy_embeddings, dummy_salaries, seed=123)
+        t1, v1, _, _ = split_data(dummy_embeddings, dummy_salaries, seed=123)
+        t2, v2, _, _ = split_data(dummy_embeddings, dummy_salaries, seed=123)
         assert torch.allclose(t1.y, t2.y)
         assert torch.allclose(v1.y, v2.y)
+
+    def test_scaler_returned(self, dummy_embeddings, dummy_salaries):
+        _, _, _, scaler = split_data(dummy_embeddings, dummy_salaries)
+        assert isinstance(scaler, SalaryScaler)
+        assert scaler.std > 0
 
 
 # ---------------------------------------------------------------------------
@@ -236,3 +242,41 @@ class TestPredictSalary:
         for key, val in result.items():
             assert isinstance(key, str)
             assert isinstance(val, float)
+
+    def test_with_scaler(self, model):
+        """Predictions with a scaler should be in the original salary range."""
+        model.eval()
+        scaler = SalaryScaler(mean=80_000.0, std=25_000.0)
+        emb = np.random.randn(EMB_DIM).astype(np.float32)
+        result = predict_salary(model, emb, scaler=scaler)
+        # With scaler, values should be shifted to ~ mean ± a few stds
+        for v in result.values():
+            assert -200_000 < v < 500_000, f"Value {v} seems unreasonable"
+
+
+# ---------------------------------------------------------------------------
+# SalaryScaler tests
+# ---------------------------------------------------------------------------
+
+class TestSalaryScaler:
+    def test_fit_transform_roundtrip(self):
+        salaries = np.array([50_000, 80_000, 100_000, 120_000], dtype=np.float32)
+        scaler = SalaryScaler().fit(salaries)
+        scaled = scaler.transform(salaries)
+        recovered = scaler.inverse_transform(scaled)
+        np.testing.assert_allclose(recovered, salaries, rtol=1e-5)
+
+    def test_zero_mean_unit_var(self):
+        rng = np.random.default_rng(0)
+        salaries = rng.normal(80_000, 20_000, size=10_000).astype(np.float32)
+        scaler = SalaryScaler().fit(salaries)
+        scaled = scaler.transform(salaries)
+        assert abs(scaled.mean()) < 0.01
+        assert abs(scaled.std() - 1.0) < 0.02
+
+    def test_state_dict_roundtrip(self):
+        scaler = SalaryScaler(mean=75_000.0, std=22_000.0)
+        d = scaler.state_dict()
+        restored = SalaryScaler.from_state_dict(d)
+        assert restored.mean == scaler.mean
+        assert restored.std == scaler.std

@@ -29,6 +29,7 @@ from ml.salary_model import (
     PinballLoss,
     split_data,
     SEED,
+    SalaryScaler,
 )
 
 
@@ -184,10 +185,11 @@ def main():
           f"embedding_dim={embeddings.shape[1]}, n_extra={n_extra}")
 
     # ---- split ----
-    train_ds, val_ds, test_ds = split_data(
+    train_ds, val_ds, test_ds, scaler = split_data(
         embeddings, salaries, extra, seed=args.seed
     )
     print(f"Split: train={len(train_ds)}, val={len(val_ds)}, test={len(test_ds)}")
+    print(f"Salary scaler: mean=${scaler.mean:,.0f}, std=${scaler.std:,.0f}")
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size)
@@ -243,18 +245,31 @@ def main():
     all_preds = np.concatenate(all_preds, axis=0)
     all_targets = np.concatenate(all_targets, axis=0)
 
-    print(f"Test pinball loss: {np.mean(test_losses):.4f}")
+    print(f"Test pinball loss (scaled): {np.mean(test_losses):.4f}")
+
+    # Inverse-transform predictions and targets back to USD
+    from ml.salary_model import QUANTILES
+    all_preds_usd = scaler.inverse_transform(all_preds)
+    all_targets_usd = scaler.inverse_transform(all_targets)
+    # Enforce monotonicity per-sample
+    all_preds_usd = np.sort(all_preds_usd, axis=1)
 
     # Calibration: fraction of actuals below each predicted quantile
-    from ml.salary_model import QUANTILES
     for i, q in enumerate(QUANTILES):
-        frac_below = (all_targets < all_preds[:, i]).mean()
+        frac_below = (all_targets_usd < all_preds_usd[:, i]).mean()
         print(f"  q{int(q*100):>2d}: nominal={q:.2f}, actual={frac_below:.3f}")
 
     # Median absolute error for q50
     median_idx = list(QUANTILES).index(0.50)
-    mae = np.abs(all_targets - all_preds[:, median_idx]).mean()
+    mae = np.abs(all_targets_usd - all_preds_usd[:, median_idx]).mean()
     print(f"  Median prediction MAE: ${mae:,.0f}")
+
+    # Save scaler alongside model
+    import json
+    scaler_path = str(Path(args.output).with_suffix('.scaler.json'))
+    with open(scaler_path, 'w') as f:
+        json.dump(scaler.state_dict(), f)
+    print(f"  Scaler saved to: {scaler_path}")
 
 
 if __name__ == "__main__":
