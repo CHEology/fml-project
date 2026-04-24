@@ -62,13 +62,13 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 4.1 | `SalaryQuantileNet` architecture (`ml/salary_model.py`) | — | ⬜ | File exists (empty). **Must be raw PyTorch.** |
-| 4.2 | `SalaryDataset` + DataLoader | — | ⬜ | |
-| 4.3 | Training loop (`scripts/train_salary_model.py`) | — | ⬜ | File exists (empty) |
-| 4.4 | Inference API (`predict_salary()`) | — | ⬜ | |
-| 4.5 | Evaluation notebook (`03_salary_regression.ipynb`) | — | ⬜ | |
+| 4.1 | `SalaryQuantileNet` architecture (`ml/salary_model.py`) | Alan | 🟡 | Implementing now. **Raw PyTorch.** |
+| 4.2 | `SalaryDataset` + DataLoader | Alan | 🟡 | Implementing now |
+| 4.3 | Training loop (`scripts/train_salary_model.py`) | Alan | 🟡 | Implementing now |
+| 4.4 | Inference API (`predict_salary()`) | Alan | 🟡 | Implementing now |
+| 4.5 | Evaluation notebook (`03_salary_regression.ipynb`) | Alan | 🟡 | Skeleton created |
 
-**Phase status:** ⬜ Not started · **Blocked by:** Phase 2
+**Phase status:** 🟡 In progress (Alan) · **Blocked by:** Phase 2 (embeddings needed for real data)
 
 ---
 
@@ -106,7 +106,7 @@
 | Task | Owner | Status | Notes |
 |------|-------|--------|-------|
 | `requirements.txt` — add `sentence-transformers`, `faiss-cpu`, `pdfplumber` | — | ⬜ | Currently missing from deps |
-| `tests/` — pytest coverage for `ml/` | — | ⬜ | |
+| `tests/` — pytest coverage for `ml/` | Alan | 🟡 | `tests/test_salary_model.py` in progress |
 | Set random seeds in all scripts | — | ⬜ | |
 | `.gitignore` — verify `data/raw/`, `models/` excluded | — | ⬜ | |
 | Final report / presentation | — | ⬜ | |
@@ -119,14 +119,14 @@
 Phase 1  [░░░░░░░░░░]   0%
 Phase 2  [░░░░░░░░░░]   0%
 Phase 3  [░░░░░░░░░░]   0%
-Phase 4  [░░░░░░░░░░]   0%
+Phase 4  [████░░░░░░]  40%  ← Alan
 Phase 5  [░░░░░░░░░░]   0%
 Phase 6  [░░░░░░░░░░]   0%
 ─────────────────────────
-Total    [░░░░░░░░░░]   0%
+Total    [█░░░░░░░░░]   7%
 ```
 
-**Current state:** Repo skeleton is set up with correct directory structure and empty stub files. No implementation has begun. First priority is **Phase 1** (download data + preprocessing script).
+**Current state:** Phase 4 (Quantile Regression) implementation in progress by Alan. Model architecture, dataset, training loop, and tests being written. Phases 1–3 still need owners.
 
 ---
 
@@ -135,3 +135,4 @@ Total    [░░░░░░░░░░]   0%
 | Date | Update |
 |------|--------|
 | 2026-04-24 | Initial plan and progress documents created. Repo skeleton reviewed — all source files are empty stubs. |
+| 2026-04-24 | Alan starting Phase 4: `ml/salary_model.py`, `scripts/train_salary_model.py`, `notebooks/03_salary_regression.ipynb`, `tests/test_salary_model.py`. |
