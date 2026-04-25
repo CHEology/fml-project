@@ -24,7 +24,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RAW_DIR = PROJECT_ROOT / "data" / "raw"
 DEFAULT_JOBS_OUT = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
@@ -83,7 +82,9 @@ def snake_case(name: str) -> str:
 
 
 def normalize_columns(frame: pd.DataFrame) -> pd.DataFrame:
-    return frame.rename(columns={column: snake_case(column) for column in frame.columns})
+    return frame.rename(
+        columns={column: snake_case(column) for column in frame.columns}
+    )
 
 
 def discover_input_files(raw_dir: Path) -> dict[str, Path | None]:
@@ -97,9 +98,18 @@ def discover_input_files(raw_dir: Path) -> dict[str, Path | None]:
 
     discovered: dict[str, Path | None] = {}
     for key, aliases in FILE_ALIASES.items():
-        discovered[key] = next((by_name.get(alias.lower()) for alias in aliases if alias.lower() in by_name), None)
+        discovered[key] = next(
+            (
+                by_name.get(alias.lower())
+                for alias in aliases
+                if alias.lower() in by_name
+            ),
+            None,
+        )
 
-    missing_required = [key for key in ("job_postings", "companies") if discovered[key] is None]
+    missing_required = [
+        key for key in ("job_postings", "companies") if discovered[key] is None
+    ]
     if missing_required:
         raise FileNotFoundError(
             "Missing required raw CSVs: "
@@ -121,7 +131,9 @@ def select_latest_employee_counts(frame: pd.DataFrame | None) -> pd.DataFrame | 
 
     counts = frame.copy()
     if "time_recorded" in counts.columns:
-        counts["time_recorded"] = pd.to_numeric(counts["time_recorded"], errors="coerce")
+        counts["time_recorded"] = pd.to_numeric(
+            counts["time_recorded"], errors="coerce"
+        )
         counts = counts.sort_values(["company_id", "time_recorded"], kind="stable")
     return counts.drop_duplicates(subset=["company_id"], keep="last")
 
@@ -131,7 +143,9 @@ def aggregate_benefits(frame: pd.DataFrame | None) -> pd.DataFrame | None:
         return None
 
     benefits = frame.copy()
-    text_column = next((column for column in BENEFIT_TEXT_COLUMNS if column in benefits.columns), None)
+    text_column = next(
+        (column for column in BENEFIT_TEXT_COLUMNS if column in benefits.columns), None
+    )
 
     def _join_unique(values: pd.Series) -> str:
         seen: set[str] = set()
@@ -146,7 +160,12 @@ def aggregate_benefits(frame: pd.DataFrame | None) -> pd.DataFrame | None:
     grouped = benefits.groupby("job_id", dropna=False)
     aggregated = grouped.size().rename("benefit_count").reset_index()
     if text_column is not None:
-        benefit_text = grouped[text_column].apply(_join_unique).rename("benefits_text").reset_index()
+        benefit_text = (
+            grouped[text_column]
+            .apply(_join_unique)
+            .rename("benefits_text")
+            .reset_index()
+        )
         aggregated = aggregated.merge(benefit_text, on="job_id", how="left")
     return aggregated
 
@@ -199,11 +218,18 @@ def annualize_salaries(frame: pd.DataFrame) -> pd.Series:
     midpoint = (min_salary + max_salary) / 2.0
 
     base_salary = med_salary.fillna(midpoint).fillna(min_salary).fillna(max_salary)
-    pay_period = frame.get("pay_period", pd.Series("", index=frame.index)).astype(str).str.strip().str.lower()
+    pay_period = (
+        frame.get("pay_period", pd.Series("", index=frame.index))
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
     multiplier = pay_period.map(PAY_PERIOD_MULTIPLIERS)
 
     annual_salary = base_salary * multiplier
-    annual_salary = annual_salary.where(np.isfinite(annual_salary) & (annual_salary > 0))
+    annual_salary = annual_salary.where(
+        np.isfinite(annual_salary) & (annual_salary > 0)
+    )
     return annual_salary
 
 
@@ -255,7 +281,11 @@ def prepare_companies(frame: pd.DataFrame) -> pd.DataFrame:
         "city": "company_city",
         "country": "company_country",
     }
-    companies = companies.rename(columns={key: value for key, value in rename_map.items() if key in companies.columns})
+    companies = companies.rename(
+        columns={
+            key: value for key, value in rename_map.items() if key in companies.columns
+        }
+    )
     if "company_id" not in companies.columns:
         raise KeyError("companies.csv is missing required column 'company_id'")
     return companies.drop_duplicates(subset=["company_id"], keep="first")
@@ -280,9 +310,15 @@ def preprocess_jobs(raw_dir: Path) -> pd.DataFrame:
     if employee_counts is not None:
         jobs = jobs.merge(employee_counts, on="company_id", how="left")
 
-    jobs["title"] = jobs.get("title", pd.Series("", index=jobs.index)).map(normalize_whitespace)
-    jobs["company_name"] = jobs.get("company_name", pd.Series("", index=jobs.index)).map(normalize_whitespace)
-    jobs["location"] = jobs.get("location", pd.Series("", index=jobs.index)).map(normalize_whitespace)
+    jobs["title"] = jobs.get("title", pd.Series("", index=jobs.index)).map(
+        normalize_whitespace
+    )
+    jobs["company_name"] = jobs.get(
+        "company_name", pd.Series("", index=jobs.index)
+    ).map(normalize_whitespace)
+    jobs["location"] = jobs.get("location", pd.Series("", index=jobs.index)).map(
+        normalize_whitespace
+    )
     jobs["experience_level"] = jobs.get(
         "formatted_experience_level",
         jobs.get("experience_level", pd.Series("", index=jobs.index)),
@@ -301,27 +337,49 @@ def preprocess_jobs(raw_dir: Path) -> pd.DataFrame:
             jobs["title"],
             jobs.get("description", pd.Series("", index=jobs.index)),
             jobs.get("skills_desc", pd.Series("", index=jobs.index)),
+            strict=True,
         )
     ]
 
     jobs["salary_annual"] = annualize_salaries(jobs)
-    jobs["experience_level_ordinal"] = jobs["experience_level"].map(map_experience_level)
+    jobs["experience_level_ordinal"] = jobs["experience_level"].map(
+        map_experience_level
+    )
 
-    work_type_source = jobs.get(
-        "work_type",
-        pd.Series("", index=jobs.index),
-    ).astype(str).str.strip().str.lower()
-    remote_allowed = jobs.get("remote_allowed", pd.Series(False, index=jobs.index)).map(truthy)
+    work_type_source = (
+        jobs.get(
+            "work_type",
+            pd.Series("", index=jobs.index),
+        )
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+    remote_allowed = jobs.get("remote_allowed", pd.Series(False, index=jobs.index)).map(
+        truthy
+    )
 
-    jobs["work_type_remote"] = ((work_type_source.str.contains("remote", na=False)) | remote_allowed).astype(np.int8)
-    jobs["work_type_hybrid"] = work_type_source.str.contains("hybrid", na=False).astype(np.int8)
-    jobs["work_type_onsite"] = work_type_source.str.contains("on-site|onsite|on site", na=False).astype(np.int8)
+    jobs["work_type_remote"] = (
+        (work_type_source.str.contains("remote", na=False)) | remote_allowed
+    ).astype(np.int8)
+    jobs["work_type_hybrid"] = work_type_source.str.contains("hybrid", na=False).astype(
+        np.int8
+    )
+    jobs["work_type_onsite"] = work_type_source.str.contains(
+        "on-site|onsite|on site", na=False
+    ).astype(np.int8)
 
     jobs["state"] = jobs["location"].map(extract_state)
     if "company_state" in jobs.columns:
-        jobs["state"] = jobs["state"].fillna(jobs["company_state"].map(normalize_whitespace))
+        jobs["state"] = jobs["state"].fillna(
+            jobs["company_state"].map(normalize_whitespace)
+        )
 
-    jobs = jobs.drop_duplicates(subset=["job_id"], keep="first") if "job_id" in jobs.columns else jobs.drop_duplicates()
+    jobs = (
+        jobs.drop_duplicates(subset=["job_id"], keep="first")
+        if "job_id" in jobs.columns
+        else jobs.drop_duplicates()
+    )
     jobs = jobs[jobs["salary_annual"].notna()]
     jobs = jobs[jobs["text"].str.len() > 0]
     jobs = jobs[jobs["company_name"].str.len() > 0]
@@ -352,8 +410,12 @@ def preprocess_jobs(raw_dir: Path) -> pd.DataFrame:
         "employee_count",
         "follower_count",
     ]
-    existing_columns = [column for column in preferred_columns if column in jobs.columns]
-    remaining_columns = [column for column in jobs.columns if column not in existing_columns]
+    existing_columns = [
+        column for column in preferred_columns if column in jobs.columns
+    ]
+    remaining_columns = [
+        column for column in jobs.columns if column not in existing_columns
+    ]
     return jobs[existing_columns + remaining_columns]
 
 
@@ -372,7 +434,9 @@ def write_outputs(
 
 def print_summary(frame: pd.DataFrame, jobs_out: Path) -> None:
     salary = frame["salary_annual"]
-    null_rates = frame[["salary_annual", "text", "company_name"]].isna().mean().to_dict()
+    null_rates = (
+        frame[["salary_annual", "text", "company_name"]].isna().mean().to_dict()
+    )
     print(f"Saved processed jobs to {jobs_out}")
     print(f"Rows: {len(frame)}")
     print(

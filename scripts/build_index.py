@@ -38,17 +38,17 @@ if str(PROJECT_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 
 DEFAULTS = {
-    "input":           str(PROJECT_ROOT / "data" / "processed" / "jobs.parquet"),
-    "model":           "all-MiniLM-L6-v2",
-    "batch_size":      256,
-    "text_column":     "text",
-    "id_column":       "job_id",
-    "embeddings_out":  str(PROJECT_ROOT / "models" / "job_embeddings.npy"),
-    "index_out":       str(PROJECT_ROOT / "models" / "jobs.index"),
-    "meta_out":        str(PROJECT_ROOT / "models" / "jobs_meta.parquet"),
-    "seed":            42,
-    "smoke_n":         30,
-    "smoke_dim":       16,
+    "input": str(PROJECT_ROOT / "data" / "processed" / "jobs.parquet"),
+    "model": "all-MiniLM-L6-v2",
+    "batch_size": 256,
+    "text_column": "text",
+    "id_column": "job_id",
+    "embeddings_out": str(PROJECT_ROOT / "models" / "job_embeddings.npy"),
+    "index_out": str(PROJECT_ROOT / "models" / "jobs.index"),
+    "meta_out": str(PROJECT_ROOT / "models" / "jobs_meta.parquet"),
+    "seed": 42,
+    "smoke_n": 30,
+    "smoke_dim": 16,
 }
 
 META_COLUMNS_REQUIRED = (
@@ -63,6 +63,7 @@ META_COLUMNS_REQUIRED = (
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
+
 
 def build_index(embeddings: np.ndarray):
     """Build a FAISS IndexFlatIP over L2-normalized vectors.
@@ -125,25 +126,30 @@ def write_meta(df, out_path: str | Path) -> None:
             f"Required: {list(META_COLUMNS_REQUIRED)}"
         )
 
-    job_id = df["job_id"] if "job_id" in df.columns else pd.Series(
-        np.arange(len(df), dtype=np.int64), name="job_id"
+    job_id = (
+        df["job_id"]
+        if "job_id" in df.columns
+        else pd.Series(np.arange(len(df), dtype=np.int64), name="job_id")
     )
 
-    meta = pd.DataFrame({
-        "row_id":           np.arange(len(df), dtype=np.int64),
-        "job_id":           np.asarray(job_id),
-        "title":            df["title"].astype(str).to_numpy(),
-        "company_name":     df["company_name"].astype(str).to_numpy(),
-        "salary_annual":    df["salary_annual"].astype(float).to_numpy(),
-        "location":         df["location"].astype(str).to_numpy(),
-        "experience_level": df["experience_level"].astype(str).to_numpy(),
-    })
+    meta = pd.DataFrame(
+        {
+            "row_id": np.arange(len(df), dtype=np.int64),
+            "job_id": np.asarray(job_id),
+            "title": df["title"].astype(str).to_numpy(),
+            "company_name": df["company_name"].astype(str).to_numpy(),
+            "salary_annual": df["salary_annual"].astype(float).to_numpy(),
+            "location": df["location"].astype(str).to_numpy(),
+            "experience_level": df["experience_level"].astype(str).to_numpy(),
+        }
+    )
     meta.to_parquet(out_path, index=False)
 
 
 # ---------------------------------------------------------------------------
 # Smoke-mode synthetic data
 # ---------------------------------------------------------------------------
+
 
 def _make_smoke_data(n: int, dim: int, seed: int):
     """Generate deterministic L2-normalized vectors + matching metadata."""
@@ -155,15 +161,17 @@ def _make_smoke_data(n: int, dim: int, seed: int):
     norms[norms < 1e-12] = 1.0
     vecs = vecs / norms
 
-    df = pd.DataFrame({
-        "job_id":           np.arange(1000, 1000 + n, dtype=np.int64),
-        "title":            [f"Synthetic Job {i}" for i in range(n)],
-        "company_name":     [f"SynthCo {i % 7}" for i in range(n)],
-        "salary_annual":    rng.uniform(60_000, 200_000, n).astype(float),
-        "location":         ["NYC, NY"] * n,
-        "experience_level": ["mid"] * n,
-        "text":             [f"Synthetic job description {i}" for i in range(n)],
-    })
+    df = pd.DataFrame(
+        {
+            "job_id": np.arange(1000, 1000 + n, dtype=np.int64),
+            "title": [f"Synthetic Job {i}" for i in range(n)],
+            "company_name": [f"SynthCo {i % 7}" for i in range(n)],
+            "salary_annual": rng.uniform(60_000, 200_000, n).astype(float),
+            "location": ["NYC, NY"] * n,
+            "experience_level": ["mid"] * n,
+            "text": [f"Synthetic job description {i}" for i in range(n)],
+        }
+    )
     return vecs, df
 
 
@@ -171,40 +179,60 @@ def _make_smoke_data(n: int, dim: int, seed: int):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Build FAISS retrieval index")
-    parser.add_argument("--input", type=str, default=DEFAULTS["input"],
-                        help="Path to preprocessed jobs parquet")
+    parser.add_argument(
+        "--input",
+        type=str,
+        default=DEFAULTS["input"],
+        help="Path to preprocessed jobs parquet",
+    )
     parser.add_argument("--model", type=str, default=DEFAULTS["model"])
     parser.add_argument("--batch-size", type=int, default=DEFAULTS["batch_size"])
     parser.add_argument("--text-column", type=str, default=DEFAULTS["text_column"])
-    parser.add_argument("--embeddings-out", type=str,
-                        default=DEFAULTS["embeddings_out"])
+    parser.add_argument(
+        "--embeddings-out", type=str, default=DEFAULTS["embeddings_out"]
+    )
     parser.add_argument("--index-out", type=str, default=DEFAULTS["index_out"])
     parser.add_argument("--meta-out", type=str, default=DEFAULTS["meta_out"])
     parser.add_argument("--seed", type=int, default=DEFAULTS["seed"])
-    parser.add_argument("--smoke", action="store_true",
-                        help="Bypass parquet/encoder; generate synthetic data")
-    parser.add_argument("--smoke-n", type=int, default=DEFAULTS["smoke_n"],
-                        help="Number of synthetic rows in --smoke mode")
-    parser.add_argument("--smoke-dim", type=int, default=DEFAULTS["smoke_dim"],
-                        help="Vector dimension in --smoke mode")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Bypass parquet/encoder; generate synthetic data",
+    )
+    parser.add_argument(
+        "--smoke-n",
+        type=int,
+        default=DEFAULTS["smoke_n"],
+        help="Number of synthetic rows in --smoke mode",
+    )
+    parser.add_argument(
+        "--smoke-dim",
+        type=int,
+        default=DEFAULTS["smoke_dim"],
+        help="Vector dimension in --smoke mode",
+    )
     args = parser.parse_args()
 
     np.random.seed(args.seed)
     try:
         import torch
+
         torch.manual_seed(args.seed)
     except ImportError:
         pass
 
     if args.smoke:
-        print(f"--smoke: generating {args.smoke_n} synthetic rows "
-              f"of dim {args.smoke_dim}")
+        print(
+            f"--smoke: generating {args.smoke_n} synthetic rows of dim {args.smoke_dim}"
+        )
         embeddings, df = _make_smoke_data(args.smoke_n, args.smoke_dim, args.seed)
         text_column = "text"
     else:
         import pandas as pd
+
         print(f"Loading jobs parquet: {args.input}")
         df = pd.read_parquet(args.input)
         text_column = args.text_column
@@ -242,6 +270,7 @@ def main():
     index = build_index(embeddings)
 
     import faiss
+
     Path(args.index_out).parent.mkdir(parents=True, exist_ok=True)
     faiss.write_index(index, args.index_out)
     print(f"Saved index:      {args.index_out}  (ntotal={index.ntotal})")

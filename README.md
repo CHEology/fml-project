@@ -4,15 +4,41 @@ Upload a resume (PDF or text) and get projected salary ranges, matching job open
 
 ## Setup
 
+This project uses [`uv`](https://docs.astral.sh/uv/) for package management and the virtual environment. Install `uv` before syncing dependencies.
+
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ## Run
 
 ```bash
-streamlit run app/app.py
+uv run streamlit run app/app.py
 ```
+
+## Test
+
+```bash
+uv run pytest
+```
+
+## Code Quality
+
+Install the pre-commit hooks once after setup:
+
+```bash
+uv run pre-commit install
+```
+
+Run the same checks locally before opening a PR:
+
+```bash
+uv run ruff format --check app ml scripts tests
+uv run ruff check app ml scripts tests
+uv run pytest
+```
+
+CI runs formatting, linting, and tests against code directories only. Notebooks are excluded from the strict lint/format gate.
 
 ## Data
 

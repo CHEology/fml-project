@@ -49,6 +49,6 @@ Key columns in `postings.csv` (relevant subset): `job_id`, `company_id`, `compan
 
 ## Run
 ```
-pip install -r requirements.txt
-streamlit run app/app.py
+uv sync
+uv run streamlit run app/app.py
 ```

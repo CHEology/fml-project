@@ -24,14 +24,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ml.salary_model import (
-    SalaryQuantileNet,
-    PinballLoss,
-    split_data,
+from ml.salary_model import (  # noqa: E402
     SEED,
-    SalaryScaler,
+    PinballLoss,
+    SalaryQuantileNet,
+    split_data,
 )
-
 
 # ---------------------------------------------------------------------------
 # Hyperparameters
@@ -43,7 +41,7 @@ DEFAULTS = {
     "batch_size": 256,
     "lr": 1e-3,
     "epochs": 200,
-    "patience": 15,          # early-stopping patience
+    "patience": 15,  # early-stopping patience
     "dropout": 0.2,
     "weight_decay": 1e-5,
 }
@@ -52,6 +50,7 @@ DEFAULTS = {
 # ---------------------------------------------------------------------------
 # Training loop
 # ---------------------------------------------------------------------------
+
 
 def train(
     train_loader: DataLoader,
@@ -68,9 +67,7 @@ def train(
     """Full training loop with early stopping + ReduceLROnPlateau."""
 
     criterion = PinballLoss().to(device)
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=lr, weight_decay=weight_decay
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5, verbose=True
     )
@@ -127,8 +124,10 @@ def train(
         else:
             epochs_no_improve += 1
             if epochs_no_improve >= patience:
-                print(f"\nEarly stopping at epoch {epoch} "
-                      f"(no improvement for {patience} epochs)")
+                print(
+                    f"\nEarly stopping at epoch {epoch} "
+                    f"(no improvement for {patience} epochs)"
+                )
                 break
 
     print(f"\nTraining complete. Best val_loss: {best_val_loss:.4f}")
@@ -140,27 +139,34 @@ def train(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Train SalaryQuantileNet")
-    parser.add_argument("--embeddings", type=str, required=True,
-                        help="Path to job embeddings .npy file")
-    parser.add_argument("--salaries", type=str, required=True,
-                        help="Path to salary targets .npy file")
-    parser.add_argument("--extra-features", type=str, default=None,
-                        help="Optional path to extra features .npy file")
-    parser.add_argument("--output", type=str,
-                        default=str(PROJECT_ROOT / "models" / "salary_model.pt"),
-                        help="Where to save the best checkpoint")
-    parser.add_argument("--embedding-dim", type=int,
-                        default=DEFAULTS["embedding_dim"])
-    parser.add_argument("--batch-size", type=int,
-                        default=DEFAULTS["batch_size"])
+    parser.add_argument(
+        "--embeddings", type=str, required=True, help="Path to job embeddings .npy file"
+    )
+    parser.add_argument(
+        "--salaries", type=str, required=True, help="Path to salary targets .npy file"
+    )
+    parser.add_argument(
+        "--extra-features",
+        type=str,
+        default=None,
+        help="Optional path to extra features .npy file",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=str(PROJECT_ROOT / "models" / "salary_model.pt"),
+        help="Where to save the best checkpoint",
+    )
+    parser.add_argument("--embedding-dim", type=int, default=DEFAULTS["embedding_dim"])
+    parser.add_argument("--batch-size", type=int, default=DEFAULTS["batch_size"])
     parser.add_argument("--lr", type=float, default=DEFAULTS["lr"])
     parser.add_argument("--epochs", type=int, default=DEFAULTS["epochs"])
     parser.add_argument("--patience", type=int, default=DEFAULTS["patience"])
     parser.add_argument("--dropout", type=float, default=DEFAULTS["dropout"])
-    parser.add_argument("--weight-decay", type=float,
-                        default=DEFAULTS["weight_decay"])
+    parser.add_argument("--weight-decay", type=float, default=DEFAULTS["weight_decay"])
     parser.add_argument("--seed", type=int, default=SEED)
     args = parser.parse_args()
 
@@ -181,8 +187,10 @@ def main():
         extra = np.load(args.extra_features)
         n_extra = extra.shape[1]
 
-    print(f"Dataset: {len(salaries)} samples, "
-          f"embedding_dim={embeddings.shape[1]}, n_extra={n_extra}")
+    print(
+        f"Dataset: {len(salaries)} samples, "
+        f"embedding_dim={embeddings.shape[1]}, n_extra={n_extra}"
+    )
 
     # ---- split ----
     train_ds, val_ds, test_ds, scaler = split_data(
@@ -211,7 +219,7 @@ def main():
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
 
     # ---- train ----
-    history = train(
+    train(
         train_loader,
         val_loader,
         model,
@@ -249,6 +257,7 @@ def main():
 
     # Inverse-transform predictions and targets back to USD
     from ml.salary_model import QUANTILES
+
     all_preds_usd = scaler.inverse_transform(all_preds)
     all_targets_usd = scaler.inverse_transform(all_targets)
     # Enforce monotonicity per-sample
@@ -257,7 +266,7 @@ def main():
     # Calibration: fraction of actuals below each predicted quantile
     for i, q in enumerate(QUANTILES):
         frac_below = (all_targets_usd < all_preds_usd[:, i]).mean()
-        print(f"  q{int(q*100):>2d}: nominal={q:.2f}, actual={frac_below:.3f}")
+        print(f"  q{int(q * 100):>2d}: nominal={q:.2f}, actual={frac_below:.3f}")
 
     # Median absolute error for q50
     median_idx = list(QUANTILES).index(0.50)
@@ -266,8 +275,9 @@ def main():
 
     # Save scaler alongside model
     import json
-    scaler_path = str(Path(args.output).with_suffix('.scaler.json'))
-    with open(scaler_path, 'w') as f:
+
+    scaler_path = str(Path(args.output).with_suffix(".scaler.json"))
+    with open(scaler_path, "w") as f:
         json.dump(scaler.state_dict(), f)
     print(f"  Scaler saved to: {scaler_path}")
 

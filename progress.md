@@ -105,7 +105,8 @@
 
 | Task | Owner | Status | Notes |
 |------|-------|--------|-------|
-| `requirements.txt` — add `sentence-transformers`, `faiss-cpu`, `pdfplumber`, `pytest` | — | ✅ | Added 2026-04-25 |
+| `pyproject.toml` / `uv.lock` — manage dependencies and virtual environment with uv | — | ✅ | Switched from `requirements.txt` on 2026-04-25 |
+| Ruff / pre-commit / GitHub Actions CI | — | ✅ | Formatting, linting, and tests enforced for code directories only |
 | `tests/` — pytest coverage for `ml/` | Alan, Ryan | ✅ | `test_salary_model.py` (25/25) + `test_retrieval.py` (25/25) — full suite 50/50 |
 | Set random seeds in all scripts | — | ⬜ | |
 | `.gitignore` — verify `data/raw/`, `models/` excluded | — | ⬜ | |
@@ -137,5 +138,6 @@ Total    [███░░░░░░░]  27%
 | 2026-04-24 | Initial plan and progress documents created. Repo skeleton reviewed — all source files are empty stubs. |
 | 2026-04-24 | Alan starting Phase 4: `ml/salary_model.py`, `scripts/train_salary_model.py`, `notebooks/03_salary_regression.ipynb`, `tests/test_salary_model.py`. |
 | 2026-04-24 | Alan completed Phase 4 code, tests, and notebook evaluation (using synthetic data). |
-| 2026-04-25 | Added missing deps (`sentence-transformers`, `faiss-cpu`, `pdfplumber`, `pytest`) to `requirements.txt`. |
+| 2026-04-25 | Switched dependency management from `requirements.txt` to `uv` with `pyproject.toml` and `uv.lock`. |
+| 2026-04-25 | Added Ruff formatting/linting, local pre-commit hooks, and GitHub Actions CI for code directories (`app`, `ml`, `scripts`, `tests`). |
 | 2026-04-25 | Ryan completed Phase 2 retrieval slice (Tasks 2.2/2.3/2.4): `ml/retrieval.py` with DI-friendly `Retriever`, `scripts/build_index.py` with `--smoke` flag, `tests/test_retrieval.py` (25 tests, 25/25 passing). Synthetic fixture committed under `tests/fixtures/`. Module-level `search()` convenience deferred until @ohortig lands `ml/embeddings.Encoder` (Task 2.1). |

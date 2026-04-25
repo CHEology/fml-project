@@ -9,9 +9,10 @@ role families rather than individual listings.
 
 """
 
-import numpy as np
 import pickle
 from pathlib import Path
+
+import numpy as np
 
 
 class KMeans:
@@ -59,7 +60,7 @@ class KMeans:
         """
         # using broadcasting: (n_samples, 1, n_features) - (k, n_features)
         diff = X[:, np.newaxis, :] - self.centroids[np.newaxis, :, :]
-        return np.sqrt((diff ** 2).sum(axis=2))
+        return np.sqrt((diff**2).sum(axis=2))
 
     def _assign_labels(self, X: np.ndarray) -> np.ndarray:
         """
@@ -113,7 +114,9 @@ class KMeans:
             new_centroids = self._update_centroids(X, new_labels)
 
             # check convergence: max shift across all centroids
-            centroid_shift = np.linalg.norm(new_centroids - self.centroids, axis=1).max()
+            centroid_shift = np.linalg.norm(
+                new_centroids - self.centroids, axis=1
+            ).max()
 
             self.centroids = new_centroids
             self.labels = new_labels
@@ -151,7 +154,7 @@ class KMeans:
         """
         distances = self._compute_distances(X)
         nearest = distances[np.arange(X.shape[0]), self._assign_labels(X)]
-        return float((nearest ** 2).sum())
+        return float((nearest**2).sum())
 
     def save(self, path: Path) -> None:
         """Save fitted model to disk as a pickle file."""
