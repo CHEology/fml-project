@@ -48,6 +48,9 @@ PAY_PERIOD_MULTIPLIERS = {
     "annual": 1.0,
 }
 
+MIN_REASONABLE_ANNUAL_SALARY = 10_000.0
+MAX_REASONABLE_ANNUAL_SALARY = 1_000_000.0
+
 EXPERIENCE_PATTERNS = (
     ("intern", 0),
     ("entry", 1),
@@ -227,8 +230,20 @@ def annualize_salaries(frame: pd.DataFrame) -> pd.Series:
     multiplier = pay_period.map(PAY_PERIOD_MULTIPLIERS)
 
     annual_salary = base_salary * multiplier
+    normalized_salary = _numeric("normalized_salary")
+    normalized_salary = normalized_salary.where(
+        np.isfinite(normalized_salary) & (normalized_salary > 0)
+    )
+    annual_salary = annual_salary.fillna(normalized_salary)
     annual_salary = annual_salary.where(
         np.isfinite(annual_salary) & (annual_salary > 0)
+    )
+    annual_salary = annual_salary.where(
+        annual_salary.between(
+            MIN_REASONABLE_ANNUAL_SALARY,
+            MAX_REASONABLE_ANNUAL_SALARY,
+            inclusive="both",
+        )
     )
     return annual_salary
 
@@ -304,11 +319,24 @@ def preprocess_jobs(raw_dir: Path) -> pd.DataFrame:
     if "company_id" not in job_postings.columns:
         raise KeyError("job_postings.csv is missing required column 'company_id'")
 
-    jobs = job_postings.merge(companies, on="company_id", how="inner")
+    jobs = job_postings.merge(
+        companies,
+        on="company_id",
+        how="inner",
+        suffixes=("", "_company"),
+    )
     if benefits is not None:
         jobs = jobs.merge(benefits, on="job_id", how="left")
     if employee_counts is not None:
         jobs = jobs.merge(employee_counts, on="company_id", how="left")
+
+    if "company_name_company" in jobs.columns:
+        if "company_name" in jobs.columns:
+            jobs["company_name"] = jobs["company_name"].fillna(
+                jobs["company_name_company"]
+            )
+        else:
+            jobs["company_name"] = jobs["company_name_company"]
 
     jobs["title"] = jobs.get("title", pd.Series("", index=jobs.index)).map(
         normalize_whitespace
