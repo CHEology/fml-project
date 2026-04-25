@@ -1,29 +1,28 @@
 """
 Tests for ml/salary_model.py
 
-Run:  pytest tests/test_salary_model.py -v
+Run:  uv run pytest tests/test_salary_model.py -v
 """
+
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 import torch
 
-import sys
-from pathlib import Path
-
 # Ensure project root on path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ml.salary_model import (
-    PinballLoss,
-    SalaryQuantileNet,
-    SalaryDataset,
-    SalaryScaler,
-    split_data,
-    predict_salary,
     QUANTILES,
+    PinballLoss,
+    SalaryDataset,
+    SalaryQuantileNet,
+    SalaryScaler,
+    predict_salary,
+    split_data,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -68,6 +67,7 @@ def model_with_extra():
 # PinballLoss tests
 # ---------------------------------------------------------------------------
 
+
 class TestPinballLoss:
     def test_output_is_scalar(self):
         criterion = PinballLoss()
@@ -109,6 +109,7 @@ class TestPinballLoss:
 # SalaryQuantileNet tests
 # ---------------------------------------------------------------------------
 
+
 class TestSalaryQuantileNet:
     def test_output_shape(self, model):
         x = torch.randn(4, EMB_DIM)
@@ -132,7 +133,7 @@ class TestSalaryQuantileNet:
             assert not torch.all(p.grad == 0), f"Zero gradient for {name}"
 
     def test_single_sample_forward(self, model):
-        """Model should handle batch_size=1 (inference mode without BatchNorm issues)."""
+        """Model should handle batch_size=1 in inference mode."""
         model.eval()
         x = torch.randn(1, EMB_DIM)
         out = model(x)
@@ -150,6 +151,7 @@ class TestSalaryQuantileNet:
 # ---------------------------------------------------------------------------
 # SalaryDataset tests
 # ---------------------------------------------------------------------------
+
 
 class TestSalaryDataset:
     def test_length(self, dummy_embeddings, dummy_salaries):
@@ -178,6 +180,7 @@ class TestSalaryDataset:
 # ---------------------------------------------------------------------------
 # split_data tests
 # ---------------------------------------------------------------------------
+
 
 class TestSplitData:
     def test_split_sizes(self, dummy_embeddings, dummy_salaries):
@@ -208,12 +211,13 @@ class TestSplitData:
 # predict_salary tests
 # ---------------------------------------------------------------------------
 
+
 class TestPredictSalary:
     def test_returns_all_quantiles(self, model):
         model.eval()
         emb = np.random.randn(EMB_DIM).astype(np.float32)
         result = predict_salary(model, emb)
-        expected_keys = {f"q{int(q*100)}" for q in QUANTILES}
+        expected_keys = {f"q{int(q * 100)}" for q in QUANTILES}
         assert set(result.keys()) == expected_keys
 
     def test_monotonicity(self, model):
@@ -221,11 +225,11 @@ class TestPredictSalary:
         model.eval()
         emb = np.random.randn(EMB_DIM).astype(np.float32)
         result = predict_salary(model, emb)
-        values = [result[f"q{int(q*100)}"] for q in QUANTILES]
+        values = [result[f"q{int(q * 100)}"] for q in QUANTILES]
         for i in range(len(values) - 1):
             assert values[i] <= values[i + 1], (
-                f"Monotonicity violated: q{int(QUANTILES[i]*100)}={values[i]} > "
-                f"q{int(QUANTILES[i+1]*100)}={values[i+1]}"
+                f"Monotonicity violated: q{int(QUANTILES[i] * 100)}={values[i]} > "
+                f"q{int(QUANTILES[i + 1] * 100)}={values[i + 1]}"
             )
 
     def test_with_extra_features(self, model_with_extra):
@@ -257,6 +261,7 @@ class TestPredictSalary:
 # ---------------------------------------------------------------------------
 # SalaryScaler tests
 # ---------------------------------------------------------------------------
+
 
 class TestSalaryScaler:
     def test_fit_transform_roundtrip(self):

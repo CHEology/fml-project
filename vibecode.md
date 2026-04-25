@@ -27,6 +27,6 @@ LinkedIn Job Postings (2023-2024) from Kaggle (~124K postings). Multiple CSVs: `
 
 ## Run
 ```
-pip install -r requirements.txt
-streamlit run app/app.py
+uv sync
+uv run streamlit run app/app.py
 ```
