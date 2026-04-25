@@ -37,6 +37,10 @@ models/*
 *.bin
 *.ckpt
 
+# Test fixtures — small synthetic artifacts that ARE checked in
+!tests/fixtures/
+!tests/fixtures/**
+
 # OS
 .DS_Store
 Thumbs.db
