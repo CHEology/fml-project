@@ -25,9 +25,9 @@
 | 1.4 | Clean text fields (strip HTML, combine columns) | — | ✅ | Produces embedding-ready `text` column. |
 | 1.5 | Feature engineering (ordinals, one-hot, location) | — | ✅ | Experience ordinal, work-type flags, and state extraction implemented. |
 | 1.6 | Write `data/processed/jobs.parquet` | — | 🔴 | Code path implemented; blocked until raw Kaggle files are present. |
-| 1.7 | EDA notebook (`01_data_exploration.ipynb`) | — | ⬜ | |
+| 1.7 | EDA notebook (`01_data_exploration.ipynb`) | @ohortig | ✅ | Built raw-data availability checks, schema/missingness, salary, categorical, text-field, and processed-data exploration. Runs safely before Kaggle data is present. |
 
-**Phase status:** 🟡 Implementation ready; real processed data is blocked on Kaggle download.
+**Phase status:** 🟡 Implementation and EDA foundation ready; real processed data is blocked on Kaggle download.
 
 ---
 
@@ -143,3 +143,4 @@ Total    [█████░░░░░]  48%
 | 2026-04-25 | Ryan completed Phase 2 retrieval slice (Tasks 2.2/2.3/2.4): `ml/retrieval.py` with DI-friendly `Retriever`, `scripts/build_index.py` with `--smoke` flag, `tests/test_retrieval.py` (25 tests, 25/25 passing). Synthetic fixture committed under `tests/fixtures/`. |
 | 2026-04-25 | Added Kaggle data setup docs in `data/README.md` and expanded README data instructions. Local raw data remains missing. |
 | 2026-04-25 | Omer completed Task 2.1: `ml/embeddings.Encoder` with L2-normalized float32 outputs and mocked unit tests in `tests/test_embeddings.py`. |
+| 2026-04-25 | Omer completed Task 1.7: `notebooks/01_data_exploration.ipynb` with no-data guardrails and exploration cells aligned to `scripts/preprocess_data.py`. |
