@@ -15,7 +15,12 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.preprocess_data import preprocess_jobs, write_outputs
+from scripts.preprocess_data import (
+    clean_skills,
+    normalize_whitespace,
+    preprocess_jobs,
+    write_outputs,
+)
 
 
 def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
@@ -122,3 +127,8 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
 
     assert written["job_id"].tolist() == [1, 2, 4]
     assert salaries.tolist() == [104000.0, 120000.0, 90000.0]
+
+
+def test_missing_values_do_not_become_literal_nan_text() -> None:
+    assert normalize_whitespace(np.nan) == ""
+    assert clean_skills(np.nan) == ""
