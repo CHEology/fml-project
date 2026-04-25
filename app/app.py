@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
 
@@ -26,17 +25,54 @@ sql, streamlit, analytics, product experimentation, data pipelines
 """
 
 TRACK_KEYWORDS = {
-    "Machine Learning": ["machine learning", "ml", "pytorch", "tensorflow", "nlp", "embedding", "faiss"],
-    "Data Science": ["data science", "experimentation", "statistics", "modeling", "python", "pandas"],
-    "Software Engineering": ["software", "backend", "api", "distributed", "docker", "aws", "systems"],
+    "Machine Learning": [
+        "machine learning",
+        "ml",
+        "pytorch",
+        "tensorflow",
+        "nlp",
+        "embedding",
+        "faiss",
+    ],
+    "Data Science": [
+        "data science",
+        "experimentation",
+        "statistics",
+        "modeling",
+        "python",
+        "pandas",
+    ],
+    "Software Engineering": [
+        "software",
+        "backend",
+        "api",
+        "distributed",
+        "docker",
+        "aws",
+        "systems",
+    ],
     "Analytics": ["analytics", "dashboard", "sql", "bi", "reporting", "tableau"],
-    "Product / Strategy": ["product", "roadmap", "market", "strategy", "stakeholder", "growth"],
+    "Product / Strategy": [
+        "product",
+        "roadmap",
+        "market",
+        "strategy",
+        "stakeholder",
+        "growth",
+    ],
 }
 
 SKILL_GROUPS = {
     "Python": ["python"],
     "SQL": ["sql", "postgres", "snowflake"],
-    "ML Modeling": ["machine learning", "model", "xgboost", "pytorch", "tensorflow", "sklearn"],
+    "ML Modeling": [
+        "machine learning",
+        "model",
+        "xgboost",
+        "pytorch",
+        "tensorflow",
+        "sklearn",
+    ],
     "NLP / Retrieval": ["nlp", "llm", "embedding", "retrieval", "faiss", "vector"],
     "Cloud / Ops": ["aws", "gcp", "docker", "kubernetes", "airflow"],
     "Product Sense": ["experiment", "stakeholder", "roadmap", "product", "growth"],
@@ -307,7 +343,9 @@ def load_jobs() -> tuple[pd.DataFrame, str, bool]:
         if "salary_annual" not in frame.columns:
             frame["salary_annual"] = np.nan
         if "state" not in frame.columns:
-            frame["state"] = frame["location"].astype(str).str.split(",").str[-1].str.strip()
+            frame["state"] = (
+                frame["location"].astype(str).str.split(",").str[-1].str.strip()
+            )
         if "work_type" not in frame.columns:
             frame["work_type"] = frame.get("formatted_work_type", "")
         return frame.copy(), str(DATA_PATH.relative_to(PROJECT_ROOT)), True
@@ -364,7 +402,18 @@ def detect_profile(resume_text: str, preferred_track: str) -> dict[str, Any]:
         detected_track = preferred_track
 
     seniority = "Mid"
-    if any(token in lowered for token in ("chief", "director", "vice president", "vp", "staff", "principal", "lead ")):
+    if any(
+        token in lowered
+        for token in (
+            "chief",
+            "director",
+            "vice president",
+            "vp",
+            "staff",
+            "principal",
+            "lead ",
+        )
+    ):
         seniority = "Lead / Executive"
     elif any(token in lowered for token in ("senior", "sr.", "sr ", "mid-senior")):
         seniority = "Senior"
@@ -401,17 +450,21 @@ def score_jobs(
     remote_only: bool,
     top_k: int = 6,
 ) -> pd.DataFrame:
-    lowered_resume = resume_text.lower()
     role_terms = TRACK_KEYWORDS[profile["track"]]
     skills = [skill.lower() for skill in profile["skills_present"]]
 
     ranked = jobs.copy()
     searchable = (
-        ranked["title"].astype(str) + " "
-        + ranked["company_name"].astype(str) + " "
-        + ranked["location"].astype(str) + " "
-        + ranked["experience_level"].astype(str) + " "
-        + ranked["work_type"].astype(str) + " "
+        ranked["title"].astype(str)
+        + " "
+        + ranked["company_name"].astype(str)
+        + " "
+        + ranked["location"].astype(str)
+        + " "
+        + ranked["experience_level"].astype(str)
+        + " "
+        + ranked["work_type"].astype(str)
+        + " "
         + ranked["text"].astype(str)
     ).str.lower()
 
@@ -421,32 +474,60 @@ def score_jobs(
     for term in skills:
         score += searchable.str.count(term) * 3.0
 
-    score += ranked["title"].astype(str).str.lower().str.contains(profile["track"].split("/")[0].strip().lower(), regex=False).astype(float) * 2.0
+    score += (
+        ranked["title"]
+        .astype(str)
+        .str.lower()
+        .str.contains(profile["track"].split("/")[0].strip().lower(), regex=False)
+        .astype(float)
+        * 2.0
+    )
 
     if preferred_location and preferred_location != "Anywhere":
-        location_mask = ranked["location"].astype(str).str.contains(preferred_location, case=False, na=False)
-        state_mask = ranked["state"].astype(str).str.fullmatch(preferred_location, case=False, na=False)
+        location_mask = (
+            ranked["location"]
+            .astype(str)
+            .str.contains(preferred_location, case=False, na=False)
+        )
+        state_mask = (
+            ranked["state"]
+            .astype(str)
+            .str.fullmatch(preferred_location, case=False, na=False)
+        )
         score += (location_mask | state_mask).astype(float) * 4.5
 
     if remote_only:
-        remote_mask = ranked["work_type"].astype(str).str.contains("remote", case=False, na=False)
+        remote_mask = (
+            ranked["work_type"].astype(str).str.contains("remote", case=False, na=False)
+        )
         score += remote_mask.astype(float) * 3.0
         ranked = ranked[remote_mask | (ranked["work_type"].astype(str) == "")]
         score = score.loc[ranked.index]
 
     if profile["seniority"] != "Mid":
-        seniority_mask = ranked["experience_level"].astype(str).str.contains(profile["seniority"].split("/")[0].strip(), case=False, na=False)
+        seniority_mask = (
+            ranked["experience_level"]
+            .astype(str)
+            .str.contains(
+                profile["seniority"].split("/")[0].strip(), case=False, na=False
+            )
+        )
         score += seniority_mask.astype(float) * 2.0
 
     ranked["match_score"] = score.loc[ranked.index]
-    ranked = ranked.sort_values(["match_score", "salary_annual"], ascending=[False, False])
+    ranked = ranked.sort_values(
+        ["match_score", "salary_annual"], ascending=[False, False]
+    )
     return ranked.head(top_k)
 
 
 def salary_band(matches: pd.DataFrame, profile: dict[str, Any]) -> dict[str, int]:
     salaries = pd.to_numeric(matches.get("salary_annual"), errors="coerce").dropna()
     if len(salaries) >= 3:
-        quantiles = np.percentile(salaries, [10, 25, 50, 75, 90]) * profile["seniority_multiplier"]
+        quantiles = (
+            np.percentile(salaries, [10, 25, 50, 75, 90])
+            * profile["seniority_multiplier"]
+        )
     else:
         base = BASE_SALARY[profile["track"]] * profile["seniority_multiplier"]
         quantiles = np.array([base * 0.78, base * 0.9, base, base * 1.12, base * 1.24])
@@ -483,10 +564,10 @@ def render_job_card(row: pd.Series) -> None:
     st.markdown(
         f"""
         <div class="job-card">
-            <div class="score-chip">Match {float(row.get('match_score', 0.0)):.1f}</div>
-            <div class="job-title">{row.get('title', 'Untitled role')}</div>
-            <div class="job-meta">{row.get('company_name', 'Unknown company')} · {row.get('location', 'Unknown location')} · {row.get('work_type', 'Work type TBD')}</div>
-            <div><strong>{fmt_money(row.get('salary_annual'))}</strong> · {row.get('experience_level', 'Experience TBD')}</div>
+            <div class="score-chip">Match {float(row.get("match_score", 0.0)):.1f}</div>
+            <div class="job-title">{row.get("title", "Untitled role")}</div>
+            <div class="job-meta">{row.get("company_name", "Unknown company")} · {row.get("location", "Unknown location")} · {row.get("work_type", "Work type TBD")}</div>
+            <div><strong>{fmt_money(row.get("salary_annual"))}</strong> · {row.get("experience_level", "Experience TBD")}</div>
             <div class="mono" style="margin-top:0.6rem;">{summary}</div>
         </div>
         """,
@@ -495,8 +576,13 @@ def render_job_card(row: pd.Series) -> None:
 
 
 def render_salary_band(band: dict[str, int]) -> None:
-    st.markdown('<div class="section-label">Projected salary corridor</div>', unsafe_allow_html=True)
-    width = max(12, min(100, int((band["q75"] - band["q10"]) / max(band["q90"], 1) * 100)))
+    st.markdown(
+        '<div class="section-label">Projected salary corridor</div>',
+        unsafe_allow_html=True,
+    )
+    width = max(
+        12, min(100, int((band["q75"] - band["q10"]) / max(band["q90"], 1) * 100))
+    )
     start = max(0, int(band["q10"] / max(band["q90"], 1) * 100))
     st.markdown(
         f"""
@@ -507,7 +593,7 @@ def render_salary_band(band: dict[str, int]) -> None:
         unsafe_allow_html=True,
     )
     cols = st.columns(5)
-    for col, key in zip(cols, ("q10", "q25", "q50", "q75", "q90")):
+    for col, key in zip(cols, ("q10", "q25", "q50", "q75", "q90"), strict=True):
         col.metric(key.upper(), fmt_money(band[key]))
 
 
@@ -542,7 +628,9 @@ def main() -> None:
             st.write(f"{flag}: `{item['path']}`")
 
         if not has_real_data:
-            st.info("No processed jobs file found. The app is running with a synthetic dataset so the frontend can still be demoed locally.")
+            st.info(
+                "No processed jobs file found. The app is running with a synthetic dataset so the frontend can still be demoed locally."
+            )
 
     st.markdown(
         """
@@ -569,26 +657,40 @@ def main() -> None:
     with metric_cols[0]:
         render_metric_card("Jobs loaded", f"{len(jobs):,}", "local catalog size")
     with metric_cols[1]:
-        median_salary = pd.to_numeric(jobs.get("salary_annual"), errors="coerce").dropna()
-        render_metric_card("Median salary", fmt_money(median_salary.median() if len(median_salary) else None), "from current dataset")
+        median_salary = pd.to_numeric(
+            jobs.get("salary_annual"), errors="coerce"
+        ).dropna()
+        render_metric_card(
+            "Median salary",
+            fmt_money(median_salary.median() if len(median_salary) else None),
+            "from current dataset",
+        )
     with metric_cols[2]:
         ready_count = sum(item["ready"] for item in status)
-        render_metric_card("Artifacts ready", f"{ready_count}/{len(status)}", "pipeline completeness")
+        render_metric_card(
+            "Artifacts ready", f"{ready_count}/{len(status)}", "pipeline completeness"
+        )
 
-    launchpad_tab, radar_tab, pipeline_tab = st.tabs(["Launchpad", "Job Radar", "Pipeline"])
+    launchpad_tab, radar_tab, pipeline_tab = st.tabs(
+        ["Launchpad", "Job Radar", "Pipeline"]
+    )
 
     with launchpad_tab:
         left, right = st.columns([1.15, 0.85], gap="large")
 
         with left:
             st.subheader("Resume input")
-            uploader = st.file_uploader("Upload a resume (.pdf or .txt)", type=["pdf", "txt"])
+            uploader = st.file_uploader(
+                "Upload a resume (.pdf or .txt)", type=["pdf", "txt"]
+            )
             if uploader is not None:
                 parsed = extract_uploaded_text(uploader)
                 if parsed:
                     st.session_state.resume_text = parsed
                 else:
-                    st.warning("Could not extract text from the uploaded file. Paste the resume text below instead.")
+                    st.warning(
+                        "Could not extract text from the uploaded file. Paste the resume text below instead."
+                    )
 
             st.session_state.resume_text = st.text_area(
                 "Paste resume text",
@@ -601,11 +703,16 @@ def main() -> None:
             with pref_a:
                 preferred_track = st.selectbox("Focus track", list(TRACK_KEYWORDS))
             with pref_b:
-                preferred_location = st.selectbox("Preferred location", ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"])
+                preferred_location = st.selectbox(
+                    "Preferred location",
+                    ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"],
+                )
             with pref_c:
                 remote_only = st.toggle("Remote only", value=False)
 
-            analyze_clicked = st.button("Run frontend demo", type="primary", use_container_width=True)
+            analyze_clicked = st.button(
+                "Run frontend demo", type="primary", use_container_width=True
+            )
 
         with right:
             st.markdown(
@@ -655,9 +762,9 @@ def main() -> None:
                 st.markdown(
                     f"""
                     <div class="info-card">
-                        <div class="info-title">{profile['track']}</div>
-                        <div class="metric-value" style="font-size:1.7rem;">{profile['seniority']}</div>
-                        <div class="mono">Match confidence: {profile['confidence']}%</div>
+                        <div class="info-title">{profile["track"]}</div>
+                        <div class="metric-value" style="font-size:1.7rem;">{profile["seniority"]}</div>
+                        <div class="mono">Match confidence: {profile["confidence"]}%</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -668,7 +775,10 @@ def main() -> None:
             with insight_cols[0]:
                 st.subheader("Skill coverage")
                 for skill_name, keywords in SKILL_GROUPS.items():
-                    hit = any(keyword in st.session_state.resume_text.lower() for keyword in keywords)
+                    hit = any(
+                        keyword in st.session_state.resume_text.lower()
+                        for keyword in keywords
+                    )
                     st.write(f"{'Strong' if hit else 'Thin'}: {skill_name}")
                     st.progress(100 if hit else 28)
             with insight_cols[1]:
@@ -686,41 +796,60 @@ def main() -> None:
                 with card_cols[index % 2]:
                     render_job_card(row)
         elif analyze_clicked:
-            st.warning("Paste a resume or load the sample resume before running the demo.")
+            st.warning(
+                "Paste a resume or load the sample resume before running the demo."
+            )
 
     with radar_tab:
         st.subheader("Job market radar")
         display_jobs = jobs.copy()
-        display_jobs["salary_annual"] = pd.to_numeric(display_jobs.get("salary_annual"), errors="coerce")
+        display_jobs["salary_annual"] = pd.to_numeric(
+            display_jobs.get("salary_annual"), errors="coerce"
+        )
 
         left, right = st.columns([0.52, 0.48], gap="large")
         with left:
             st.markdown("**Top locations**")
-            location_counts = display_jobs["location"].fillna("Unknown").value_counts().head(8)
+            location_counts = (
+                display_jobs["location"].fillna("Unknown").value_counts().head(8)
+            )
             st.bar_chart(location_counts)
 
             st.markdown("**Experience mix**")
-            exp_counts = display_jobs["experience_level"].fillna("Unknown").value_counts().head(8)
+            exp_counts = (
+                display_jobs["experience_level"]
+                .fillna("Unknown")
+                .value_counts()
+                .head(8)
+            )
             st.bar_chart(exp_counts)
 
         with right:
             st.markdown("**Salary sample**")
-            salary_view = display_jobs[["title", "company_name", "location", "salary_annual"]].copy()
-            salary_view = salary_view.sort_values("salary_annual", ascending=False).head(12)
+            salary_view = display_jobs[
+                ["title", "company_name", "location", "salary_annual"]
+            ].copy()
+            salary_view = salary_view.sort_values(
+                "salary_annual", ascending=False
+            ).head(12)
             st.dataframe(salary_view, use_container_width=True, hide_index=True)
 
             st.markdown("**Dataset notes**")
             if has_real_data:
                 st.success(f"Loaded real project data from `{data_source}`.")
             else:
-                st.info("Using synthetic roles so the frontend can be reviewed before the real preprocessing pipeline is run.")
+                st.info(
+                    "Using synthetic roles so the frontend can be reviewed before the real preprocessing pipeline is run."
+                )
 
     with pipeline_tab:
         st.subheader("Pipeline readiness")
         pipeline_cols = st.columns(len(status))
-        for col, item in zip(pipeline_cols, status):
+        for col, item in zip(pipeline_cols, status, strict=True):
             with col:
-                render_metric_card(item["label"], "Ready" if item["ready"] else "Missing", item["path"])
+                render_metric_card(
+                    item["label"], "Ready" if item["ready"] else "Missing", item["path"]
+                )
 
         st.write("")
         st.markdown("**Recommended next commands**")
@@ -734,7 +863,9 @@ def main() -> None:
             ),
             language="bash",
         )
-        st.caption("The first command becomes real once the Kaggle raw CSVs are present under `data/raw/`.")
+        st.caption(
+            "The first command becomes real once the Kaggle raw CSVs are present under `data/raw/`."
+        )
 
 
 if __name__ == "__main__":

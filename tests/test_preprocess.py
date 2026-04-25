@@ -13,7 +13,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.preprocess_data import preprocess_jobs, write_outputs
@@ -41,8 +40,18 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
             "min_salary": [np.nan, 100000.0, np.nan, np.nan],
             "max_salary": [np.nan, 140000.0, np.nan, np.nan],
             "pay_period": ["hourly", "YEARLY", "monthly", np.nan],
-            "location": ["New York, NY", "San Francisco, CA", "Austin, TX", "New York, NY"],
-            "formatted_experience_level": ["Entry level", "Mid-Senior level", "Associate", "Entry level"],
+            "location": [
+                "New York, NY",
+                "San Francisco, CA",
+                "Austin, TX",
+                "New York, NY",
+            ],
+            "formatted_experience_level": [
+                "Entry level",
+                "Mid-Senior level",
+                "Associate",
+                "Entry level",
+            ],
             "skills_desc": ["Python, SQL, Python", "PyTorch; NLP", "Excel", ""],
             "work_type": ["Remote", "Hybrid", "On-site", "Remote"],
             "formatted_work_type": ["Full-time", "Full-time", "Contract", "Full-time"],
