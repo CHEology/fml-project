@@ -24,8 +24,8 @@ All ML logic lives in `ml/`, offline pipelines live in `scripts/`, and the Strea
 
 | # | Task | File(s) | Details |
 |---|------|---------|---------|
-| 1.1 | Download & place raw data | `data/raw/` | Place `job_postings.csv`, `companies.csv`, `benefits.csv`, `employee_counts.csv` etc. from Kaggle into `data/raw/`. |
-| 1.2 | Join CSVs | `scripts/preprocess_data.py` | Inner-join `job_postings` ↔ `companies` on company ID. Left-join benefits/employee counts. |
+| 1.1 | Download & place raw data | `data/raw/` | Download Kaggle dataset `arshkon/linkedin-job-postings` into `data/raw/`. Expected main file is `postings.csv`; see `data/README.md` for layout. |
+| 1.2 | Join CSVs | `scripts/preprocess_data.py` | Implemented. Inner-join postings ↔ companies on company ID. Left-join benefits/employee counts when present. |
 | 1.3 | Normalize salary | `scripts/preprocess_data.py` | Convert all pay periods (hourly, monthly, yearly) to **annualized** salary. Drop rows without valid salary. Compute `salary_annual = median_salary` (fall back to `(min_salary + max_salary) / 2`). |
 | 1.4 | Clean text fields | `scripts/preprocess_data.py` | Strip HTML from `description`. Lowercase and deduplicate `skills_desc`. Create a combined `text` column = `title + " " + description + " " + skills_desc`. |
 | 1.5 | Feature engineering | `scripts/preprocess_data.py` | Map `experience_level` → ordinal int. One-hot encode `work_type` (remote/hybrid/onsite). Extract `state` from `location`. |
@@ -42,7 +42,7 @@ All ML logic lives in `ml/`, offline pipelines live in `scripts/`, and the Strea
 
 | # | Task | File(s) | Details |
 |---|------|---------|---------|
-| 2.1 | Embedding module | `ml/embeddings.py` | Wrap `sentence-transformers` (`all-MiniLM-L6-v2` or `all-mpnet-base-v2`). Expose `encode(texts: list[str]) → np.ndarray` (float32, L2-normalized). Batch encode with progress bar. |
+| 2.1 | Embedding module | `ml/embeddings.py` | Implemented. Wrap `sentence-transformers` (`all-MiniLM-L6-v2` by default). Expose `encode(texts: list[str]) → np.ndarray` (float32, L2-normalized). Supports injected fake model for offline unit tests. |
 | 2.2 | Batch embed all jobs | `scripts/build_index.py` | Load `jobs.parquet`, embed the `text` column in batches of 256, save matrix to `models/job_embeddings.npy`. |
 | 2.3 | Build FAISS index | `scripts/build_index.py` | Build `IndexFlatIP` (inner-product = cosine on normalized vectors). Save to `models/jobs.index`. |
 | 2.4 | Retrieval module | `ml/retrieval.py` | `search(resume_text: str, k: int = 10) → list[dict]` — embed the resume, query FAISS, return top-k results with job metadata and similarity scores. |
@@ -60,7 +60,7 @@ All ML logic lives in `ml/`, offline pipelines live in `scripts/`, and the Strea
 
 | # | Task | File(s) | Details |
 |---|------|---------|---------|
-| 3.1 | K-Means implementation | `ml/clustering.py` | `KMeansClusterer` class: `fit(X, k, max_iter=100, tol=1e-4)`, `predict(X) → labels`. Use cosine distance (1 − cosine_sim). Random init + k-means++ option. |
+| 3.1 | K-Means implementation | `ml/clustering.py` | Implemented as a NumPy `KMeans` class with `fit`, `predict`, `inertia`, `save`, and `load`. Current implementation uses Euclidean distance; real embedding experiments should confirm whether to switch to cosine distance. |
 | 3.2 | Choose K | `ml/clustering.py` or notebook | Elbow method (inertia vs k) and silhouette score. Target k ≈ 5–10. |
 | 3.3 | Label clusters | `scripts/build_index.py` | After clustering, extract top-10 TF-IDF terms per cluster to auto-generate labels (e.g., "Data Science / Analytics", "Frontend Engineering"). Save `models/cluster_centroids.npy` and `models/cluster_labels.json`. |
 | 3.4 | Assign cluster to user | `ml/clustering.py` | `assign(embedding) → (cluster_id, distances_to_all_centroids)` — used in the app to show the user's market position. |
@@ -150,6 +150,23 @@ Phases 3 and 4 can be worked on **in parallel** once Phase 2 is done. Phase 5 de
 | Tests | `tests/` must have pytest coverage for core `ml/` functions. |
 
 ---
+
+## Current Setup Commands
+
+```bash
+uv sync
+uv run pytest
+uv run python scripts/preprocess_data.py
+uv run python scripts/build_index.py
+uv run streamlit run app/app.py
+```
+
+Raw Kaggle data is required before `preprocess_data.py` and the real
+`build_index.py` path can run end-to-end. Without raw data, use:
+
+```bash
+uv run python scripts/build_index.py --smoke
+```
 
 ## Suggested Team Assignment (5 members)
 

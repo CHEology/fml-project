@@ -7,10 +7,11 @@ the top-k matching jobs joined with their metadata.
 
 Note:
     The module-level convenience `search()` and a `load_default_retriever`
-    factory documented in plan.md §2.4 are intentionally not exposed yet —
-    they require `ml/embeddings.py` (Task 2.1, @ohortig) to land first.
-    In the meantime, callers (tests, app) construct a `Retriever` directly
-    with their own encoder + index + metadata.
+    factory documented in plan.md §2.4 are intentionally not exposed yet.
+    The encoder exists, but default search still depends on generated model
+    artifacts (`models/jobs.index` and `models/jobs_meta.parquet`). In the
+    meantime, callers (tests, app) construct a `Retriever` directly with their
+    own encoder + index + metadata.
 
 Grading constraint: pure inner-product on L2-normalized vectors —
 no learned re-ranker, no sklearn dependencies.

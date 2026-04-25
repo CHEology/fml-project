@@ -29,7 +29,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -80,7 +79,13 @@ ROLE_PROFILES = (
         family="analytics",
         aliases=("Business Insights Analyst", "Reporting Analyst"),
         core_skills=("SQL", "Excel", "Tableau", "data cleaning", "business metrics"),
-        nice_to_have=("Python", "Looker", "dbt", "A/B testing", "stakeholder reporting"),
+        nice_to_have=(
+            "Python",
+            "Looker",
+            "dbt",
+            "A/B testing",
+            "stakeholder reporting",
+        ),
         project_templates=(
             "created dashboards used by {metric} weekly stakeholders",
             "automated reporting and saved {metric} analyst hours monthly",
@@ -104,7 +109,13 @@ ROLE_PROFILES = (
         family="marketing",
         aliases=("Growth Marketing Associate", "Campaign Coordinator"),
         core_skills=("campaign planning", "copywriting", "analytics", "events", "CRM"),
-        nice_to_have=("Adobe Creative Cloud", "email marketing", "SEO", "social media", "vendor management"),
+        nice_to_have=(
+            "Adobe Creative Cloud",
+            "email marketing",
+            "SEO",
+            "social media",
+            "vendor management",
+        ),
         project_templates=(
             "coordinated campaigns that lifted engagement by {metric}%",
             "managed event logistics for {metric} field programs",
@@ -181,9 +192,34 @@ DEGREES_BY_FAMILY = {
 }
 
 STOPWORDS = {
-    "and", "or", "the", "a", "an", "to", "of", "in", "for", "with", "on",
-    "by", "as", "is", "are", "be", "this", "that", "you", "we", "our",
-    "job", "role", "work", "team", "company", "experience", "skills",
+    "and",
+    "or",
+    "the",
+    "a",
+    "an",
+    "to",
+    "of",
+    "in",
+    "for",
+    "with",
+    "on",
+    "by",
+    "as",
+    "is",
+    "are",
+    "be",
+    "this",
+    "that",
+    "you",
+    "we",
+    "our",
+    "job",
+    "role",
+    "work",
+    "team",
+    "company",
+    "experience",
+    "skills",
 }
 
 
@@ -313,22 +349,23 @@ def _prepare_jobs(jobs: pd.DataFrame) -> pd.DataFrame:
     prepared = jobs.copy().reset_index(drop=True)
     if "text" not in prepared.columns:
         prepared["text"] = [
-            _embedding_text(row.get("title"), row.get("description"), row.get("skills_desc"))
+            _embedding_text(
+                row.get("title"), row.get("description"), row.get("skills_desc")
+            )
             for _, row in prepared.iterrows()
         ]
     prepared["text"] = prepared["text"].fillna("").astype(str)
     prepared = prepared[prepared["text"].str.len() > 0].reset_index(drop=True)
     if prepared.empty:
-        raise ValueError("jobs has no usable rows with non-empty title/description/skills text")
+        raise ValueError(
+            "jobs has no usable rows with non-empty title/description/skills text"
+        )
 
     prepared["_role_family"] = [
         _infer_role_family(title, text)
-        for title, text in zip(prepared["title"], prepared["text"])
+        for title, text in zip(prepared["title"], prepared["text"], strict=True)
     ]
-    prepared["_level"] = [
-        _infer_level(row)
-        for _, row in prepared.iterrows()
-    ]
+    prepared["_level"] = [_infer_level(row) for _, row in prepared.iterrows()]
     prepared["_tokens"] = [
         _token_set(f"{row.get('title', '')} {row.get('text', '')}")
         for _, row in prepared.iterrows()
@@ -342,12 +379,18 @@ def _normalize_columns(frame: pd.DataFrame) -> pd.DataFrame:
         text = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", text)
         return re.sub(r"_+", "_", text).strip("_").lower()
 
-    return frame.rename(columns={column: snake_case(column) for column in frame.columns})
+    return frame.rename(
+        columns={column: snake_case(column) for column in frame.columns}
+    )
 
 
 def _embedding_text(title: Any, description: Any, skills: Any) -> str:
     pieces = [_clean_text(title), _strip_html(description), _clean_text(skills)]
-    return re.sub(r"\s+", " ", " ".join(piece for piece in pieces if piece)).strip().lower()
+    return (
+        re.sub(r"\s+", " ", " ".join(piece for piece in pieces if piece))
+        .strip()
+        .lower()
+    )
 
 
 def _strip_html(value: Any) -> str:
@@ -358,10 +401,25 @@ def _strip_html(value: Any) -> str:
 def _infer_role_family(title: Any, text: Any = "") -> str:
     haystack = f"{title} {text}".lower()
     rules = (
-        ("ml", ("machine learning", "ml engineer", "pytorch", "tensorflow", "model serving")),
+        (
+            "ml",
+            (
+                "machine learning",
+                "ml engineer",
+                "pytorch",
+                "tensorflow",
+                "model serving",
+            ),
+        ),
         ("data", ("data scientist", "predictive", "statistics", "scientist")),
-        ("analytics", ("data analyst", "business analyst", "tableau", "excel", "dashboard")),
-        ("software", ("software engineer", "backend", "api", "java", "postgresql", "developer")),
+        (
+            "analytics",
+            ("data analyst", "business analyst", "tableau", "excel", "dashboard"),
+        ),
+        (
+            "software",
+            ("software engineer", "backend", "api", "java", "postgresql", "developer"),
+        ),
         ("marketing", ("marketing", "campaign", "brand", "seo", "social media")),
     )
     for family, needles in rules:
@@ -397,8 +455,19 @@ def _profile_from_job(source: pd.Series) -> RoleProfile:
         title=title,
         family=family,
         aliases=(f"{title} Candidate", "Cross-functional Professional"),
-        core_skills=("communication", "execution", "analysis", "planning", "collaboration"),
-        nice_to_have=("reporting", "stakeholder management", "documentation", "process improvement"),
+        core_skills=(
+            "communication",
+            "execution",
+            "analysis",
+            "planning",
+            "collaboration",
+        ),
+        nice_to_have=(
+            "reporting",
+            "stakeholder management",
+            "documentation",
+            "process improvement",
+        ),
         project_templates=(
             "supported operational projects that improved cycle time by {metric}%",
             "coordinated cross-functional work across {metric} stakeholder groups",
@@ -432,10 +501,7 @@ def _stratified_source_indices(
             if len(group) == 0:
                 continue
             pos = group_pos[group_idx]
-            if pos >= len(group):
-                pick = int(rng.choice(group))
-            else:
-                pick = int(group[pos])
+            pick = int(rng.choice(group)) if pos >= len(group) else int(group[pos])
             group_pos[group_idx] = pos + 1
             selected.append(pick)
     return selected
@@ -479,12 +545,17 @@ def _build_hard_negative_map(
             candidate = jobs.iloc[int(candidate_idx)]
             if int(candidate_idx) == int(idx):
                 continue
-            if _optional_int(candidate.get("job_id")) == _optional_int(row.get("job_id")):
+            if _optional_int(candidate.get("job_id")) == _optional_int(
+                row.get("job_id")
+            ):
                 continue
             score = _jaccard(row_tokens, candidate["_tokens"])
             same_family = row["_role_family"] == candidate["_role_family"]
             different_level = row["_level"] != candidate["_level"]
-            different_title = _clean_text(row.get("title")).lower() != _clean_text(candidate.get("title")).lower()
+            different_title = (
+                _clean_text(row.get("title")).lower()
+                != _clean_text(candidate.get("title")).lower()
+            )
             if same_family:
                 score += 0.10
             if different_level:
@@ -528,7 +599,11 @@ def _make_resume_row(
     project_count = int(rng.integers(1, 4))
     projects = _make_projects(profile, project_count, has_metrics, rng)
     education = _choose_education(profile.family, persona, rng)
-    location = _clean_text(source_job.get("location")) if source_job is not None else str(rng.choice(LOCATIONS))
+    location = (
+        _clean_text(source_job.get("location"))
+        if source_job is not None
+        else str(rng.choice(LOCATIONS))
+    )
     if not location:
         location = str(rng.choice(LOCATIONS))
 
@@ -559,9 +634,17 @@ def _make_resume_row(
         rng=rng,
     )
 
-    source_job_id = _optional_int(source_job.get("job_id")) if source_job is not None else None
-    source_title = _clean_text(source_job.get("title")) if source_job is not None else profile.title
-    source_company = _clean_text(source_job.get("company_name")) if source_job is not None else None
+    source_job_id = (
+        _optional_int(source_job.get("job_id")) if source_job is not None else None
+    )
+    source_title = (
+        _clean_text(source_job.get("title"))
+        if source_job is not None
+        else profile.title
+    )
+    source_company = (
+        _clean_text(source_job.get("company_name")) if source_job is not None else None
+    )
 
     return {
         "resume_id": f"syn-{i + 1:05d}",
@@ -736,8 +819,13 @@ def _quality_score(
     }.get(persona, 0.0)
     penalty = typo_count * 2.5
     score = (
-        skill_score + nice_score + experience_score + project_score
-        + metric_score + persona_adjustment - penalty
+        skill_score
+        + nice_score
+        + experience_score
+        + project_score
+        + metric_score
+        + persona_adjustment
+        - penalty
     )
     return int(round(np.clip(score, 0, 100)))
 
@@ -828,7 +916,10 @@ def _add_resume_noise(
 
 
 def _negative_reason(source: pd.Series, negative: pd.Series) -> str:
-    if source["_role_family"] == negative["_role_family"] and source["_level"] != negative["_level"]:
+    if (
+        source["_role_family"] == negative["_role_family"]
+        and source["_level"] != negative["_level"]
+    ):
         return "same role family but different seniority"
     if source["_role_family"] == negative["_role_family"]:
         return "same role family with different posting"
@@ -870,15 +961,30 @@ def _optional_int(value: Any) -> int | None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate synthetic resume/JD eval pairs")
-    parser.add_argument("--jobs", type=Path, default=DEFAULT_JOBS,
-                        help="Processed jobs parquet. If missing, falls back to profile-only resumes.")
-    parser.add_argument("--n", type=int, default=100,
-                        help="Number of synthetic resumes to generate")
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED,
-                        help="Random seed for deterministic generation")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUTPUT,
-                        help="Output path ending in .parquet, .csv, or .jsonl")
+    parser = argparse.ArgumentParser(
+        description="Generate synthetic resume/JD eval pairs"
+    )
+    parser.add_argument(
+        "--jobs",
+        type=Path,
+        default=DEFAULT_JOBS,
+        help="Processed jobs parquet. If missing, falls back to profile-only resumes.",
+    )
+    parser.add_argument(
+        "--n", type=int, default=100, help="Number of synthetic resumes to generate"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help="Random seed for deterministic generation",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help="Output path ending in .parquet, .csv, or .jsonl",
+    )
     args = parser.parse_args()
 
     if args.jobs.exists():
@@ -892,7 +998,14 @@ def main() -> None:
     out_path = write_synthetic_resumes(df, args.out)
     print(f"Wrote {len(df)} synthetic resumes to {out_path} ({mode})")
     if len(df) > 0:
-        columns = ["resume_id", "source_job_id", "hard_negative_job_id", "persona", "writing_style", "quality_label"]
+        columns = [
+            "resume_id",
+            "source_job_id",
+            "hard_negative_job_id",
+            "persona",
+            "writing_style",
+            "quality_label",
+        ]
         print(df[[column for column in columns if column in df.columns]].head())
 
 

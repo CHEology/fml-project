@@ -174,7 +174,9 @@ def aggregate_benefits(frame: pd.DataFrame | None) -> pd.DataFrame | None:
 
 
 def normalize_whitespace(value: Any) -> str:
-    text = html.unescape("" if value is None else str(value))
+    if value is None or pd.isna(value):
+        return ""
+    text = html.unescape(str(value))
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 

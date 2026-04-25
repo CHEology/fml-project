@@ -19,15 +19,15 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 1.1 | Download raw Kaggle data to `data/raw/` | — | ⬜ | Need Kaggle account; ~1 GB download |
-| 1.2 | Join CSVs (`scripts/preprocess_data.py`) | — | ⬜ | |
-| 1.3 | Normalize salary to annual | — | ⬜ | |
-| 1.4 | Clean text fields (strip HTML, combine columns) | — | ⬜ | |
-| 1.5 | Feature engineering (ordinals, one-hot, location) | — | ⬜ | |
-| 1.6 | Write `data/processed/jobs.parquet` | — | ⬜ | |
-| 1.7 | EDA notebook (`01_data_exploration.ipynb`) | — | ⬜ | |
+| 1.1 | Download raw Kaggle data to `data/raw/` | — | 🔴 | Missing locally. Download `arshkon/linkedin-job-postings` from Kaggle; see `data/README.md`. |
+| 1.2 | Join CSVs (`scripts/preprocess_data.py`) | — | ✅ | Implemented and tested with synthetic CSV layout. |
+| 1.3 | Normalize salary to annual | — | ✅ | Implemented for hourly/daily/weekly/biweekly/monthly/yearly variants. |
+| 1.4 | Clean text fields (strip HTML, combine columns) | — | ✅ | Produces embedding-ready `text` column. |
+| 1.5 | Feature engineering (ordinals, one-hot, location) | — | ✅ | Experience ordinal, work-type flags, and state extraction implemented. |
+| 1.6 | Write `data/processed/jobs.parquet` | — | 🔴 | Code path implemented; blocked until raw Kaggle files are present. |
+| 1.7 | EDA notebook (`01_data_exploration.ipynb`) | @ohortig | ✅ | Built raw-data availability checks, schema/missingness, salary, categorical, text-field, and processed-data exploration. Runs safely before Kaggle data is present. |
 
-**Phase status:** ⬜ Not started
+**Phase status:** 🟡 Implementation and EDA foundation ready; real processed data is blocked on Kaggle download.
 
 ---
 
@@ -35,13 +35,13 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 2.1 | Embedding module (`ml/embeddings.py`) | — | ⬜ | File exists (empty). Owned by @ohortig per design doc. |
+| 2.1 | Embedding module (`ml/embeddings.py`) | @ohortig | ✅ | `Encoder` wraps sentence-transformers, returns float32 L2-normalized vectors, and has mocked unit tests. |
 | 2.2 | Batch embed all jobs (`scripts/build_index.py`) | Ryan | ✅ | Complete. `--smoke` flag generates synthetic data without Phase 1; real path lazy-imports `Encoder` from Task 2.1. |
 | 2.3 | Build FAISS index → `models/jobs.index` | Ryan | ✅ | Complete. `IndexFlatIP` over L2-normalized vectors. |
-| 2.4 | Retrieval module (`ml/retrieval.py`) | Ryan | ✅ | Complete. `Retriever` class + `JobMatch` dataclass with DI; module-level `search()` deferred until 2.1 lands. |
+| 2.4 | Retrieval module (`ml/retrieval.py`) | Ryan | ✅ | Complete. `Retriever` class + `JobMatch` dataclass with DI; module-level default `search()` still depends on generated model artifacts. |
 | 2.5 | Embedding experiments notebook | — | ⬜ | Owned by @trp8625 per design doc. |
 
-**Phase status:** 🟡 In progress (Ryan complete; awaiting 2.1 from @ohortig and 2.5 from @trp8625) · **Blocked by:** Phase 1 for end-to-end real-data validation
+**Phase status:** 🟡 In progress (embedding/retrieval code complete; 2.5 pending) · **Blocked by:** Phase 1 for real-data embedding/index validation.
 
 ---
 
@@ -49,12 +49,12 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 3.1 | K-Means from scratch (`ml/clustering.py`) | — | ⬜ | File exists (empty). **Must use NumPy/PyTorch, not sklearn.** |
+| 3.1 | K-Means from scratch (`ml/clustering.py`) | — | ✅ | NumPy implementation with unit tests. **No sklearn KMeans.** |
 | 3.2 | Choose K (elbow + silhouette) | — | ⬜ | |
 | 3.3 | Auto-label clusters (TF-IDF top terms) | — | ⬜ | |
 | 3.4 | Assign user embedding to cluster | — | ⬜ | |
 
-**Phase status:** ⬜ Not started · **Blocked by:** Phase 2
+**Phase status:** 🟡 Core algorithm implemented; K selection/labels need real embeddings.
 
 ---
 
@@ -89,7 +89,7 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 6.1 | App shell & navigation (`app/app.py`) | — | ⬜ | File exists (empty) |
+| 6.1 | App shell & navigation (`app/app.py`) | — | ✅ | Local Streamlit shell with synthetic fallback data. |
 | 6.2 | Resume upload page (`app/pages/01_upload.py`) | — | ⬜ | |
 | 6.3 | Job matching page (`app/pages/02_matches.py`) | — | ⬜ | |
 | 6.4 | Salary prediction page (`app/pages/03_salary.py`) | — | ⬜ | |
@@ -107,7 +107,7 @@
 |------|-------|--------|-------|
 | `pyproject.toml` / `uv.lock` — manage dependencies and virtual environment with uv | — | ✅ | Switched from `requirements.txt` on 2026-04-25 |
 | Ruff / pre-commit / GitHub Actions CI | — | ✅ | Formatting, linting, and tests enforced for code directories only |
-| `tests/` — pytest coverage for `ml/` | Alan, Ryan | ✅ | `test_salary_model.py` (25/25) + `test_retrieval.py` (25/25) — full suite 50/50 |
+| `tests/` — pytest coverage for `ml/` | Alan, Ryan, Omer | ✅ | Salary, retrieval, clustering, preprocessing, and embeddings covered. |
 | Set random seeds in all scripts | — | ⬜ | |
 | `.gitignore` — verify `data/raw/`, `models/` excluded | — | ⬜ | |
 | Final report / presentation | — | ⬜ | |
@@ -117,17 +117,17 @@
 ## Overall Progress
 
 ```
-Phase 1  [░░░░░░░░░░]   0%
-Phase 2  [██████░░░░]  60%  ← Ryan (2.2/2.3/2.4); 2.1 @ohortig, 2.5 @trp8625
-Phase 3  [░░░░░░░░░░]   0%
+Phase 1  [███████░░░]  70%  ← implementation ready; raw Kaggle data missing
+Phase 2  [████████░░]  80%  ← embeddings + retrieval ready; 2.5 pending
+Phase 3  [███░░░░░░░]  30%  ← KMeans implemented; K selection/labels pending
 Phase 4  [██████████] 100%  ← Alan
 Phase 5  [░░░░░░░░░░]   0%
 Phase 6  [░░░░░░░░░░]   0%
 ─────────────────────────
-Total    [███░░░░░░░]  27%
+Total    [█████░░░░░]  48%
 ```
 
-**Current state:** Phase 4 (Alan) and the Ryan-owned slice of Phase 2 (retrieval module, build-index script, tests) are complete with synthetic-data validation. Real end-to-end runs of `scripts/build_index.py` need Phase 1 (`data/processed/jobs.parquet`) and Task 2.1 (`ml/embeddings.Encoder` from @ohortig). Phases 1, 3, 5, 6 still need owners.
+**Current state:** Preprocessing, embeddings, retrieval, clustering core, salary modeling, and a local Streamlit shell are implemented with synthetic/unit-test validation. Real end-to-end runs still need the Kaggle raw files in `data/raw/`, followed by `scripts/preprocess_data.py` and `scripts/build_index.py`.
 
 ---
 
@@ -140,4 +140,7 @@ Total    [███░░░░░░░]  27%
 | 2026-04-24 | Alan completed Phase 4 code, tests, and notebook evaluation (using synthetic data). |
 | 2026-04-25 | Switched dependency management from `requirements.txt` to `uv` with `pyproject.toml` and `uv.lock`. |
 | 2026-04-25 | Added Ruff formatting/linting, local pre-commit hooks, and GitHub Actions CI for code directories (`app`, `ml`, `scripts`, `tests`). |
-| 2026-04-25 | Ryan completed Phase 2 retrieval slice (Tasks 2.2/2.3/2.4): `ml/retrieval.py` with DI-friendly `Retriever`, `scripts/build_index.py` with `--smoke` flag, `tests/test_retrieval.py` (25 tests, 25/25 passing). Synthetic fixture committed under `tests/fixtures/`. Module-level `search()` convenience deferred until @ohortig lands `ml/embeddings.Encoder` (Task 2.1). |
+| 2026-04-25 | Ryan completed Phase 2 retrieval slice (Tasks 2.2/2.3/2.4): `ml/retrieval.py` with DI-friendly `Retriever`, `scripts/build_index.py` with `--smoke` flag, `tests/test_retrieval.py` (25 tests, 25/25 passing). Synthetic fixture committed under `tests/fixtures/`. |
+| 2026-04-25 | Added Kaggle data setup docs in `data/README.md` and expanded README data instructions. Local raw data remains missing. |
+| 2026-04-25 | Omer completed Task 2.1: `ml/embeddings.Encoder` with L2-normalized float32 outputs and mocked unit tests in `tests/test_embeddings.py`. |
+| 2026-04-25 | Omer completed Task 1.7: `notebooks/01_data_exploration.ipynb` with no-data guardrails and exploration cells aligned to `scripts/preprocess_data.py`. |
