@@ -154,6 +154,32 @@ DEGREES = (
     "B.S. Marketing",
 )
 
+DEGREES_BY_FAMILY = {
+    "data": (
+        "B.S. Statistics",
+        "M.S. Data Science",
+        "M.S. Computer Science",
+    ),
+    "ml": (
+        "B.S. Computer Science",
+        "M.S. Computer Science",
+        "M.S. Data Science",
+    ),
+    "analytics": (
+        "B.S. Statistics",
+        "B.A. Economics",
+        "M.S. Data Science",
+    ),
+    "software": (
+        "B.S. Computer Science",
+        "M.S. Computer Science",
+    ),
+    "marketing": (
+        "B.S. Marketing",
+        "B.A. Economics",
+    ),
+}
+
 STOPWORDS = {
     "and", "or", "the", "a", "an", "to", "of", "in", "for", "with", "on",
     "by", "as", "is", "are", "be", "this", "that", "you", "we", "our",
@@ -501,7 +527,7 @@ def _make_resume_row(
 
     project_count = int(rng.integers(1, 4))
     projects = _make_projects(profile, project_count, has_metrics, rng)
-    education = str(rng.choice(DEGREES))
+    education = _choose_education(profile.family, persona, rng)
     location = _clean_text(source_job.get("location")) if source_job is not None else str(rng.choice(LOCATIONS))
     if not location:
         location = str(rng.choice(LOCATIONS))
@@ -672,6 +698,17 @@ def _make_projects(
             text = re.sub(r"\b\d+(K|%| ms)?\b", "several", text)
         projects.append(text)
     return projects
+
+
+def _choose_education(
+    family: str,
+    persona: str,
+    rng: np.random.Generator,
+) -> str:
+    if persona == "career_switcher":
+        return str(rng.choice(DEGREES))
+    degree_pool = DEGREES_BY_FAMILY.get(family, DEGREES)
+    return str(rng.choice(degree_pool))
 
 
 def _quality_score(

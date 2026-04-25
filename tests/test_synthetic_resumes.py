@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.generate_synthetic_resumes import (  # noqa: E402
+    DEGREES_BY_FAMILY,
     generate_paired_synthetic_resumes,
     generate_synthetic_resumes,
     write_synthetic_resumes,
@@ -74,6 +75,15 @@ def test_generate_synthetic_resumes_is_deterministic() -> None:
     second = generate_synthetic_resumes(8, seed=99)
 
     pd.testing.assert_frame_equal(first, second)
+
+
+def test_direct_match_education_follows_role_family() -> None:
+    df = generate_synthetic_resumes(12, seed=11)
+    direct_matches = df[df["persona"] == "direct_match"]
+
+    assert not direct_matches.empty
+    for _, row in direct_matches.iterrows():
+        assert row["education"] in DEGREES_BY_FAMILY[row["role_family"]]
 
 
 def test_generate_synthetic_resumes_rejects_negative_n() -> None:

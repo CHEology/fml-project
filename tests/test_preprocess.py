@@ -29,6 +29,12 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
         {
             "job_id": [1, 2, 3, 4],
             "company_id": [10, 20, 30, 10],
+            "company_name": [
+                "Posting Acme",
+                "Posting Globex",
+                "No Match",
+                "Posting Acme",
+            ],
             "title": ["Data Scientist", "ML Engineer", "Analyst", "Missing Salary"],
             "description": [
                 "<p>Build models</p>",
@@ -39,6 +45,7 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
             "med_salary": [50.0, np.nan, 8000.0, np.nan],
             "min_salary": [np.nan, 100000.0, np.nan, np.nan],
             "max_salary": [np.nan, 140000.0, np.nan, np.nan],
+            "normalized_salary": [np.nan, np.nan, np.nan, 90000.0],
             "pay_period": ["hourly", "YEARLY", "monthly", np.nan],
             "location": [
                 "New York, NY",
@@ -88,17 +95,21 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
 
     frame = preprocess_jobs(raw_dir)
 
-    assert len(frame) == 2
-    assert list(frame["job_id"]) == [1, 2]
-    assert frame["salary_annual"].tolist() == [104000.0, 120000.0]
-    assert frame["company_name"].tolist() == ["Acme", "Globex"]
-    assert frame["state"].tolist() == ["NY", "CA"]
-    assert frame["experience_level_ordinal"].tolist() == [1.0, 3.0]
-    assert frame["work_type_remote"].tolist() == [1, 0]
-    assert frame["work_type_hybrid"].tolist() == [0, 1]
-    assert frame["work_type_onsite"].tolist() == [0, 0]
-    assert frame["benefit_count"].tolist() == [2, 1]
-    assert frame["benefits_text"].tolist() == ["medical; dental", "401k"]
+    assert len(frame) == 3
+    assert list(frame["job_id"]) == [1, 2, 4]
+    assert frame["salary_annual"].tolist() == [104000.0, 120000.0, 90000.0]
+    assert frame["company_name"].tolist() == [
+        "Posting Acme",
+        "Posting Globex",
+        "Posting Acme",
+    ]
+    assert frame["state"].tolist() == ["NY", "CA", "NY"]
+    assert frame["experience_level_ordinal"].tolist() == [1.0, 3.0, 1.0]
+    assert frame["work_type_remote"].tolist() == [1, 0, 1]
+    assert frame["work_type_hybrid"].tolist() == [0, 1, 0]
+    assert frame["work_type_onsite"].tolist() == [0, 0, 0]
+    assert frame["benefit_count"].tolist()[:2] == [2, 1]
+    assert frame["benefits_text"].tolist()[:2] == ["medical; dental", "401k"]
     assert frame.loc[0, "text"] == "data scientist build models python sql"
     assert frame.loc[1, "text"] == "ml engineer train systems pytorch nlp"
 
@@ -109,5 +120,5 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
     written = pd.read_parquet(jobs_out)
     salaries = np.load(salaries_out)
 
-    assert written["job_id"].tolist() == [1, 2]
-    assert salaries.tolist() == [104000.0, 120000.0]
+    assert written["job_id"].tolist() == [1, 2, 4]
+    assert salaries.tolist() == [104000.0, 120000.0, 90000.0]
