@@ -12,22 +12,22 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-
+from torch.utils.data import Dataset
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 QUANTILES = (0.10, 0.25, 0.50, 0.75, 0.90)
-DEFAULT_EMBEDDING_DIM = 384          # all-MiniLM-L6-v2
-NUM_EXTRA_FEATURES = 0               # placeholder; updated after preprocessing
+DEFAULT_EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
+NUM_EXTRA_FEATURES = 0  # placeholder; updated after preprocessing
 SEED = 42
 
 
 # ---------------------------------------------------------------------------
 # Salary Scaler (z-score normalisation)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SalaryScaler:
@@ -36,6 +36,7 @@ class SalaryScaler:
     Keeps salary targets near zero during training so the network
     can learn effectively with standard weight initialisation.
     """
+
     mean: float = 0.0
     std: float = 1.0
 
@@ -64,6 +65,7 @@ class SalaryScaler:
 # Pinball (Quantile) Loss
 # ---------------------------------------------------------------------------
 
+
 class PinballLoss(nn.Module):
     """Pinball loss for quantile regression.
 
@@ -73,9 +75,7 @@ class PinballLoss(nn.Module):
 
     def __init__(self, quantiles: tuple[float, ...] = QUANTILES):
         super().__init__()
-        self.register_buffer(
-            "quantiles", torch.tensor(quantiles, dtype=torch.float32)
-        )
+        self.register_buffer("quantiles", torch.tensor(quantiles, dtype=torch.float32))
 
     def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
         """
@@ -86,17 +86,19 @@ class PinballLoss(nn.Module):
             Scalar loss averaged over batch and quantiles.
         """
         if y_true.dim() == 1:
-            y_true = y_true.unsqueeze(1)                   # (B, 1)
+            y_true = y_true.unsqueeze(1)  # (B, 1)
 
-        errors = y_true - y_pred                            # (B, Q)
-        loss = torch.max(self.quantiles * errors,
-                         (self.quantiles - 1) * errors)     # (B, Q)
+        errors = y_true - y_pred  # (B, Q)
+        loss = torch.max(
+            self.quantiles * errors, (self.quantiles - 1) * errors
+        )  # (B, Q)
         return loss.mean()
 
 
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
+
 
 class SalaryQuantileNet(nn.Module):
     """Multi-head quantile regression network.
@@ -122,12 +124,10 @@ class SalaryQuantileNet(nn.Module):
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(dropout),
-
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Dropout(dropout),
-
             nn.Linear(128, 64),
             nn.BatchNorm1d(64),
             nn.ReLU(),
@@ -151,6 +151,7 @@ class SalaryQuantileNet(nn.Module):
 # ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
+
 
 class SalaryDataset(Dataset):
     """PyTorch dataset that pairs job embeddings (+ optional extra features)
@@ -186,6 +187,7 @@ class SalaryDataset(Dataset):
 # ---------------------------------------------------------------------------
 # Train / Val / Test Split Utility
 # ---------------------------------------------------------------------------
+
 
 def split_data(
     embeddings: np.ndarray,
@@ -233,6 +235,7 @@ def split_data(
 # ---------------------------------------------------------------------------
 # Inference API
 # ---------------------------------------------------------------------------
+
 
 def load_model(
     checkpoint_path: str,
@@ -290,5 +293,5 @@ def predict_salary(
 
     return {
         f"q{int(q * 100)}": round(float(p), 2)
-        for q, p in zip(QUANTILES, preds)
+        for q, p in zip(QUANTILES, preds, strict=True)
     }

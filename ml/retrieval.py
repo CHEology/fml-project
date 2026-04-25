@@ -18,12 +18,11 @@ no learned re-ranker, no sklearn dependencies.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import numpy as np
 import pandas as pd
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -46,6 +45,7 @@ META_COLUMNS = (
 # JobMatch — typed return shape
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class JobMatch:
     """One ranked job result returned by `Retriever.search`.
@@ -53,6 +53,7 @@ class JobMatch:
     `similarity` is the inner product of the (L2-normalized) query and
     job vectors — equivalent to cosine similarity, in [-1.0, 1.0].
     """
+
     row_id: int
     job_id: int | None
     title: str
@@ -74,6 +75,7 @@ class JobMatch:
 # ---------------------------------------------------------------------------
 # Retriever
 # ---------------------------------------------------------------------------
+
 
 class Retriever:
     """Cosine-similarity retriever with dependency-injected components.
@@ -141,9 +143,9 @@ class Retriever:
         idxs_row = np.asarray(idxs[0])
 
         matches: list[JobMatch] = []
-        for raw_idx, raw_sim in zip(idxs_row, sims_row):
+        for raw_idx, raw_sim in zip(idxs_row, sims_row, strict=True):
             idx = int(raw_idx)
-            if idx < 0:                  # FAISS returns -1 in unused slots
+            if idx < 0:  # FAISS returns -1 in unused slots
                 continue
             row = self.metadata.iloc[idx]
             matches.append(_row_to_jobmatch(row, similarity=float(raw_sim)))
@@ -153,6 +155,7 @@ class Retriever:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _row_to_jobmatch(row: pd.Series, *, similarity: float) -> JobMatch:
     """Build a JobMatch from a metadata row, normalizing optional fields."""
