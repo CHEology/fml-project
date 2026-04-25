@@ -42,7 +42,23 @@ CI runs formatting, linting, and tests against code directories only. Notebooks 
 
 ## Data
 
-Download the dataset from [Kaggle: LinkedIn Job Postings (2023-2024)](https://www.kaggle.com/datasets/arshkon/linkedin-job-postings) and place the contents in `data/raw/`.
+Download the dataset from [Kaggle: LinkedIn Job Postings (2023-2024)](https://www.kaggle.com/datasets/arshkon/linkedin-job-postings) and place the unzipped contents in `data/raw/`.
+
+If you use the Kaggle CLI, authenticate it first with `~/.kaggle/kaggle.json`,
+then run:
+
+```bash
+kaggle datasets download -d arshkon/linkedin-job-postings -p data/raw --unzip
+```
+
+Then build the processed parquet used by embeddings, retrieval, clustering, and
+salary training:
+
+```bash
+uv run python scripts/preprocess_data.py
+```
+
+See `data/README.md` for the expected raw layout and generated outputs.
 
 ## Repo Structure
 

@@ -31,7 +31,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from ml.retrieval import JobMatch, Retriever  # noqa: E402
 
-
 DEFAULT_EVAL = PROJECT_ROOT / "data" / "eval" / "synthetic_resumes.parquet"
 DEFAULT_INDEX = PROJECT_ROOT / "models" / "jobs.index"
 DEFAULT_META = PROJECT_ROOT / "models" / "jobs_meta.parquet"
@@ -86,9 +85,8 @@ def evaluate_retrieval(
         hard_negative_rank = _rank_of(ranked_ids, hard_negative_job_id)
         reciprocal_rank = 0.0 if source_rank is None else 1.0 / source_rank
         ndcg = _ndcg_at_k(ranked_ids, source_job_id, hard_negative_job_id, k)
-        discriminative_correct = (
-            source_rank is not None
-            and (hard_negative_rank is None or source_rank < hard_negative_rank)
+        discriminative_correct = source_rank is not None and (
+            hard_negative_rank is None or source_rank < hard_negative_rank
         )
 
         top = results[0] if results else None
@@ -124,7 +122,9 @@ def write_evaluation_outputs(
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
     errors_path.parent.mkdir(parents=True, exist_ok=True)
 
-    metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8")
+    metrics_path.write_text(
+        json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8"
+    )
     per_row.to_csv(errors_path, index=False)
 
 
@@ -209,7 +209,10 @@ def _ndcg_at_k(
 
 def _dcg(relevance: list[int]) -> float:
     return float(
-        sum((2**rel - 1) / np.log2(rank + 1) for rank, rel in enumerate(relevance, start=1))
+        sum(
+            (2**rel - 1) / np.log2(rank + 1)
+            for rank, rel in enumerate(relevance, start=1)
+        )
     )
 
 

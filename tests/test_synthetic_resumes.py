@@ -6,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.generate_synthetic_resumes import (  # noqa: E402
@@ -15,7 +14,6 @@ from scripts.generate_synthetic_resumes import (  # noqa: E402
     generate_synthetic_resumes,
     write_synthetic_resumes,
 )
-
 
 EXPECTED_COLUMNS = {
     "resume_id",
@@ -56,18 +54,22 @@ def test_generate_synthetic_resumes_schema_and_ranges() -> None:
     assert set(df["quality_label"]).issubset({"weak", "medium", "strong"})
     assert df["resume_text"].str.len().gt(100).all()
     assert df["resume_text"].str.contains("Skills|Tools|Primary strengths").all()
-    assert set(df["persona"]).issubset({
-        "direct_match",
-        "under_qualified",
-        "over_qualified",
-        "career_switcher",
-    })
-    assert set(df["writing_style"]).issubset({
-        "concise_bullets",
-        "first_person_bullets",
-        "third_person_summary",
-        "abbreviated_keywords",
-    })
+    assert set(df["persona"]).issubset(
+        {
+            "direct_match",
+            "under_qualified",
+            "over_qualified",
+            "career_switcher",
+        }
+    )
+    assert set(df["writing_style"]).issubset(
+        {
+            "concise_bullets",
+            "first_person_bullets",
+            "third_person_summary",
+            "abbreviated_keywords",
+        }
+    )
 
 
 def test_generate_synthetic_resumes_is_deterministic() -> None:
@@ -103,7 +105,12 @@ def test_generate_paired_synthetic_resumes_adds_source_and_hard_negative() -> No
             ],
             "company_name": ["A", "B", "C", "D"],
             "location": ["New York, NY", "Remote, US", "Austin, TX", "Chicago, IL"],
-            "experience_level": ["Entry level", "Mid-Senior level", "Mid-Senior level", "Associate"],
+            "experience_level": [
+                "Entry level",
+                "Mid-Senior level",
+                "Mid-Senior level",
+                "Associate",
+            ],
             "experience_level_ordinal": [1.0, 3.0, 3.0, 2.0],
             "skills_desc": [
                 "Python, SQL, statistics",
