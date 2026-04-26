@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import importlib
+import importlib.util
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +11,33 @@ import pandas as pd
 import streamlit as st
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    runtime = importlib.import_module("ml_runtime")
+except ModuleNotFoundError as err:
+    spec = importlib.util.spec_from_file_location(
+        "resumatch_ml_runtime", PROJECT_ROOT / "app" / "ml_runtime.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load app/ml_runtime.py") from err
+    runtime = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = runtime
+    spec.loader.exec_module(runtime)
+
+runtime_artifact_status = runtime.artifact_status
+artifacts_ready = runtime.artifacts_ready
+cluster_position = runtime.cluster_position
+encode_resume = runtime.encode_resume
+feedback_terms = runtime.feedback_terms
+load_cluster_artifacts = runtime.load_cluster_artifacts
+load_real_jobs = runtime.load_jobs
+load_retriever = runtime.load_retriever
+load_salary_artifacts = runtime.load_salary_artifacts
+retrieve_matches = runtime.retrieve_matches
+salary_band_from_model = runtime.salary_band_from_model
+
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
 
 SAMPLE_RESUME = """Alex Rivera
@@ -23,60 +53,6 @@ Skills:
 machine learning, recommender systems, nlp, embeddings, python, pytorch,
 sql, streamlit, analytics, product experimentation, data pipelines
 """
-
-TRACK_KEYWORDS = {
-    "Machine Learning": [
-        "machine learning",
-        "ml",
-        "pytorch",
-        "tensorflow",
-        "nlp",
-        "embedding",
-        "faiss",
-    ],
-    "Data Science": [
-        "data science",
-        "experimentation",
-        "statistics",
-        "modeling",
-        "python",
-        "pandas",
-    ],
-    "Software Engineering": [
-        "software",
-        "backend",
-        "api",
-        "distributed",
-        "docker",
-        "aws",
-        "systems",
-    ],
-    "Analytics": ["analytics", "dashboard", "sql", "bi", "reporting", "tableau"],
-    "Product / Strategy": [
-        "product",
-        "roadmap",
-        "market",
-        "strategy",
-        "stakeholder",
-        "growth",
-    ],
-}
-
-SKILL_GROUPS = {
-    "Python": ["python"],
-    "SQL": ["sql", "postgres", "snowflake"],
-    "ML Modeling": [
-        "machine learning",
-        "model",
-        "xgboost",
-        "pytorch",
-        "tensorflow",
-        "sklearn",
-    ],
-    "NLP / Retrieval": ["nlp", "llm", "embedding", "retrieval", "faiss", "vector"],
-    "Cloud / Ops": ["aws", "gcp", "docker", "kubernetes", "airflow"],
-    "Product Sense": ["experiment", "stakeholder", "roadmap", "product", "growth"],
-}
 
 SYNTHETIC_JOBS = [
     {
@@ -146,23 +122,6 @@ SYNTHETIC_JOBS = [
         "text": "Drive executive decision support, growth analytics, lifecycle reporting, and product strategy.",
     },
 ]
-
-BASE_SALARY = {
-    "Machine Learning": 165000,
-    "Data Science": 148000,
-    "Software Engineering": 155000,
-    "Analytics": 128000,
-    "Product / Strategy": 145000,
-}
-
-SENIORITY_MULTIPLIER = {
-    "Intern / Entry": 0.72,
-    "Associate": 0.9,
-    "Mid": 1.0,
-    "Senior": 1.18,
-    "Lead / Executive": 1.35,
-}
-
 
 st.set_page_config(
     page_title="ResuMatch",
@@ -336,39 +295,32 @@ def inject_styles() -> None:
 @st.cache_data(show_spinner=False)
 def load_jobs() -> tuple[pd.DataFrame, str, bool]:
     if DATA_PATH.exists():
-        frame = pd.read_parquet(DATA_PATH)
-        for column in ("title", "company_name", "location", "experience_level", "text"):
-            if column not in frame.columns:
-                frame[column] = ""
-        if "salary_annual" not in frame.columns:
-            frame["salary_annual"] = np.nan
-        if "state" not in frame.columns:
-            frame["state"] = (
-                frame["location"].astype(str).str.split(",").str[-1].str.strip()
-            )
-        if "work_type" not in frame.columns:
-            frame["work_type"] = frame.get("formatted_work_type", "")
-        return frame.copy(), str(DATA_PATH.relative_to(PROJECT_ROOT)), True
+        return (
+            load_real_jobs(PROJECT_ROOT),
+            str(DATA_PATH.relative_to(PROJECT_ROOT)),
+            True,
+        )
 
     return pd.DataFrame(SYNTHETIC_JOBS), "Synthetic demo dataset", False
 
 
 def artifact_status() -> list[dict[str, Any]]:
-    paths = [
-        ("Processed jobs", PROJECT_ROOT / "data" / "processed" / "jobs.parquet"),
-        ("Salary targets", PROJECT_ROOT / "data" / "processed" / "salaries.npy"),
-        ("Job embeddings", PROJECT_ROOT / "models" / "job_embeddings.npy"),
-        ("FAISS index", PROJECT_ROOT / "models" / "jobs.index"),
-        ("Salary model", PROJECT_ROOT / "models" / "salary_model.pt"),
-    ]
-    return [
-        {
-            "label": label,
-            "path": path.relative_to(PROJECT_ROOT).as_posix(),
-            "ready": path.exists(),
-        }
-        for label, path in paths
-    ]
+    return runtime_artifact_status(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_retriever_resource():
+    return load_retriever(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_salary_resource():
+    return load_salary_artifacts(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_cluster_resource():
+    return load_cluster_artifacts(PROJECT_ROOT)
 
 
 def extract_uploaded_text(uploaded_file) -> str:
@@ -389,155 +341,6 @@ def extract_uploaded_text(uploaded_file) -> str:
         return "\n".join(pages).strip()
 
     return ""
-
-
-def detect_profile(resume_text: str, preferred_track: str) -> dict[str, Any]:
-    lowered = resume_text.lower()
-    track_scores = {
-        track: sum(lowered.count(keyword) for keyword in keywords)
-        for track, keywords in TRACK_KEYWORDS.items()
-    }
-    detected_track = max(track_scores, key=track_scores.get)
-    if track_scores[detected_track] == 0:
-        detected_track = preferred_track
-
-    seniority = "Mid"
-    if any(
-        token in lowered
-        for token in (
-            "chief",
-            "director",
-            "vice president",
-            "vp",
-            "staff",
-            "principal",
-            "lead ",
-        )
-    ):
-        seniority = "Lead / Executive"
-    elif any(token in lowered for token in ("senior", "sr.", "sr ", "mid-senior")):
-        seniority = "Senior"
-    elif any(token in lowered for token in ("entry", "junior", "new grad", "intern")):
-        seniority = "Intern / Entry"
-    elif "associate" in lowered:
-        seniority = "Associate"
-
-    skill_hits = {
-        skill: any(keyword in lowered for keyword in keywords)
-        for skill, keywords in SKILL_GROUPS.items()
-    }
-    present = [skill for skill, hit in skill_hits.items() if hit]
-    missing = [skill for skill, hit in skill_hits.items() if not hit]
-
-    confidence = 55 + min(35, sum(track_scores.values()) * 3 + len(present) * 4)
-    confidence = min(confidence, 96)
-
-    return {
-        "track": detected_track,
-        "seniority": seniority,
-        "seniority_multiplier": SENIORITY_MULTIPLIER[seniority],
-        "skills_present": present,
-        "skills_missing": missing[:3],
-        "confidence": confidence,
-    }
-
-
-def score_jobs(
-    jobs: pd.DataFrame,
-    resume_text: str,
-    profile: dict[str, Any],
-    preferred_location: str,
-    remote_only: bool,
-    top_k: int = 6,
-) -> pd.DataFrame:
-    role_terms = TRACK_KEYWORDS[profile["track"]]
-    skills = [skill.lower() for skill in profile["skills_present"]]
-
-    ranked = jobs.copy()
-    searchable = (
-        ranked["title"].astype(str)
-        + " "
-        + ranked["company_name"].astype(str)
-        + " "
-        + ranked["location"].astype(str)
-        + " "
-        + ranked["experience_level"].astype(str)
-        + " "
-        + ranked["work_type"].astype(str)
-        + " "
-        + ranked["text"].astype(str)
-    ).str.lower()
-
-    score = pd.Series(0.0, index=ranked.index)
-    for term in role_terms:
-        score += searchable.str.count(term) * 4.0
-    for term in skills:
-        score += searchable.str.count(term) * 3.0
-
-    score += (
-        ranked["title"]
-        .astype(str)
-        .str.lower()
-        .str.contains(profile["track"].split("/")[0].strip().lower(), regex=False)
-        .astype(float)
-        * 2.0
-    )
-
-    if preferred_location and preferred_location != "Anywhere":
-        location_mask = (
-            ranked["location"]
-            .astype(str)
-            .str.contains(preferred_location, case=False, na=False)
-        )
-        state_mask = (
-            ranked["state"]
-            .astype(str)
-            .str.fullmatch(preferred_location, case=False, na=False)
-        )
-        score += (location_mask | state_mask).astype(float) * 4.5
-
-    if remote_only:
-        remote_mask = (
-            ranked["work_type"].astype(str).str.contains("remote", case=False, na=False)
-        )
-        score += remote_mask.astype(float) * 3.0
-        ranked = ranked[remote_mask | (ranked["work_type"].astype(str) == "")]
-        score = score.loc[ranked.index]
-
-    if profile["seniority"] != "Mid":
-        seniority_mask = (
-            ranked["experience_level"]
-            .astype(str)
-            .str.contains(
-                profile["seniority"].split("/")[0].strip(), case=False, na=False
-            )
-        )
-        score += seniority_mask.astype(float) * 2.0
-
-    ranked["match_score"] = score.loc[ranked.index]
-    ranked = ranked.sort_values(
-        ["match_score", "salary_annual"], ascending=[False, False]
-    )
-    return ranked.head(top_k)
-
-
-def salary_band(matches: pd.DataFrame, profile: dict[str, Any]) -> dict[str, int]:
-    salaries = pd.to_numeric(matches.get("salary_annual"), errors="coerce").dropna()
-    if len(salaries) >= 3:
-        quantiles = (
-            np.percentile(salaries, [10, 25, 50, 75, 90])
-            * profile["seniority_multiplier"]
-        )
-    else:
-        base = BASE_SALARY[profile["track"]] * profile["seniority_multiplier"]
-        quantiles = np.array([base * 0.78, base * 0.9, base, base * 1.12, base * 1.24])
-    return {
-        "q10": int(round(quantiles[0], -3)),
-        "q25": int(round(quantiles[1], -3)),
-        "q50": int(round(quantiles[2], -3)),
-        "q75": int(round(quantiles[3], -3)),
-        "q90": int(round(quantiles[4], -3)),
-    }
 
 
 def fmt_money(value: float | int | None) -> str:
@@ -561,10 +364,14 @@ def render_metric_card(label: str, value: str, helper: str) -> None:
 
 def render_job_card(row: pd.Series) -> None:
     summary = str(row.get("text", ""))[:190]
+    similarity = row.get("similarity", np.nan)
+    score_label = (
+        f"Cosine {float(similarity):.3f}" if not pd.isna(similarity) else "FAISS match"
+    )
     st.markdown(
         f"""
         <div class="job-card">
-            <div class="score-chip">Match {float(row.get("match_score", 0.0)):.1f}</div>
+            <div class="score-chip">{score_label}</div>
             <div class="job-title">{row.get("title", "Untitled role")}</div>
             <div class="job-meta">{row.get("company_name", "Unknown company")} · {row.get("location", "Unknown location")} · {row.get("work_type", "Work type TBD")}</div>
             <div><strong>{fmt_money(row.get("salary_annual"))}</strong> · {row.get("experience_level", "Experience TBD")}</div>
@@ -618,7 +425,7 @@ def main() -> None:
             unsafe_allow_html=True,
         )
         st.write("")
-        if st.button("Load sample resume", use_container_width=True):
+        if st.button("Load sample resume", width="stretch"):
             st.session_state.resume_text = SAMPLE_RESUME
             st.rerun()
 
@@ -635,18 +442,18 @@ def main() -> None:
     st.markdown(
         """
         <div class="hero">
-            <div class="eyebrow">Resume intelligence • local preview</div>
+            <div class="eyebrow">Resume intelligence • artifact-backed ML</div>
             <h1>ResuMatch turns a raw resume into market direction.</h1>
             <p>
-                This frontend is wired to run in two modes: real project artifacts when they exist,
-                and a synthetic local demo when they do not. That lets you iterate on the app shell now,
-                then plug in preprocessing, embeddings, retrieval, and salary modeling later.
+                Upload or paste a resume to query the FAISS job index, predict a PyTorch
+                quantile-regression salary range, and locate the resume within the clustered
+                LinkedIn job market.
             </p>
             <div class="pill-row">
                 <span class="pill">Resume intake</span>
-                <span class="pill">Match scoring</span>
-                <span class="pill">Salary banding</span>
-                <span class="pill">Pipeline visibility</span>
+                <span class="pill">FAISS retrieval</span>
+                <span class="pill">Quantile salary model</span>
+                <span class="pill">KMeans market clusters</span>
             </div>
         </div>
         """,
@@ -701,28 +508,28 @@ def main() -> None:
 
             pref_a, pref_b, pref_c = st.columns(3)
             with pref_a:
-                preferred_track = st.selectbox("Focus track", list(TRACK_KEYWORDS))
-            with pref_b:
                 preferred_location = st.selectbox(
                     "Preferred location",
                     ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"],
                 )
-            with pref_c:
+            with pref_b:
                 remote_only = st.toggle("Remote only", value=False)
+            with pref_c:
+                top_k = st.slider("Matches", min_value=3, max_value=10, value=6)
 
             analyze_clicked = st.button(
-                "Run frontend demo", type="primary", use_container_width=True
+                "Run ML analysis", type="primary", width="stretch"
             )
 
         with right:
             st.markdown(
                 """
-                <div class="info-card">
-                    <div class="info-title">What this demo does</div>
+                    <div class="info-card">
+                    <div class="info-title">What this run does</div>
                     <div class="mono">
-                        Scores jobs from the local dataset, detects role track and seniority from resume text,
-                        and estimates a market salary band. When no real project data exists, it falls back to
-                        a curated in-memory jobs catalog so the UI is still interactive.
+                        Encodes the resume with the same sentence-transformer pipeline used for job postings,
+                        searches the FAISS index, predicts salary quantiles from the trained PyTorch model,
+                        and assigns a KMeans job-market cluster.
                     </div>
                 </div>
                 """,
@@ -731,11 +538,12 @@ def main() -> None:
             st.write("")
             st.markdown(
                 """
-                <div class="info-card">
-                    <div class="info-title">What is still backend-dependent</div>
+                    <div class="info-card">
+                    <div class="info-title">Required artifacts</div>
                     <div class="mono">
-                        Semantic embeddings, FAISS retrieval, trained quantile salary prediction, and cluster views
-                        are not auto-loaded yet because the repo currently has no local model artifacts.
+                        Runtime analysis needs jobs.parquet, jobs.index, jobs_meta.parquet,
+                        salary_model.pt, salary_model.scaler.json, kmeans_k8.pkl,
+                        cluster_assignments.npy, and cluster_labels.json.
                     </div>
                 </div>
                 """,
@@ -743,61 +551,132 @@ def main() -> None:
             )
 
         if analyze_clicked and st.session_state.resume_text.strip():
-            profile = detect_profile(st.session_state.resume_text, preferred_track)
-            matches = score_jobs(
-                jobs,
-                st.session_state.resume_text,
-                profile,
-                preferred_location,
-                remote_only,
-            )
-            band = salary_band(matches, profile)
+            if not has_real_data:
+                st.error(
+                    "Real processed data is required for ML analysis. Run preprocessing before using this path."
+                )
+            elif not artifacts_ready(status, "retrieval"):
+                st.error(
+                    "Retrieval artifacts are missing. Build `models/jobs.index`, `models/jobs_meta.parquet`, and `models/job_embeddings.npy` first."
+                )
+            else:
+                try:
+                    with st.spinner("Encoding resume and querying FAISS..."):
+                        retriever, encoder = load_retriever_resource()
+                        resume_embedding = encode_resume(
+                            encoder, st.session_state.resume_text
+                        )
+                        matches = retrieve_matches(
+                            retriever,
+                            jobs,
+                            resume_embedding,
+                            preferred_location=preferred_location,
+                            remote_only=remote_only,
+                            top_k=top_k,
+                        )
+
+                    band = None
+                    if artifacts_ready(status, "salary"):
+                        with st.spinner("Predicting salary quantiles..."):
+                            salary_model, salary_scaler = load_salary_resource()
+                            band = salary_band_from_model(
+                                salary_model, resume_embedding, salary_scaler
+                            )
+
+                    cluster = None
+                    if artifacts_ready(status, "clustering"):
+                        with st.spinner("Assigning market cluster..."):
+                            kmeans_model, _, cluster_labels = load_cluster_resource()
+                            cluster = cluster_position(
+                                kmeans_model, cluster_labels, resume_embedding
+                            )
+
+                    st.session_state.analysis = {
+                        "resume_text": st.session_state.resume_text,
+                        "matches": matches,
+                        "salary_band": band,
+                        "cluster": cluster,
+                        "feedback_terms": feedback_terms(
+                            st.session_state.resume_text, matches, cluster
+                        ),
+                    }
+                except Exception as exc:  # pragma: no cover - UI guardrail
+                    st.session_state.analysis = None
+                    st.error(f"ML analysis failed: {exc}")
+
+        analysis = st.session_state.get("analysis")
+        if analysis and analysis.get("resume_text") == st.session_state.resume_text:
+            matches = analysis["matches"]
+            band = analysis["salary_band"]
+            cluster = analysis["cluster"]
+            missing_terms = analysis["feedback_terms"]
 
             st.write("")
             top_row = st.columns([0.65, 0.35], gap="large")
             with top_row[0]:
                 st.subheader("Market readout")
-                render_salary_band(band)
+                if band is not None:
+                    render_salary_band(band)
+                else:
+                    st.warning(
+                        "Salary model artifacts are missing, so quantile prediction is unavailable."
+                    )
             with top_row[1]:
-                st.markdown(
-                    f"""
-                    <div class="info-card">
-                        <div class="info-title">{profile["track"]}</div>
-                        <div class="metric-value" style="font-size:1.7rem;">{profile["seniority"]}</div>
-                        <div class="mono">Match confidence: {profile["confidence"]}%</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                if cluster is not None:
+                    terms = ", ".join(cluster["top_terms"][:5]) or "No label terms"
+                    st.markdown(
+                        f"""
+                        <div class="info-card">
+                            <div class="info-title">{cluster["label"]}</div>
+                            <div class="metric-value" style="font-size:1.7rem;">Cluster {cluster["cluster_id"]}</div>
+                            <div class="mono">Nearest-centroid distance: {cluster["distance"]:.3f}</div>
+                            <div class="mono" style="margin-top:0.45rem;">{terms}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.warning(
+                        "Clustering artifacts are missing, so market position is unavailable."
+                    )
 
             st.write("")
             insight_cols = st.columns(2, gap="large")
             with insight_cols[0]:
-                st.subheader("Skill coverage")
-                for skill_name, keywords in SKILL_GROUPS.items():
-                    hit = any(
-                        keyword in st.session_state.resume_text.lower()
-                        for keyword in keywords
-                    )
-                    st.write(f"{'Strong' if hit else 'Thin'}: {skill_name}")
-                    st.progress(100 if hit else 28)
-            with insight_cols[1]:
-                st.subheader("Gaps to close")
-                if profile["skills_missing"]:
-                    for item in profile["skills_missing"]:
-                        st.markdown(f"- Add proof points for **{item}**")
+                st.subheader("Retrieved evidence")
+                if matches.empty:
+                    st.info("No matching roles passed the selected filters.")
                 else:
-                    st.markdown("- Coverage is broad enough for this demo profile.")
+                    st.metric(
+                        "Top cosine similarity", f"{matches.iloc[0]['similarity']:.3f}"
+                    )
+                    st.metric("Retrieved roles", f"{len(matches):,}")
+                    if cluster and cluster.get("size"):
+                        st.metric("Cluster size", f"{int(cluster['size']):,} jobs")
+            with insight_cols[1]:
+                st.subheader("Resume gaps")
+                if missing_terms:
+                    for item in missing_terms:
+                        st.markdown(f"- Add stronger evidence for **{item}**")
+                else:
+                    st.markdown(
+                        "- Top retrieved roles and cluster labels are already reflected in the resume text."
+                    )
 
             st.write("")
             st.subheader("Top matching roles")
-            card_cols = st.columns(2, gap="medium")
-            for index, (_, row) in enumerate(matches.iterrows()):
-                with card_cols[index % 2]:
-                    render_job_card(row)
-        elif analyze_clicked:
+            if matches.empty:
+                st.info(
+                    "No roles matched the selected filters. Try Anywhere or disable Remote only."
+                )
+            else:
+                card_cols = st.columns(2, gap="medium")
+                for index, (_, row) in enumerate(matches.iterrows()):
+                    with card_cols[index % 2]:
+                        render_job_card(row)
+        elif analyze_clicked and not st.session_state.resume_text.strip():
             st.warning(
-                "Paste a resume or load the sample resume before running the demo."
+                "Paste a resume or load the sample resume before running the analysis."
             )
 
     with radar_tab:
@@ -824,6 +703,17 @@ def main() -> None:
             )
             st.bar_chart(exp_counts)
 
+            if artifacts_ready(status, "clustering"):
+                _, assignments, cluster_labels = load_cluster_resource()
+                cluster_names = [
+                    cluster_labels.get(str(cluster_id), {}).get(
+                        "label", f"Cluster {cluster_id}"
+                    )
+                    for cluster_id in assignments
+                ]
+                st.markdown("**KMeans market clusters**")
+                st.bar_chart(pd.Series(cluster_names).value_counts())
+
         with right:
             st.markdown("**Salary sample**")
             salary_view = display_jobs[
@@ -832,7 +722,7 @@ def main() -> None:
             salary_view = salary_view.sort_values(
                 "salary_annual", ascending=False
             ).head(12)
-            st.dataframe(salary_view, use_container_width=True, hide_index=True)
+            st.dataframe(salary_view, width="stretch", hide_index=True)
 
             st.markdown("**Dataset notes**")
             if has_real_data:
@@ -856,15 +746,17 @@ def main() -> None:
         st.code(
             "\n".join(
                 [
-                    "python scripts/preprocess_data.py",
-                    "python scripts/build_index.py --smoke",
-                    "streamlit run app/app.py",
+                    "uv run python scripts/preprocess_data.py",
+                    "uv run python scripts/build_index.py",
+                    "uv run python scripts/train_salary_model.py --embeddings models/job_embeddings.npy --salaries data/processed/salaries.npy --output models/salary_model.pt",
+                    "uv run python scripts/build_clusters.py",
+                    "uv run streamlit run app/app.py",
                 ]
             ),
             language="bash",
         )
         st.caption(
-            "The first command becomes real once the Kaggle raw CSVs are present under `data/raw/`."
+            "The salary checkpoint is required for quantile predictions; the KMeans artifacts power market-position output."
         )
 
 
