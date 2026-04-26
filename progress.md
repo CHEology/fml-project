@@ -1,6 +1,6 @@
 # ResuMatch — Progress Tracker
 
-> Last updated: **2026-04-25**
+> Last updated: **2026-04-26**
 
 ---
 
@@ -39,9 +39,9 @@
 | 2.2 | Batch embed all jobs (`scripts/build_index.py`) | Ryan | ✅ | Complete. `--smoke` flag generates synthetic data without Phase 1; real path lazy-imports `Encoder` from Task 2.1. |
 | 2.3 | Build FAISS index → `models/jobs.index` | Ryan | ✅ | Complete. `IndexFlatIP` over L2-normalized vectors. |
 | 2.4 | Retrieval module (`ml/retrieval.py`) | Ryan | ✅ | Complete. `Retriever` class + `JobMatch` dataclass with DI; module-level default `search()` still depends on generated model artifacts. |
-| 2.5 | Embedding experiments notebook | — | ⬜ | Owned by @trp8625 per design doc. |
+| 2.5 | Embedding experiments notebook (`02_embedding_experiments.ipynb`) | @ohortig | ✅ | Implemented artifact checks, embedding quality checks, PCA/t-SNE projections, FAISS row-alignment sanity checks, clustering handoff notes, and opt-in model/retrieval comparisons. |
 
-**Phase status:** 🟡 In progress (embedding/retrieval code complete; 2.5 pending) · **Blocked by:** Phase 1 for real-data embedding/index validation.
+**Phase status:** ✅ Code and experiment notebook complete. Remaining work is quality tuning and Streamlit integration, not Phase 2 foundation.
 
 ---
 
@@ -66,9 +66,9 @@
 | 4.2 | `SalaryDataset` + DataLoader | Alan | ✅ | Complete |
 | 4.3 | Training loop (`scripts/train_salary_model.py`) | Alan | ✅ | Complete. Features early stopping & scaler saving. |
 | 4.4 | Inference API (`predict_salary()`) | Alan | ✅ | Complete. Returns monotonic quantiles. |
-| 4.5 | Evaluation notebook (`03_salary_regression.ipynb`) | Alan | ✅ | Complete (evaluated with synthetic data) |
+| 4.5 | Evaluation notebook (`03_salary_regression.ipynb`) | Alan | ✅ | Complete and rerun with real Phase 2 embeddings/salary targets. Reports calibration, interval coverage, residuals, and median MAE in USD. |
 
-**Phase status:** ✅ Complete (Alan) · **Blocked by:** Waiting on Phase 2 (embeddings needed for running with real data)
+**Phase status:** ✅ Complete (Alan) · Real-data notebook run is unblocked by Phase 2 embeddings.
 
 ---
 
@@ -118,7 +118,7 @@
 
 ```
 Phase 1  [███████░░░]  70%  ← implementation ready; raw Kaggle data missing
-Phase 2  [████████░░]  80%  ← embeddings + retrieval ready; 2.5 pending
+Phase 2  [██████████] 100%  ← embeddings, retrieval, and experiment notebook ready
 Phase 3  [███░░░░░░░]  30%  ← KMeans implemented; K selection/labels pending
 Phase 4  [██████████] 100%  ← Alan
 Phase 5  [░░░░░░░░░░]   0%
@@ -144,3 +144,5 @@ Total    [█████░░░░░]  48%
 | 2026-04-25 | Added Kaggle data setup docs in `data/README.md` and expanded README data instructions. Local raw data remains missing. |
 | 2026-04-25 | Omer completed Task 2.1: `ml/embeddings.Encoder` with L2-normalized float32 outputs and mocked unit tests in `tests/test_embeddings.py`. |
 | 2026-04-25 | Omer completed Task 1.7: `notebooks/01_data_exploration.ipynb` with no-data guardrails and exploration cells aligned to `scripts/preprocess_data.py`. |
+| 2026-04-26 | Omer completed Task 2.5: `notebooks/02_embedding_experiments.ipynb` with artifact validation, PCA/t-SNE visualization, FAISS alignment checks, clustering handoff notes, and optional model/retrieval comparison cells. |
+| 2026-04-26 | Reran `notebooks/02_embedding_experiments.ipynb` with real artifacts and completed `notebooks/03_salary_regression.ipynb` on real embeddings/salaries. Salary q50 MAE: `$22.6K`; median-baseline improvement: `$20.6K`; q90 calibration remains slightly outside the ±5 pp target. |
