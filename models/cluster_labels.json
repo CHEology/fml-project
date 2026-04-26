@@ -1,0 +1,186 @@
+{
+  "0": {
+    "label": "Software / Engineering",
+    "size": 6430,
+    "top_terms": [
+      "project",
+      "engineering",
+      "experience",
+      "design",
+      "engineer",
+      "technical",
+      "data",
+      "software",
+      "work",
+      "systems"
+    ],
+    "common_titles": [
+      "Project Manager",
+      "Software Engineer",
+      "Senior Software Engineer",
+      "Electrical Engineer",
+      "Project Engineer"
+    ]
+  },
+  "1": {
+    "label": "Business / Data Analysis",
+    "size": 4400,
+    "top_terms": [
+      "business",
+      "financial",
+      "data",
+      "experience",
+      "management",
+      "client",
+      "sales",
+      "work",
+      "clients",
+      "team"
+    ],
+    "common_titles": [
+      "Business Analyst",
+      "Data Analyst",
+      "Account Executive",
+      "Financial Analyst",
+      "Account Manager"
+    ]
+  },
+  "2": {
+    "label": "Operations / Logistics",
+    "size": 5224,
+    "top_terms": [
+      "work",
+      "equipment",
+      "safety",
+      "maintenance",
+      "company",
+      "job",
+      "service",
+      "experience",
+      "required",
+      "customer"
+    ],
+    "common_titles": [
+      "Package Handler - Part Time (Warehouse like)",
+      "Maintenance Technician",
+      "Warehouse Associate",
+      "Auto Glass Installation Technician Trainee",
+      "Material Handler"
+    ]
+  },
+  "3": {
+    "label": "Healthcare / Clinical",
+    "size": 3545,
+    "top_terms": [
+      "care",
+      "patient",
+      "nursing",
+      "health",
+      "nurse",
+      "patients",
+      "rn",
+      "healthcare",
+      "medical",
+      "clinical"
+    ],
+    "common_titles": [
+      "Registered Nurse",
+      "Travel RN - Med Surg",
+      "Certified Nursing Assistant (CNA)",
+      "Physical Therapist",
+      "Dental Assistant"
+    ]
+  },
+  "4": {
+    "label": "Finance / Accounting",
+    "size": 2115,
+    "top_terms": [
+      "accounting",
+      "financial",
+      "tax",
+      "accountant",
+      "accounts",
+      "finance",
+      "experience",
+      "audit",
+      "reporting",
+      "payable"
+    ],
+    "common_titles": [
+      "Senior Accountant",
+      "Staff Accountant",
+      "Controller",
+      "Accounting Manager",
+      "Accountant"
+    ]
+  },
+  "5": {
+    "label": "Healthcare / Clinical",
+    "size": 3038,
+    "top_terms": [
+      "clinical",
+      "care",
+      "patient",
+      "health",
+      "medical",
+      "experience",
+      "patients",
+      "work",
+      "healthcare",
+      "team"
+    ],
+    "common_titles": [
+      "Behavior Technician",
+      "Phlebotomist",
+      "Customer Service Rep",
+      "Associate Veterinarian",
+      "Registered Behavior Technician"
+    ]
+  },
+  "6": {
+    "label": "Sales / Customer Growth",
+    "size": 5173,
+    "top_terms": [
+      "sales",
+      "marketing",
+      "store",
+      "customer",
+      "team",
+      "experience",
+      "product",
+      "work",
+      "business",
+      "customers"
+    ],
+    "common_titles": [
+      "Assistant Manager",
+      "Sales Representative",
+      "General Manager",
+      "Outside Sales Representative",
+      "Inside Sales Representative"
+    ]
+  },
+  "7": {
+    "label": "Administrative / HR",
+    "size": 5193,
+    "top_terms": [
+      "experience",
+      "work",
+      "office",
+      "position",
+      "skills",
+      "job",
+      "sales",
+      "team",
+      "time",
+      "legal"
+    ],
+    "common_titles": [
+      "Administrative Assistant",
+      "Executive Assistant",
+      "Customer Service Representative",
+      "Paralegal",
+      "Human Resources Manager"
+    ]
+  }
+}

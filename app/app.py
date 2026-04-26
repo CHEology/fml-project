@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import re
+import sys
 from html import unescape
 from pathlib import Path
 from typing import Any
@@ -12,6 +15,33 @@ import pandas as pd
 import streamlit as st
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    runtime = importlib.import_module("ml_runtime")
+except ModuleNotFoundError as err:
+    spec = importlib.util.spec_from_file_location(
+        "resumatch_ml_runtime", PROJECT_ROOT / "app" / "ml_runtime.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load app/ml_runtime.py") from err
+    runtime = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = runtime
+    spec.loader.exec_module(runtime)
+
+runtime_artifact_status = runtime.artifact_status
+artifacts_ready = runtime.artifacts_ready
+cluster_position = runtime.cluster_position
+encode_resume = runtime.encode_resume
+feedback_terms = runtime.feedback_terms
+load_cluster_artifacts = runtime.load_cluster_artifacts
+load_real_jobs = runtime.load_jobs
+load_retriever = runtime.load_retriever
+load_salary_artifacts = runtime.load_salary_artifacts
+retrieve_matches = runtime.retrieve_matches
+salary_band_from_model = runtime.salary_band_from_model
+
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
 
 SAMPLE_RESUME = """Alex Rivera
@@ -749,39 +779,32 @@ def inject_styles(theme_name: str) -> None:
 @st.cache_data(show_spinner=False)
 def load_jobs() -> tuple[pd.DataFrame, str, bool]:
     if DATA_PATH.exists():
-        frame = pd.read_parquet(DATA_PATH)
-        for column in ("title", "company_name", "location", "experience_level", "text"):
-            if column not in frame.columns:
-                frame[column] = ""
-        if "salary_annual" not in frame.columns:
-            frame["salary_annual"] = np.nan
-        if "state" not in frame.columns:
-            frame["state"] = (
-                frame["location"].astype(str).str.split(",").str[-1].str.strip()
-            )
-        if "work_type" not in frame.columns:
-            frame["work_type"] = frame.get("formatted_work_type", "")
-        return frame.copy(), str(DATA_PATH.relative_to(PROJECT_ROOT)), True
+        return (
+            load_real_jobs(PROJECT_ROOT),
+            str(DATA_PATH.relative_to(PROJECT_ROOT)),
+            True,
+        )
 
     return pd.DataFrame(SYNTHETIC_JOBS), "Synthetic demo dataset", False
 
 
 def artifact_status() -> list[dict[str, Any]]:
-    paths = [
-        ("Processed jobs", PROJECT_ROOT / "data" / "processed" / "jobs.parquet"),
-        ("Salary targets", PROJECT_ROOT / "data" / "processed" / "salaries.npy"),
-        ("Job embeddings", PROJECT_ROOT / "models" / "job_embeddings.npy"),
-        ("FAISS index", PROJECT_ROOT / "models" / "jobs.index"),
-        ("Salary model", PROJECT_ROOT / "models" / "salary_model.pt"),
-    ]
-    return [
-        {
-            "label": label,
-            "path": path.relative_to(PROJECT_ROOT).as_posix(),
-            "ready": path.exists(),
-        }
-        for label, path in paths
-    ]
+    return runtime_artifact_status(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_retriever_resource():
+    return load_retriever(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_salary_resource():
+    return load_salary_artifacts(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_cluster_resource():
+    return load_cluster_artifacts(PROJECT_ROOT)
 
 
 def track_job_subset(jobs: pd.DataFrame, track: str) -> pd.DataFrame:
@@ -1233,10 +1256,14 @@ def render_signal_card(label: str, value: str, copy: str) -> None:
 
 def render_job_card(row: pd.Series) -> None:
     summary = str(row.get("text", ""))[:190]
+    similarity = row.get("similarity", np.nan)
+    score_label = (
+        f"Cosine {float(similarity):.3f}" if not pd.isna(similarity) else "FAISS match"
+    )
     st.markdown(
         f"""
         <div class="job-card">
-            <div class="score-chip">Match {float(row.get("match_score", 0.0)):.1f}</div>
+            <div class="score-chip">{score_label}</div>
             <div class="job-title">{row.get("title", "Untitled role")}</div>
             <div class="job-meta">{row.get("company_name", "Unknown company")} · {row.get("location", "Unknown location")} · {row.get("work_type", "Work type TBD")}</div>
             <div><strong>{fmt_money(row.get("salary_annual"))}</strong> · {row.get("experience_level", "Experience TBD")}</div>
@@ -1320,18 +1347,19 @@ def main() -> None:
     st.markdown(
         """
         <div class="hero">
-            <div class="eyebrow">Resume intelligence • local preview</div>
+            <div class="eyebrow">Resume intelligence • artifact-backed ML</div>
             <h1>ResuMatch turns a raw resume into market direction.</h1>
             <p>
-                This frontend is wired to run in two modes: real project artifacts when they exist,
-                and a synthetic local demo when they do not. That lets you iterate on the app shell now,
-                then plug in preprocessing, embeddings, retrieval, and salary modeling later.
+                Upload or paste a resume to query the FAISS job index, predict a PyTorch
+                quantile-regression salary range, and locate the resume within the clustered
+                LinkedIn job market.
             </p>
             <div class="pill-row">
                 <span class="pill">Resume intake</span>
-                <span class="pill">Match scoring</span>
-                <span class="pill">Salary banding</span>
-                <span class="pill">Pipeline visibility</span>
+                <span class="pill">FAISS retrieval</span>
+                <span class="pill">Quantile salary model</span>
+                <span class="pill">KMeans market clusters</span>
+                <span class="pill">Resume studio</span>
             </div>
         </div>
         """,
@@ -1452,7 +1480,7 @@ def main() -> None:
                     st.rerun()
             with action_b:
                 analyze_clicked = st.button(
-                    "Run frontend demo", type="primary", width="stretch"
+                    "Run ML analysis", type="primary", width="stretch"
                 )
 
         with right, st.container(border=True):
@@ -1563,15 +1591,54 @@ def main() -> None:
             st.caption(linkedin_dataset_note(has_real_data))
 
         if analyze_clicked and st.session_state.resume_text.strip():
-            profile = detect_profile(st.session_state.resume_text, preferred_track)
-            matches = score_jobs(
-                jobs,
-                st.session_state.resume_text,
-                profile,
-                preferred_location,
-                remote_only,
-            )
-            band = salary_band(matches, profile)
+            if not has_real_data:
+                st.error(
+                    "Real processed data is required for ML analysis. Run preprocessing before using this path."
+                )
+                return
+            if not artifacts_ready(status, "retrieval"):
+                st.error(
+                    "Retrieval artifacts are missing. Build `models/jobs.index`, `models/jobs_meta.parquet`, and `models/job_embeddings.npy` first."
+                )
+                return
+
+            try:
+                with st.spinner("Encoding resume and querying FAISS..."):
+                    retriever, encoder = load_retriever_resource()
+                    resume_embedding = encode_resume(
+                        encoder, st.session_state.resume_text
+                    )
+                    matches = retrieve_matches(
+                        retriever,
+                        jobs,
+                        resume_embedding,
+                        preferred_location=preferred_location,
+                        remote_only=remote_only,
+                        top_k=6,
+                    )
+
+                band = None
+                if artifacts_ready(status, "salary"):
+                    with st.spinner("Predicting salary quantiles..."):
+                        salary_model, salary_scaler = load_salary_resource()
+                        band = salary_band_from_model(
+                            salary_model, resume_embedding, salary_scaler
+                        )
+
+                cluster = None
+                if artifacts_ready(status, "clustering"):
+                    with st.spinner("Assigning market cluster..."):
+                        kmeans_model, _, cluster_labels = load_cluster_resource()
+                        cluster = cluster_position(
+                            kmeans_model, cluster_labels, resume_embedding
+                        )
+
+                missing_terms = feedback_terms(
+                    st.session_state.resume_text, matches, cluster
+                )
+            except Exception as exc:  # pragma: no cover - UI guardrail
+                st.error(f"ML analysis failed: {exc}")
+                return
 
             st.write("")
             top_row = st.columns([0.65, 0.35], gap="large")
@@ -1579,82 +1646,106 @@ def main() -> None:
                 render_panel_banner(
                     "Market Readout",
                     "Salary corridor",
-                    "This band is estimated from the current feed and adjusted by the detected career level.",
+                    "This band comes from the trained raw-PyTorch quantile regression model.",
                 )
                 with st.container(border=True):
-                    render_salary_band(band)
+                    if band is not None:
+                        render_salary_band(band)
+                    else:
+                        st.warning(
+                            "Salary model artifacts are missing, so quantile prediction is unavailable."
+                        )
             with top_row[1]:
                 render_panel_banner(
                     "Profile Signal",
-                    "Candidate posture",
-                    "A compact summary of how the app is positioning the candidate against the current market feed.",
+                    "Market cluster",
+                    "A compact view of where the resume lands in the KMeans job-market segmentation.",
                 )
                 with st.container(border=True):
-                    signal_cols = st.columns(2, gap="small")
-                    with signal_cols[0]:
-                        render_signal_card(
-                            "Track",
-                            profile["track"],
-                            "Primary path inferred from the resume.",
+                    if cluster is not None:
+                        signal_cols = st.columns(2, gap="small")
+                        with signal_cols[0]:
+                            render_signal_card(
+                                "Cluster",
+                                str(cluster["cluster_id"]),
+                                cluster["label"],
+                            )
+                        with signal_cols[1]:
+                            render_signal_card(
+                                "Distance",
+                                f"{cluster['distance']:.3f}",
+                                "Nearest-centroid distance.",
+                            )
+                        st.markdown(
+                            '<div class="chip-cloud">'
+                            + "".join(
+                                f'<span class="mini-chip">{term}</span>'
+                                for term in cluster["top_terms"][:6]
+                            )
+                            + "</div>",
+                            unsafe_allow_html=True,
                         )
-                    with signal_cols[1]:
-                        render_signal_card(
-                            "Confidence",
-                            f"{profile['confidence']}%",
-                            "Heuristic strength of the current read.",
+                    else:
+                        st.warning(
+                            "Clustering artifacts are missing, so market position is unavailable."
                         )
-                    st.markdown(
-                        f"""
-                        <div class="callout">
-                            <div class="callout-title">Level fit</div>
-                            <div class="callout-body"><strong>{profile["seniority"]}</strong> candidates in this feed cluster around <strong>{fmt_money(band["q50"])}</strong> median opportunity value.</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
 
             st.write("")
             insight_cols = st.columns(2, gap="large")
             with insight_cols[0]:
                 render_panel_banner(
-                    "Capability Map",
-                    "Skill coverage",
-                    "These bars are a lightweight frontend signal, not a model prediction.",
+                    "Retrieved Evidence",
+                    "FAISS match strength",
+                    "These signals come from cosine similarity against the real job index.",
                 )
                 with st.container(border=True):
-                    for skill_name, keywords in SKILL_GROUPS.items():
-                        hit = any(
-                            keyword in st.session_state.resume_text.lower()
-                            for keyword in keywords
+                    if matches.empty:
+                        st.info("No matching roles passed the selected filters.")
+                    else:
+                        render_signal_card(
+                            "Top similarity",
+                            f"{matches.iloc[0]['similarity']:.3f}",
+                            "Highest cosine score returned by FAISS.",
                         )
-                        st.write(f"{'Strong' if hit else 'Thin'}: {skill_name}")
-                        st.progress(100 if hit else 28)
+                        st.write("")
+                        render_signal_card(
+                            "Retrieved roles",
+                            f"{len(matches):,}",
+                            "Roles shown after filters.",
+                        )
             with insight_cols[1]:
                 render_panel_banner(
                     "Opportunity Lens",
                     "Gaps to close",
-                    "Target the missing proof points below to push the profile toward stronger role alignment.",
+                    "Target missing terms from the assigned cluster and top retrieved jobs.",
                 )
                 with st.container(border=True):
-                    if profile["skills_missing"]:
-                        for item in profile["skills_missing"]:
-                            st.markdown(f"- Add proof points for **{item}**")
+                    if missing_terms:
+                        for item in missing_terms:
+                            st.markdown(f"- Add stronger evidence for **{item}**")
                     else:
-                        st.markdown("- Coverage is broad enough for this demo profile.")
+                        st.markdown(
+                            "- Top retrieved roles and cluster labels are already reflected in the resume text."
+                        )
 
             st.write("")
             render_panel_banner(
                 "Match Board",
                 "Top matching roles",
-                "These cards rank the strongest local opportunities given the current resume text, mode, and filters.",
+                "These cards are ordered by FAISS cosine similarity against the real job index.",
             )
-            card_cols = st.columns(2, gap="medium")
-            for index, (_, row) in enumerate(matches.iterrows()):
-                with card_cols[index % 2]:
-                    render_job_card(row)
+            if matches.empty:
+                st.info(
+                    "No roles matched the selected filters. Try Anywhere or disable Remote only."
+                )
+            else:
+                card_cols = st.columns(2, gap="medium")
+                for index, (_, row) in enumerate(matches.iterrows()):
+                    with card_cols[index % 2]:
+                        render_job_card(row)
         elif analyze_clicked:
             st.warning(
-                "Paste a resume or load the sample resume before running the demo."
+                "Paste a resume or load the sample resume before running the analysis."
             )
 
     with radar_tab:
@@ -1684,6 +1775,17 @@ def main() -> None:
                 .head(8)
             )
             st.bar_chart(exp_counts)
+
+            if artifacts_ready(status, "clustering"):
+                _, assignments, cluster_labels = load_cluster_resource()
+                cluster_names = [
+                    cluster_labels.get(str(cluster_id), {}).get(
+                        "label", f"Cluster {cluster_id}"
+                    )
+                    for cluster_id in assignments
+                ]
+                st.markdown("**KMeans market clusters**")
+                st.bar_chart(pd.Series(cluster_names).value_counts())
 
         with right, st.container(border=True):
             st.markdown("**Salary sample**")
@@ -1722,15 +1824,17 @@ def main() -> None:
             st.code(
                 "\n".join(
                     [
-                        "python scripts/preprocess_data.py",
-                        "python scripts/build_index.py --smoke",
-                        "streamlit run app/app.py",
+                        "uv run python scripts/preprocess_data.py",
+                        "uv run python scripts/build_index.py",
+                        "uv run python scripts/train_salary_model.py --embeddings models/job_embeddings.npy --salaries data/processed/salaries.npy --output models/salary_model.pt",
+                        "uv run python scripts/build_clusters.py",
+                        "uv run streamlit run app/app.py",
                     ]
                 ),
                 language="bash",
             )
             st.caption(
-                "The first command becomes real once the Kaggle raw CSVs are present under `data/raw/`."
+                "The salary checkpoint is required for quantile predictions; the KMeans artifacts power market-position output."
             )
 
 
