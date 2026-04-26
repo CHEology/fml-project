@@ -205,16 +205,38 @@ THEMES = {
 }
 
 FAKE_NAMES = [
-    "Jordan Kim", "Priya Shah", "Maya Hernandez", "Ethan Brooks", "Leila Hassan",
-    "Noah Patel", "Ava Morales", "Lucas Chen", "Sofia Bennett", "Owen Park",
+    "Jordan Kim",
+    "Priya Shah",
+    "Maya Hernandez",
+    "Ethan Brooks",
+    "Leila Hassan",
+    "Noah Patel",
+    "Ava Morales",
+    "Lucas Chen",
+    "Sofia Bennett",
+    "Owen Park",
 ]
 FAKE_COMPANIES = [
-    "Helio Metrics", "North Harbor AI", "Aster Point", "Circuit North", "Signal Foundry",
-    "Blue Summit Labs", "Lattice Grove", "Quarry Logic", "Cinder Labs", "Metric Canvas",
+    "Helio Metrics",
+    "North Harbor AI",
+    "Aster Point",
+    "Circuit North",
+    "Signal Foundry",
+    "Blue Summit Labs",
+    "Lattice Grove",
+    "Quarry Logic",
+    "Cinder Labs",
+    "Metric Canvas",
 ]
 FAKE_SCHOOLS = [
-    "NYU", "Georgia Tech", "UC Berkeley", "University of Michigan", "Northeastern",
-    "Carnegie Mellon", "Columbia", "UT Austin",
+    "NYU",
+    "Georgia Tech",
+    "UC Berkeley",
+    "University of Michigan",
+    "Northeastern",
+    "Carnegie Mellon",
+    "Columbia",
+    "UT Austin",
 ]
 TRACK_SUMMARIES = {
     "Machine Learning": [
@@ -244,18 +266,74 @@ TRACK_SUMMARIES = {
     ],
 }
 TRACK_SKILLS = {
-    "Machine Learning": ["Python", "PyTorch", "FAISS", "NLP", "Embeddings", "SQL", "AWS", "Docker"],
-    "Data Science": ["Python", "pandas", "SQL", "Experimentation", "Forecasting", "A/B Testing", "Statistics"],
-    "Software Engineering": ["Python", "APIs", "Docker", "AWS", "Distributed Systems", "Postgres", "CI/CD"],
-    "Analytics": ["SQL", "dbt", "Looker", "Dashboarding", "KPIs", "Pandas", "Data Modeling"],
-    "Product / Strategy": ["Market Analysis", "Stakeholder Mgmt", "Roadmapping", "SQL", "Growth", "Presentation"],
+    "Machine Learning": [
+        "Python",
+        "PyTorch",
+        "FAISS",
+        "NLP",
+        "Embeddings",
+        "SQL",
+        "AWS",
+        "Docker",
+    ],
+    "Data Science": [
+        "Python",
+        "pandas",
+        "SQL",
+        "Experimentation",
+        "Forecasting",
+        "A/B Testing",
+        "Statistics",
+    ],
+    "Software Engineering": [
+        "Python",
+        "APIs",
+        "Docker",
+        "AWS",
+        "Distributed Systems",
+        "Postgres",
+        "CI/CD",
+    ],
+    "Analytics": [
+        "SQL",
+        "dbt",
+        "Looker",
+        "Dashboarding",
+        "KPIs",
+        "Pandas",
+        "Data Modeling",
+    ],
+    "Product / Strategy": [
+        "Market Analysis",
+        "Stakeholder Mgmt",
+        "Roadmapping",
+        "SQL",
+        "Growth",
+        "Presentation",
+    ],
 }
 TRACK_TITLES = {
-    "Machine Learning": ["Machine Learning Engineer", "Applied Scientist", "NLP Engineer"],
+    "Machine Learning": [
+        "Machine Learning Engineer",
+        "Applied Scientist",
+        "NLP Engineer",
+    ],
     "Data Science": ["Data Scientist", "Product Data Scientist", "Decision Scientist"],
-    "Software Engineering": ["Backend Software Engineer", "Platform Engineer", "Systems Engineer"],
-    "Analytics": ["Analytics Engineer", "Senior Analyst", "Business Intelligence Analyst"],
-    "Product / Strategy": ["Product Strategy Lead", "Growth Strategist", "Product Analyst"],
+    "Software Engineering": [
+        "Backend Software Engineer",
+        "Platform Engineer",
+        "Systems Engineer",
+    ],
+    "Analytics": [
+        "Analytics Engineer",
+        "Senior Analyst",
+        "Business Intelligence Analyst",
+    ],
+    "Product / Strategy": [
+        "Product Strategy Lead",
+        "Growth Strategist",
+        "Product Analyst",
+    ],
 }
 SENIORITY_LABELS = {
     "Intern / Entry": "Entry level",
@@ -797,9 +875,7 @@ def resume_structure(text: str) -> dict[str, Any]:
     bullet_count = sum(
         1 for line in text.splitlines() if line.strip().startswith(("-", "*"))
     )
-    link_count = len(
-        re.findall(r"(https?://|linkedin\.com/|github\.com/)", lowered)
-    )
+    link_count = len(re.findall(r"(https?://|linkedin\.com/|github\.com/)", lowered))
     return {
         "found_sections": found_sections,
         "missing_sections": missing_sections,
@@ -836,14 +912,18 @@ def fetch_public_webpage_text(url: str) -> tuple[str, str]:
         html = response.read(1_500_000).decode("utf-8", errors="ignore")
 
     html = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\\1>", " ", html)
-    html = re.sub(r"(?i)</?(p|div|section|article|li|h1|h2|h3|h4|h5|h6|br)[^>]*>", "\n", html)
+    html = re.sub(
+        r"(?i)</?(p|div|section|article|li|h1|h2|h3|h4|h5|h6|br)[^>]*>", "\n", html
+    )
     html = re.sub(r"(?is)<[^>]+>", " ", html)
     text = unescape(html)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{2,}", "\n\n", text)
     cleaned = text.strip()
     if len(cleaned) < 120:
-        raise ValueError("The page did not expose enough public text to use as a resume input.")
+        raise ValueError(
+            "The page did not expose enough public text to use as a resume input."
+        )
     return cleaned[:8000], parsed.netloc.lower()
 
 
@@ -859,17 +939,27 @@ def generate_fake_resume(
     name = rng.choice(FAKE_NAMES)
     school = rng.choice(FAKE_SCHOOLS)
     subset = choose_market_examples(jobs, track, preferred_location)
-    companies = subset["company_name"].replace("", np.nan).dropna().astype(str).unique().tolist()
+    companies = (
+        subset["company_name"]
+        .replace("", np.nan)
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
     if len(companies) < 2:
-        fallback_companies = [company for company in FAKE_COMPANIES if company not in companies]
+        fallback_companies = [
+            company for company in FAKE_COMPANIES if company not in companies
+        ]
         companies.extend(fallback_companies)
     company_a, company_b = companies[0], companies[1]
 
     titles = subset["title"].replace("", np.nan).dropna().astype(str).unique().tolist()
     title = titles[0] if titles else str(rng.choice(TRACK_TITLES[track]))
-    secondary_title = titles[1] if len(titles) > 1 else str(rng.choice(TRACK_TITLES[track]))
+    secondary_title = (
+        titles[1] if len(titles) > 1 else str(rng.choice(TRACK_TITLES[track]))
+    )
     skills = market_skill_stack(jobs, track, limit=7)
-    bullets = rng.choice(TRACK_SUMMARIES[track], size=3, replace=False)
     initiatives = rng.choice(TRACK_INITIATIVES[track], size=2, replace=False)
     project_name = str(rng.choice(TRACK_PROJECTS[track]))
     years = {
@@ -879,7 +969,9 @@ def generate_fake_resume(
         "Senior": "6-9",
         "Lead / Executive": "9+",
     }[seniority]
-    preferred_place = "Remote / flexible" if preferred_location == "Anywhere" else preferred_location
+    preferred_place = (
+        "Remote / flexible" if preferred_location == "Anywhere" else preferred_location
+    )
     contact_slug = slugify_name(name)
     headline = compose_headline(seniority, title)
     metric_name = TRACK_METRICS[track]
@@ -1271,163 +1363,204 @@ def main() -> None:
     with launchpad_tab:
         left, right = st.columns(2, gap="large")
 
-        with left:
-            with st.container(border=True):
-                render_panel_banner(
-                    "Input Studio",
-                    "Build the candidate story",
-                    "Upload a real resume, paste a summary, or synthesize a fake profile for a fast local demo.",
-                )
-                uploader = st.file_uploader("Upload a resume (.pdf or .txt)", type=["pdf", "txt"])
-                if uploader is not None:
-                    parsed = extract_uploaded_text(uploader)
-                    if parsed:
-                        st.session_state.resume_text = parsed
-                        st.session_state.resume_source = f"Uploaded file: {uploader.name}"
-                    else:
-                        st.warning("Could not extract text from the uploaded file. Paste the resume text below instead.")
-
-                url_col, import_col = st.columns([0.76, 0.24], gap="small")
-                with url_col:
-                    public_profile_url = st.text_input(
-                        "Public profile or portfolio URL",
-                        value=st.session_state.public_profile_url,
-                        placeholder="https://portfolio.example.com/about",
+        with left, st.container(border=True):
+            render_panel_banner(
+                "Input Studio",
+                "Build the candidate story",
+                "Upload a real resume, paste a summary, or synthesize a fake profile for a fast local demo.",
+            )
+            uploader = st.file_uploader(
+                "Upload a resume (.pdf or .txt)", type=["pdf", "txt"]
+            )
+            if uploader is not None:
+                parsed = extract_uploaded_text(uploader)
+                if parsed:
+                    st.session_state.resume_text = parsed
+                    st.session_state.resume_source = f"Uploaded file: {uploader.name}"
+                else:
+                    st.warning(
+                        "Could not extract text from the uploaded file. Paste the resume text below instead."
                     )
-                    st.session_state.public_profile_url = public_profile_url
-                with import_col:
-                    st.write("")
-                    st.write("")
-                    import_clicked = st.button("Import page", width="stretch")
 
-                if import_clicked:
-                    try:
-                        with st.spinner("Importing public page text..."):
-                            imported_text, imported_host = fetch_public_webpage_text(
-                                st.session_state.public_profile_url
-                            )
-                        st.session_state.resume_text = imported_text
-                        st.session_state.resume_source = (
-                            f"Imported public webpage: {imported_host}"
-                        )
-                        st.rerun()
-                    except ValueError as exc:
-                        st.warning(str(exc))
-                    except Exception:
-                        st.warning(
-                            "Could not import that page. Try another public URL or paste the resume text directly."
-                        )
-
-                st.caption(
-                    "Public webpage import is intended for generic portfolio or resume pages. LinkedIn pages are not imported here; paste the visible profile text or use an approved API flow instead."
+            url_col, import_col = st.columns([0.76, 0.24], gap="small")
+            with url_col:
+                public_profile_url = st.text_input(
+                    "Public profile or portfolio URL",
+                    value=st.session_state.public_profile_url,
+                    placeholder="https://portfolio.example.com/about",
                 )
+                st.session_state.public_profile_url = public_profile_url
+            with import_col:
+                st.write("")
+                st.write("")
+                import_clicked = st.button("Import page", width="stretch")
 
-                st.session_state.resume_text = st.text_area(
-                    "Paste resume text",
-                    value=st.session_state.resume_text,
-                    height=280,
-                    placeholder="Paste a resume, portfolio bio, or achievement summary here...",
-                )
-
-                pref_a, pref_b, pref_c, pref_d = st.columns(4)
-                with pref_a:
-                    preferred_track = st.selectbox("Focus track", list(TRACK_KEYWORDS))
-                with pref_b:
-                    preferred_location = st.selectbox("Preferred location", ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"])
-                with pref_c:
-                    fake_level = st.selectbox("Demo seniority", list(SENIORITY_MULTIPLIER))
-                with pref_d:
-                    remote_only = st.toggle("Remote only", value=False)
-
-                action_a, action_b = st.columns(2)
-                with action_a:
-                    if st.button("Generate fake resume", width="stretch"):
-                        st.session_state.resume_text = generate_fake_resume(
-                            preferred_track,
-                            fake_level,
-                            preferred_location,
-                            jobs,
+            if import_clicked:
+                try:
+                    with st.spinner("Importing public page text..."):
+                        imported_text, imported_host = fetch_public_webpage_text(
+                            st.session_state.public_profile_url
                         )
-                        st.session_state.resume_source = (
-                            f"Generated {preferred_track} demo resume"
-                        )
-                        st.rerun()
-                with action_b:
-                    analyze_clicked = st.button("Run frontend demo", type="primary", width="stretch")
-
-        with right:
-            with st.container(border=True):
-                render_panel_banner(
-                    "Signal Deck",
-                    "See how the app will read the candidate",
-                    "The right panel mirrors the left panel's baseline so both surfaces stay visually locked while you edit inputs.",
-                )
-                preview_text = st.session_state.resume_text.strip() or SAMPLE_RESUME
-                preview_profile = detect_profile(preview_text, preferred_track)
-                preview_structure = resume_structure(preview_text)
-                signal_cols = st.columns(4, gap="small")
-                with signal_cols[0]:
-                    render_signal_card("Track", preview_profile["track"], "Dominant role direction from resume language.")
-                with signal_cols[1]:
-                    render_signal_card("Seniority", preview_profile["seniority"], "Detected level from titles, wins, and tone.")
-                with signal_cols[2]:
-                    render_signal_card(
-                        "Sections",
-                        f"{len(preview_structure['found_sections'])}/{len(SECTION_ALIASES)}",
-                        "Structured resumes score better when summary, experience, projects, education, and skills are explicit.",
+                    st.session_state.resume_text = imported_text
+                    st.session_state.resume_source = (
+                        f"Imported public webpage: {imported_host}"
                     )
-                with signal_cols[3]:
-                    render_signal_card("Data mode", "Real" if has_real_data else "Demo", "Switches to local LinkedIn data when artifacts exist.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.warning(str(exc))
+                except Exception:
+                    st.warning(
+                        "Could not import that page. Try another public URL or paste the resume text directly."
+                    )
 
-                st.markdown('<div class="callout"><div class="callout-title">Resume read</div><div class="callout-body">The app currently sees a candidate oriented toward <strong>{}</strong> with approximately <strong>{}%</strong> confidence. Preferred location and demo seniority then bias the market output and fake-resume generator.</div></div>'.format(preview_profile["track"], preview_profile["confidence"]), unsafe_allow_html=True)
+            st.caption(
+                "Public webpage import is intended for generic portfolio or resume pages. LinkedIn pages are not imported here; paste the visible profile text or use an approved API flow instead."
+            )
 
-                st.markdown(
-                    f"""
-                    <div class="callout">
-                        <div class="callout-title">Resume source</div>
-                        <div class="callout-body">
-                            <strong>{st.session_state.resume_source}</strong><br/>
-                            {preview_structure["word_count"]} words • {preview_structure["bullet_count"]} bullets • {preview_structure["link_count"]} links detected
-                        </div>
+            st.session_state.resume_text = st.text_area(
+                "Paste resume text",
+                value=st.session_state.resume_text,
+                height=280,
+                placeholder="Paste a resume, portfolio bio, or achievement summary here...",
+            )
+
+            pref_a, pref_b, pref_c, pref_d = st.columns(4)
+            with pref_a:
+                preferred_track = st.selectbox("Focus track", list(TRACK_KEYWORDS))
+            with pref_b:
+                preferred_location = st.selectbox(
+                    "Preferred location",
+                    ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"],
+                )
+            with pref_c:
+                fake_level = st.selectbox("Demo seniority", list(SENIORITY_MULTIPLIER))
+            with pref_d:
+                remote_only = st.toggle("Remote only", value=False)
+
+            action_a, action_b = st.columns(2)
+            with action_a:
+                if st.button("Generate fake resume", width="stretch"):
+                    st.session_state.resume_text = generate_fake_resume(
+                        preferred_track,
+                        fake_level,
+                        preferred_location,
+                        jobs,
+                    )
+                    st.session_state.resume_source = (
+                        f"Generated {preferred_track} demo resume"
+                    )
+                    st.rerun()
+            with action_b:
+                analyze_clicked = st.button(
+                    "Run frontend demo", type="primary", width="stretch"
+                )
+
+        with right, st.container(border=True):
+            render_panel_banner(
+                "Signal Deck",
+                "See how the app will read the candidate",
+                "The right panel mirrors the left panel's baseline so both surfaces stay visually locked while you edit inputs.",
+            )
+            preview_text = st.session_state.resume_text.strip() or SAMPLE_RESUME
+            preview_profile = detect_profile(preview_text, preferred_track)
+            preview_structure = resume_structure(preview_text)
+            signal_cols = st.columns(4, gap="small")
+            with signal_cols[0]:
+                render_signal_card(
+                    "Track",
+                    preview_profile["track"],
+                    "Dominant role direction from resume language.",
+                )
+            with signal_cols[1]:
+                render_signal_card(
+                    "Seniority",
+                    preview_profile["seniority"],
+                    "Detected level from titles, wins, and tone.",
+                )
+            with signal_cols[2]:
+                render_signal_card(
+                    "Sections",
+                    f"{len(preview_structure['found_sections'])}/{len(SECTION_ALIASES)}",
+                    "Structured resumes score better when summary, experience, projects, education, and skills are explicit.",
+                )
+            with signal_cols[3]:
+                render_signal_card(
+                    "Data mode",
+                    "Real" if has_real_data else "Demo",
+                    "Switches to local LinkedIn data when artifacts exist.",
+                )
+
+            st.markdown(
+                '<div class="callout"><div class="callout-title">Resume read</div><div class="callout-body">The app currently sees a candidate oriented toward <strong>{}</strong> with approximately <strong>{}%</strong> confidence. Preferred location and demo seniority then bias the market output and fake-resume generator.</div></div>'.format(
+                    preview_profile["track"], preview_profile["confidence"]
+                ),
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                f"""
+                <div class="callout">
+                    <div class="callout-title">Resume source</div>
+                    <div class="callout-body">
+                        <strong>{st.session_state.resume_source}</strong><br/>
+                        {preview_structure["word_count"]} words • {preview_structure["bullet_count"]} bullets • {preview_structure["link_count"]} links detected
                     </div>
-                    """,
-                    unsafe_allow_html=True,
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                '<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>',
+                unsafe_allow_html=True,
+            )
+            present_skills = preview_profile["skills_present"] or [
+                "Generalist profile",
+                "Cross-functional communication",
+            ]
+            st.markdown(
+                '<div class="chip-cloud">'
+                + "".join(
+                    f'<span class="mini-chip">{skill}</span>'
+                    for skill in present_skills[:6]
+                )
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                '<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>',
+                unsafe_allow_html=True,
+            )
+            structure_chips = preview_structure["found_sections"] or [
+                "No formal sections detected"
+            ]
+            st.markdown(
+                '<div class="chip-cloud">'
+                + "".join(
+                    f'<span class="mini-chip">{section}</span>'
+                    for section in structure_chips
+                )
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+            if preview_structure["missing_sections"]:
+                st.caption(
+                    "Missing sections: "
+                    + ", ".join(preview_structure["missing_sections"])
                 )
 
-                st.markdown('<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>', unsafe_allow_html=True)
-                present_skills = preview_profile["skills_present"] or ["Generalist profile", "Cross-functional communication"]
-                st.markdown(
-                    '<div class="chip-cloud">' +
-                    "".join(f'<span class="mini-chip">{skill}</span>' for skill in present_skills[:6]) +
-                    '</div>',
-                    unsafe_allow_html=True,
-                )
-
-                st.markdown('<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>', unsafe_allow_html=True)
-                structure_chips = preview_structure["found_sections"] or ["No formal sections detected"]
-                st.markdown(
-                    '<div class="chip-cloud">' +
-                    "".join(
-                        f'<span class="mini-chip">{section}</span>'
-                        for section in structure_chips
-                    ) +
-                    '</div>',
-                    unsafe_allow_html=True,
-                )
-                if preview_structure["missing_sections"]:
-                    st.caption(
-                        "Missing sections: "
-                        + ", ".join(preview_structure["missing_sections"])
-                    )
-
-                st.markdown('<div class="section-label" style="margin-top:0.9rem;">Data feed</div>', unsafe_allow_html=True)
-                st.markdown(
-                    f"""
-                    <span class="status-pill {'ready' if has_real_data else 'missing'}">{'Processed LinkedIn parquet' if has_real_data else 'Synthetic LinkedIn-style feed'}</span>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                st.caption(linkedin_dataset_note(has_real_data))
+            st.markdown(
+                '<div class="section-label" style="margin-top:0.9rem;">Data feed</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f"""
+                <span class="status-pill {"ready" if has_real_data else "missing"}">{"Processed LinkedIn parquet" if has_real_data else "Synthetic LinkedIn-style feed"}</span>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.caption(linkedin_dataset_note(has_real_data))
 
         if analyze_clicked and st.session_state.resume_text.strip():
             profile = detect_profile(st.session_state.resume_text, preferred_track)
@@ -1459,14 +1592,22 @@ def main() -> None:
                 with st.container(border=True):
                     signal_cols = st.columns(2, gap="small")
                     with signal_cols[0]:
-                        render_signal_card("Track", profile["track"], "Primary path inferred from the resume.")
+                        render_signal_card(
+                            "Track",
+                            profile["track"],
+                            "Primary path inferred from the resume.",
+                        )
                     with signal_cols[1]:
-                        render_signal_card("Confidence", f"{profile['confidence']}%", "Heuristic strength of the current read.")
+                        render_signal_card(
+                            "Confidence",
+                            f"{profile['confidence']}%",
+                            "Heuristic strength of the current read.",
+                        )
                     st.markdown(
                         f"""
                         <div class="callout">
                             <div class="callout-title">Level fit</div>
-                            <div class="callout-body"><strong>{profile['seniority']}</strong> candidates in this feed cluster around <strong>{fmt_money(band['q50'])}</strong> median opportunity value.</div>
+                            <div class="callout-body"><strong>{profile["seniority"]}</strong> candidates in this feed cluster around <strong>{fmt_money(band["q50"])}</strong> median opportunity value.</div>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -1482,7 +1623,10 @@ def main() -> None:
                 )
                 with st.container(border=True):
                     for skill_name, keywords in SKILL_GROUPS.items():
-                        hit = any(keyword in st.session_state.resume_text.lower() for keyword in keywords)
+                        hit = any(
+                            keyword in st.session_state.resume_text.lower()
+                            for keyword in keywords
+                        )
                         st.write(f"{'Strong' if hit else 'Thin'}: {skill_name}")
                         st.progress(100 if hit else 28)
             with insight_cols[1]:
@@ -1525,28 +1669,39 @@ def main() -> None:
         )
 
         left, right = st.columns([0.52, 0.48], gap="large")
-        with left:
-            with st.container(border=True):
-                st.markdown("**Top locations**")
-                location_counts = display_jobs["location"].fillna("Unknown").value_counts().head(8)
-                st.bar_chart(location_counts)
+        with left, st.container(border=True):
+            st.markdown("**Top locations**")
+            location_counts = (
+                display_jobs["location"].fillna("Unknown").value_counts().head(8)
+            )
+            st.bar_chart(location_counts)
 
-                st.markdown("**Experience mix**")
-                exp_counts = display_jobs["experience_level"].fillna("Unknown").value_counts().head(8)
-                st.bar_chart(exp_counts)
+            st.markdown("**Experience mix**")
+            exp_counts = (
+                display_jobs["experience_level"]
+                .fillna("Unknown")
+                .value_counts()
+                .head(8)
+            )
+            st.bar_chart(exp_counts)
 
-        with right:
-            with st.container(border=True):
-                st.markdown("**Salary sample**")
-                salary_view = display_jobs[["title", "company_name", "location", "salary_annual"]].copy()
-                salary_view = salary_view.sort_values("salary_annual", ascending=False).head(12)
-                st.dataframe(salary_view, width="stretch", hide_index=True)
+        with right, st.container(border=True):
+            st.markdown("**Salary sample**")
+            salary_view = display_jobs[
+                ["title", "company_name", "location", "salary_annual"]
+            ].copy()
+            salary_view = salary_view.sort_values(
+                "salary_annual", ascending=False
+            ).head(12)
+            st.dataframe(salary_view, width="stretch", hide_index=True)
 
-                st.markdown("**Dataset notes**")
-                if has_real_data:
-                    st.success(f"Loaded real project data from `{data_source}`.")
-                else:
-                    st.info("Using synthetic LinkedIn-style roles so the frontend can be reviewed before the real preprocessing pipeline is run.")
+            st.markdown("**Dataset notes**")
+            if has_real_data:
+                st.success(f"Loaded real project data from `{data_source}`.")
+            else:
+                st.info(
+                    "Using synthetic LinkedIn-style roles so the frontend can be reviewed before the real preprocessing pipeline is run."
+                )
 
     with pipeline_tab:
         render_panel_banner(
@@ -1574,7 +1729,9 @@ def main() -> None:
                 ),
                 language="bash",
             )
-            st.caption("The first command becomes real once the Kaggle raw CSVs are present under `data/raw/`.")
+            st.caption(
+                "The first command becomes real once the Kaggle raw CSVs are present under `data/raw/`."
+            )
 
 
 if __name__ == "__main__":
