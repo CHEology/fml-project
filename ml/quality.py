@@ -343,13 +343,7 @@ def weakest_dim_from_features(features: dict[str, float]) -> str:
     metrics present, zero typos. The returned label is one of
     `QUALITY_DIMENSIONS`.
     """
-    targets = {
-        "skills": 8.0,
-        "experience": 5.0,
-        "projects": 3.0,
-        "metrics": 1.0,
-        "typos": 0.0,
-    }
+    targets = _RULE_TARGETS
     gaps: dict[str, float] = {}
     for dim, target in targets.items():
         value = float(features.get(dim, 0.0))
@@ -360,6 +354,76 @@ def weakest_dim_from_features(features: dict[str, float]) -> str:
             gaps[dim] = max(target - value, 0.0) / max(target, 1.0)
     weakest = max(gaps.items(), key=lambda pair: pair[1])
     return weakest[0]
+
+
+# ---------------------------------------------------------------------------
+# Rule-based quality scoring (real-resume-safe; no learned proxy)
+# ---------------------------------------------------------------------------
+
+
+_RULE_TARGETS: dict[str, float] = {
+    "skills": 8.0,
+    "experience": 5.0,
+    "projects": 3.0,
+    "metrics": 1.0,
+    "typos": 0.0,
+}
+
+_RULE_WEIGHTS: dict[str, float] = {
+    "skills": 0.40,
+    "experience": 0.20,
+    "projects": 0.20,
+    "metrics": 0.10,
+    "typos": 0.10,
+}
+
+_TYPO_STEP = 25.0  # each typo subtracts this from the typo-dimension score
+
+
+def score_resume_quality(text: str) -> dict[str, object]:
+    """Rule-based 0–100 quality score that operates directly on text.
+
+    Real-resume-safe: no trained model, no synthetic-formula assumptions
+    beyond the per-dimension targets. Computes each component, weights
+    them, and returns an interpretable breakdown the UI / feedback
+    engine can consume directly.
+
+    Returns a dict with:
+        score (float, 0–100), label (str, weak/medium/strong),
+        dimension_scores (dict[str, float]) — per-dim score in [0, 100],
+        weakest_dim (str) — the dimension with the largest gap,
+        strengths (list[str]) — dims with score >= 80,
+        gaps (list[str]) — dims with score < 50.
+    """
+    features = quality_features_from_text(text)
+    dim_scores = _dimension_scores(features)
+    score = float(sum(dim_scores[d] * _RULE_WEIGHTS[d] for d in QUALITY_DIMENSIONS))
+    score = float(np.clip(score, 0.0, 100.0))
+    return {
+        "score": round(score, 2),
+        "label": quality_label_from_score(score),
+        "dimension_scores": {d: round(dim_scores[d], 1) for d in QUALITY_DIMENSIONS},
+        "weakest_dim": weakest_dim_from_features(features),
+        "strengths": [d for d in QUALITY_DIMENSIONS if dim_scores[d] >= 80.0],
+        "gaps": [d for d in QUALITY_DIMENSIONS if dim_scores[d] < 50.0],
+    }
+
+
+def _dimension_scores(features: dict[str, float]) -> dict[str, float]:
+    targets = _RULE_TARGETS
+    return {
+        "skills": float(
+            min(features.get("skills", 0.0) / targets["skills"] * 100.0, 100.0)
+        ),
+        "experience": float(
+            min(features.get("experience", 0.0) / targets["experience"] * 100.0, 100.0)
+        ),
+        "projects": float(
+            min(features.get("projects", 0.0) / targets["projects"] * 100.0, 100.0)
+        ),
+        "metrics": 100.0 if features.get("metrics", 0.0) >= 1.0 else 0.0,
+        "typos": float(max(100.0 - features.get("typos", 0.0) * _TYPO_STEP, 0.0)),
+    }
 
 
 def _quality_skill_lexicon() -> list[str]:

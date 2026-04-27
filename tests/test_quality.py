@@ -17,6 +17,7 @@ from ml.quality import (  # noqa: E402
     predict_quality,
     predict_quality_from_text,
     quality_features_from_text,
+    score_resume_quality,
     split_data,
     weakest_dim_from_features,
 )
@@ -264,3 +265,83 @@ def test_predict_quality_score_increases_after_targeted_finetune() -> None:
     pred_high = predict_quality(model, high.mean(axis=0), scaler=scaler)["score"]
     pred_low = predict_quality(model, low.mean(axis=0), scaler=scaler)["score"]
     assert pred_high > pred_low + 10.0
+
+
+# ---------------------------------------------------------------------------
+# Rule-based scorer (real-resume-safe)
+# ---------------------------------------------------------------------------
+
+
+_STRONG_RESUME = """\
+Jane Doe
+Senior Machine Learning Engineer | Remote, US
+
+Summary
+- 6 years building production ML systems and recommender services.
+
+Skills
+Python, PyTorch, AWS, Docker, model serving, system design, CI/CD,
+monitoring, machine learning
+
+Experience
+- Shipped a recommender service handling 80K requests per day.
+- Reduced retraining time by 35% across 12 production models.
+- Built drift monitoring pipelines used by 4 product teams.
+
+Education
+M.S. Computer Science
+"""
+
+_WEAK_RESUME = """\
+Bob Smith
+Looking for a job
+
+I have done some work. I want to learn new things and grow in my career.
+Please consider me. I am very motivated.
+"""
+
+_TYPO_RESUME = """\
+Carol Lee
+Junior Data Scientist
+
+I have 2 years of experiance in analysys.
+- Built a modle for our databse.
+- Updated the campagin pipline weekly.
+
+Skills: Python, SQL
+"""
+
+
+def test_score_resume_quality_strong_resume_scores_higher() -> None:
+    strong = score_resume_quality(_STRONG_RESUME)
+    weak = score_resume_quality(_WEAK_RESUME)
+
+    assert strong["score"] > weak["score"]
+    assert strong["score"] >= 60.0
+    assert weak["score"] <= 30.0
+    assert strong["label"] in {"medium", "strong"}
+    assert weak["label"] == "weak"
+
+
+def test_score_resume_quality_returns_full_breakdown() -> None:
+    out = score_resume_quality(_STRONG_RESUME)
+    assert set(out["dimension_scores"].keys()) == set(QUALITY_DIMENSIONS)
+    for value in out["dimension_scores"].values():
+        assert 0.0 <= value <= 100.0
+    assert out["weakest_dim"] in QUALITY_DIMENSIONS
+    assert isinstance(out["strengths"], list)
+    assert isinstance(out["gaps"], list)
+    assert "skills" in out["strengths"] or out["dimension_scores"]["skills"] >= 70.0
+
+
+def test_score_resume_quality_flags_typos() -> None:
+    out = score_resume_quality(_TYPO_RESUME)
+    assert out["dimension_scores"]["typos"] < 100.0
+    # Either typos themselves or low experience/projects should appear in gaps.
+    assert out["gaps"], "expected at least one gap dimension for the noisy resume"
+
+
+def test_score_resume_quality_is_deterministic() -> None:
+    a = score_resume_quality(_STRONG_RESUME)
+    b = score_resume_quality(_STRONG_RESUME)
+    assert a == b
