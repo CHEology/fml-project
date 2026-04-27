@@ -256,31 +256,31 @@ SENIORITY_MULTIPLIER = {
 
 THEMES = {
     "Light": {
-        "bg_start": "#f7f8fa",
-        "bg_end": "#eef1f4",
+        "bg_start": "#f6f8fb",
+        "bg_end": "#f6f8fb",
         "flare_a": "transparent",
         "flare_b": "transparent",
         "panel": "#ffffff",
-        "ink": "#17202a",
+        "ink": "#111827",
         "muted": "#667085",
-        "line": "#d9dee7",
+        "line": "#e5e7eb",
         "pill_bg": "#edf4ff",
         "pill_ink": "#175cd3",
         "hero_a": "#ffffff",
         "hero_b": "#ffffff",
-        "shadow": "rgba(16, 24, 40, 0.08)",
+        "shadow": "rgba(15, 23, 42, 0.04)",
         "score_bg": "#ecfdf3",
         "score_ink": "#027a48",
     },
     "Dark": {
-        "bg_start": "#101418",
-        "bg_end": "#151a21",
+        "bg_start": "#0f1115",
+        "bg_end": "#0f1115",
         "flare_a": "transparent",
         "flare_b": "transparent",
-        "panel": "#1b222b",
+        "panel": "#1b1d22",
         "ink": "#f2f4f7",
         "muted": "#a5adba",
-        "line": "#2d3642",
+        "line": "#374151",
         "pill_bg": "#182b45",
         "pill_ink": "#84caff",
         "hero_a": "#1b222b",
@@ -712,9 +712,9 @@ def inject_styles(theme_name: str) -> None:
         .hero {
             background: __HERO_A__;
             border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 1.35rem 1.45rem 1.2rem 1.45rem;
-            box-shadow: 0 10px 24px __SHADOW__;
+            border-radius: 12px;
+            padding: 1rem 1.2rem 0.95rem 1.2rem;
+            box-shadow: 0 8px 20px __SHADOW__;
             margin-bottom: 1rem;
         }
 
@@ -727,15 +727,15 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .hero h1 {
-            margin: 0.3rem 0 0.7rem 0;
-            font-size: 2.25rem;
-            line-height: 1.08;
+            margin: 0.25rem 0 0.5rem 0;
+            font-size: 1.7rem;
+            line-height: 1.15;
             letter-spacing: 0;
         }
 
         .hero p {
             margin: 0;
-            font-size: 1rem;
+            font-size: 0.95rem;
             color: var(--muted);
             max-width: 62rem;
         }
@@ -743,8 +743,8 @@ def inject_styles(theme_name: str) -> None:
         .pill-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.45rem;
-            margin-top: 1rem;
+            gap: 0.4rem;
+            margin-top: 0.65rem;
         }
 
         .pill {
@@ -760,9 +760,9 @@ def inject_styles(theme_name: str) -> None:
         .metric-card, .info-card, .job-card {
             background: var(--panel);
             border: 1px solid var(--line);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 1rem 1.1rem;
-            box-shadow: 0 6px 16px __SHADOW__;
+            box-shadow: 0 4px 12px __SHADOW__;
             height: 100%;
         }
 
@@ -779,6 +779,9 @@ def inject_styles(theme_name: str) -> None:
             font-weight: 700;
             line-height: 1.05;
         }
+
+        
+        .signal-value, .metric-value { word-break: normal; overflow-wrap: break-word; hyphens: none; }
 
         .info-title {
             font-size: 1.12rem;
@@ -857,7 +860,7 @@ def inject_styles(theme_name: str) -> None:
             display: grid;
             grid-template-columns: repeat(5, minmax(7.5rem, 1fr));
             border: 1px solid var(--line);
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
             background: rgba(255,255,255,0.03);
             margin-top: 0.75rem;
@@ -935,9 +938,8 @@ def inject_styles(theme_name: str) -> None:
         .signal-card {
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 0.9rem 0.95rem;
-            min-height: 110px;
+            border-radius: 12px;
+            padding: 0.85rem 0.95rem;
         }
 
         .signal-label {
@@ -979,7 +981,7 @@ def inject_styles(theme_name: str) -> None:
         .callout {
             border: 1px solid var(--line);
             background: rgba(255,255,255,0.04);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 0.95rem 1rem;
             margin-top: 0.75rem;
         }
@@ -1033,6 +1035,63 @@ def inject_styles(theme_name: str) -> None:
             background: __PILL_BG__;
             color: __PILL_INK__;
             border-color: __PILL_INK__;
+        }
+
+        .field-label {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--ink);
+            margin-bottom: 0.35rem;
+        }
+
+        .sidebar-info {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 0.8rem;
+            box-shadow: 0 4px 12px __SHADOW__;
+        }
+
+        .sidebar-info .info-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+
+        .sidebar-info .info-source {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        [data-testid="stFileUploader"] section,
+        [data-testid="stFileUploaderDropzone"] {
+            background: rgba(23, 92, 211, 0.04);
+            border: 1.5px dashed var(--line);
+            border-radius: 12px;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        [data-testid="stFileUploader"] section:hover,
+        [data-testid="stFileUploaderDropzone"]:hover {
+            border-color: var(--accent);
+            background: rgba(23, 92, 211, 0.07);
+        }
+
+        [data-testid="stFileUploader"] label {
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+
+        .next-steps-list {
+            margin: 0.4rem 0 0 0;
+            padding-left: 1.1rem;
+            color: var(--ink);
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+
+        .next-steps-list li {
+            margin-bottom: 0.25rem;
         }
 
         @media (max-width: 900px) {
@@ -1726,6 +1785,8 @@ def main() -> None:
             "Theme",
             ["Light", "Dark"],
             index=0 if st.session_state.theme_name == "Light" else 1,
+            horizontal=True,
+            label_visibility="collapsed",
         )
         if theme_choice != st.session_state.theme_name:
             st.session_state.theme_name = theme_choice
@@ -1740,51 +1801,41 @@ def main() -> None:
             else ""
         )
         st.markdown(
-            f"""
-            <div class="info-card">
+            f'''
+            <div class="sidebar-info">
                 <div class="info-title">Data source</div>
-                <div><strong>{escape(source_label)}</strong></div>
+                <div class="info-source"><strong>{escape(source_label)}</strong></div>
                 {source_detail}
             </div>
-            """,
+            ''',
             unsafe_allow_html=True,
         )
         st.write("")
-        if st.button("Load sample resume", width="stretch"):
-            st.session_state.resume_text = SAMPLE_RESUME
-            st.session_state.resume_source = "Built-in sample resume"
-            st.rerun()
 
         with st.expander("Data readiness", expanded=False):
             for item in status:
                 flag = "Ready" if item["ready"] else "Missing"
                 st.write(f"{flag}: `{item['path']}`")
 
-        st.info(linkedin_dataset_note(has_real_data))
+        st.caption(linkedin_dataset_note(has_real_data))
 
     st.markdown(
-        """
+        '''
         <div class="hero">
             <div class="eyebrow">Resume market intelligence</div>
             <h1>Understand role fit, salary range, and market position.</h1>
-            <p>
-                Upload or paste a resume to compare it with salary-bearing LinkedIn roles,
-                review relevant opportunities, and identify practical ways to strengthen
-                the candidate profile.
-            </p>
+            <p>Compare a resume with salary-bearing LinkedIn roles and identify ways to strengthen the profile.</p>
             <div class="pill-row">
-                <span class="pill">Resume profile</span>
                 <span class="pill">Role matching</span>
                 <span class="pill">Salary range</span>
-                <span class="pill">Market position</span>
                 <span class="pill">Profile guidance</span>
             </div>
         </div>
-        """,
+        ''',
         unsafe_allow_html=True,
     )
 
-    metric_cols = st.columns(3)
+    metric_cols = st.columns(2)
     with metric_cols[0]:
         render_metric_card("Jobs loaded", f"{len(jobs):,}", "local catalog size")
     with metric_cols[1]:
@@ -1796,27 +1847,20 @@ def main() -> None:
             fmt_money(median_salary.median() if len(median_salary) else None),
             "from current dataset",
         )
-    with metric_cols[2]:
-        ready_count = sum(item["ready"] for item in status)
-        render_metric_card(
-            "Data readiness", f"{ready_count}/{len(status)}", "available resources"
-        )
 
     launchpad_tab, radar_tab, pipeline_tab = st.tabs(
         ["Resume Analysis", "Market Overview", "Setup"]
     )
 
     with launchpad_tab:
-        left, right = st.columns(2, gap="large")
+        left, right = st.columns([1.6, 1.0], gap="large")
 
-        with left, st.container(border=True):
-            render_panel_banner(
-                "Resume Input",
-                "Add candidate information",
-                "Upload a resume, paste profile text, or create a sample profile for review.",
-            )
+        with left:
+            st.markdown("## Analyze a candidate profile")
+            st.caption("Add candidate information to review market positioning.")
+            
             uploader = st.file_uploader(
-                "Upload a resume (.pdf or .txt)", type=["pdf", "txt"]
+                "Drag and drop resume here (PDF or TXT, up to 200MB)", type=["pdf", "txt"]
             )
             if uploader is not None:
                 parsed = extract_uploaded_text(uploader)
@@ -1828,17 +1872,20 @@ def main() -> None:
                         "Could not extract text from the uploaded file. Paste the resume text below instead."
                     )
 
+            st.markdown(
+                '<div class="field-label">Public profile or portfolio URL</div>',
+                unsafe_allow_html=True,
+            )
             url_col, import_col = st.columns([0.76, 0.24], gap="small")
             with url_col:
                 public_profile_url = st.text_input(
                     "Public profile or portfolio URL",
                     value=st.session_state.public_profile_url,
                     placeholder="https://portfolio.example.com/about",
+                    label_visibility="collapsed",
                 )
                 st.session_state.public_profile_url = public_profile_url
             with import_col:
-                st.write("")
-                st.write("")
                 import_clicked = st.button("Import page", width="stretch")
 
             if import_clicked:
@@ -1869,6 +1916,9 @@ def main() -> None:
                 height=280,
                 placeholder="Paste a resume, portfolio bio, or achievement summary here...",
             )
+            word_count = len(st.session_state.resume_text.split())
+            st.caption(f"Word count: {word_count}")
+
             preview_text = st.session_state.resume_text.strip() or SAMPLE_RESUME
             preview_profile = detect_profile(preview_text)
 
@@ -1888,8 +1938,13 @@ def main() -> None:
                 f"Detected focus: {preview_profile['track']}. The app infers this from the resume instead of asking you to choose a track."
             )
 
-            action_a, action_b = st.columns(2)
-            with action_a:
+            sec_a, sec_b = st.columns(2)
+            with sec_a:
+                if st.button("Load sample resume", width="stretch"):
+                    st.session_state.resume_text = SAMPLE_RESUME
+                    st.session_state.resume_source = "Built-in sample resume"
+                    st.rerun()
+            with sec_b:
                 if st.button("Generate sample profile", width="stretch"):
                     st.session_state.resume_text = generate_sample_profile(
                         preview_profile["track"],
@@ -1901,119 +1956,164 @@ def main() -> None:
                         f"Generated {preview_profile['track']} sample profile"
                     )
                     st.rerun()
-            with action_b:
+
+            st.write("")
+            action_a, action_b = st.columns(2)
+            with action_a:
                 analyze_clicked = st.button(
-                    "Run analysis", type="primary", width="stretch"
+                    "Analyze profile", type="primary", width="stretch"
+                )
+            with action_b:
+                if st.button("Clear", width="stretch"):
+                    st.session_state.resume_text = ""
+                    st.session_state.resume_source = "Empty canvas"
+                    st.rerun()
+
+        with right:
+            st.markdown("## Candidate snapshot")
+            st.caption("Preview the profile signals.")
+            
+            if not st.session_state.resume_text.strip():
+                st.info("Add a resume to generate a candidate snapshot.")
+            else:
+                preview_structure = resume_structure(preview_text)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    render_signal_card(
+                        "Detected focus",
+                        preview_profile["track"],
+                        "Inferred from resume language and market evidence.",
+                    )
+                with col2:
+                    render_signal_card(
+                        "Seniority",
+                        preview_profile["seniority"],
+                        "Detected level from titles, wins, and tone.",
+                    )
+                col3, col4 = st.columns(2)
+                with col3:
+                    render_signal_card(
+                        "Sections",
+                        f"{len(preview_structure['found_sections'])}/{len(SECTION_ALIASES)}",
+                        "Structured resumes score better.",
+                    )
+                with col4:
+                    render_signal_card(
+                        "Data mode",
+                        "Live data" if has_real_data else "Sample data",
+                        "Uses the local LinkedIn job catalog.",
+                    )
+
+                profile_track_html = escape(str(preview_profile["track"]))
+                profile_confidence_html = escape(str(preview_profile["confidence"]))
+                st.markdown(
+                    f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Profile read</div><div class="signal-copy">The current resume reads as a <strong>{profile_track_html}</strong> profile with approximately <strong>{profile_confidence_html}%</strong> confidence. Location and seniority preferences guide the market comparison.</div></div>',
+                    unsafe_allow_html=True,
                 )
 
-        with right, st.container(border=True):
-            render_panel_banner(
-                "Candidate Snapshot",
-                "Preview the profile signals",
-                "A concise read of the candidate direction, seniority, structure, and available market data.",
-            )
-            preview_structure = resume_structure(preview_text)
-            signal_cols = st.columns(4, gap="small")
-            with signal_cols[0]:
-                render_signal_card(
-                    "Detected focus",
-                    preview_profile["track"],
-                    "Inferred from resume language and market evidence.",
-                )
-            with signal_cols[1]:
-                render_signal_card(
-                    "Seniority",
-                    preview_profile["seniority"],
-                    "Detected level from titles, wins, and tone.",
-                )
-            with signal_cols[2]:
-                render_signal_card(
-                    "Sections",
-                    f"{len(preview_structure['found_sections'])}/{len(SECTION_ALIASES)}",
-                    "Structured resumes score better when summary, experience, projects, education, and skills are explicit.",
-                )
-            with signal_cols[3]:
-                render_signal_card(
-                    "Data mode",
-                    "Live data" if has_real_data else "Sample data",
-                    "Uses the local LinkedIn job catalog when it is available.",
-                )
-
-            profile_track_html = escape(str(preview_profile["track"]))
-            profile_confidence_html = escape(str(preview_profile["confidence"]))
-            st.markdown(
-                f'<div class="callout"><div class="callout-title">Profile read</div><div class="callout-body">The current resume reads as a <strong>{profile_track_html}</strong> profile with approximately <strong>{profile_confidence_html}%</strong> confidence. Location and seniority preferences guide the market comparison.</div></div>',
-                unsafe_allow_html=True,
-            )
-
-            resume_source_html = escape(str(st.session_state.resume_source))
-            word_count_html = escape(str(preview_structure["word_count"]))
-            bullet_count_html = escape(str(preview_structure["bullet_count"]))
-            link_count_html = escape(str(preview_structure["link_count"]))
-            st.markdown(
-                f"""
-                <div class="callout">
-                    <div class="callout-title">Resume source</div>
-                    <div class="callout-body">
-                        <strong>{resume_source_html}</strong><br/>
-                        {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
+                resume_source_html = escape(str(st.session_state.resume_source))
+                word_count_html = escape(str(preview_structure["word_count"]))
+                bullet_count_html = escape(str(preview_structure["bullet_count"]))
+                link_count_html = escape(str(preview_structure["link_count"]))
+                st.markdown(
+                    f'''
+                    <div class="metric-card" style="margin-top:0.75rem;">
+                        <div class="metric-label">Resume source</div>
+                        <div class="signal-copy">
+                            <strong>{resume_source_html}</strong><br/>
+                            {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
+                        </div>
                     </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>',
-                unsafe_allow_html=True,
-            )
-            present_skills = preview_profile["skills_present"] or [
-                "Generalist profile",
-                "Cross-functional communication",
-            ]
-            st.markdown(
-                '<div class="chip-cloud">'
-                + "".join(
-                    f'<span class="mini-chip">{escape(str(skill))}</span>'
-                    for skill in present_skills[:6]
-                )
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-
-            st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>',
-                unsafe_allow_html=True,
-            )
-            structure_chips = preview_structure["found_sections"] or [
-                "No formal sections detected"
-            ]
-            st.markdown(
-                '<div class="chip-cloud">'
-                + "".join(
-                    f'<span class="mini-chip">{escape(str(section))}</span>'
-                    for section in structure_chips
-                )
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-            if preview_structure["missing_sections"]:
-                st.caption(
-                    "Missing sections: "
-                    + ", ".join(preview_structure["missing_sections"])
+                    ''',
+                    unsafe_allow_html=True,
                 )
 
-            st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"""
-                <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.caption(linkedin_dataset_note(has_real_data))
+                st.markdown(
+                    '<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>',
+                    unsafe_allow_html=True,
+                )
+                present_skills = preview_profile["skills_present"] or [
+                    "Generalist profile",
+                    "Cross-functional communication",
+                ]
+                st.markdown(
+                    '<div class="chip-cloud">'
+                    + "".join(
+                        f'<span class="mini-chip">{escape(str(skill))}</span>'
+                        for skill in present_skills[:6]
+                    )
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+
+                st.markdown(
+                    '<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>',
+                    unsafe_allow_html=True,
+                )
+                structure_chips = preview_structure["found_sections"] or [
+                    "No formal sections detected"
+                ]
+                st.markdown(
+                    '<div class="chip-cloud">'
+                    + "".join(
+                        f'<span class="mini-chip">{escape(str(section))}</span>'
+                        for section in structure_chips
+                    )
+                    + "</div>",
+                    unsafe_allow_html=True,
+                )
+                if preview_structure["missing_sections"]:
+                    st.caption(
+                        "Missing sections: "
+                        + ", ".join(preview_structure["missing_sections"])
+                    )
+
+                st.markdown(
+                    '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f'''
+                    <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
+                    ''',
+                    unsafe_allow_html=True,
+                )
+                st.caption(linkedin_dataset_note(has_real_data))
+                
+                next_steps: list[str] = []
+                for missing in preview_structure["missing_sections"]:
+                    next_steps.append(f"Add a {missing.lower()} section.")
+                if preview_structure["word_count"] < 150:
+                    next_steps.append(
+                        "Expand the resume — under 150 words limits matching signal."
+                    )
+                if preview_structure["bullet_count"] < 3:
+                    next_steps.append(
+                        "Use bulleted achievements to surface quantified wins."
+                    )
+                if preferred_location == "Anywhere":
+                    next_steps.append(
+                        "Set a preferred location for sharper salary comparison."
+                    )
+                if int(preview_profile["confidence"]) < 70:
+                    next_steps.append(
+                        "Strengthen the seniority signal with leadership or scope keywords."
+                    )
+                for skill in preview_profile["skills_missing"][:2]:
+                    next_steps.append(f"Consider adding evidence of {skill.lower()}.")
+                if not next_steps:
+                    next_steps.append(
+                        'Click "Analyze profile" to see salary ranges and matching roles.'
+                    )
+
+                steps_html = "".join(
+                    f"<li>{escape(step)}</li>" for step in next_steps[:5]
+                )
+                st.markdown(
+                    f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Next steps</div><ul class="next-steps-list">{steps_html}</ul></div>',
+                    unsafe_allow_html=True,
+                )
 
         if analyze_clicked and st.session_state.resume_text.strip():
             if not has_real_data:
