@@ -1,0 +1,78 @@
+resume_id,resume_text
+real-001,"Alex Reyes
+San Francisco, CA
+
+Summary
+Senior backend engineer with 7 years of experience building large-scale web services in Python and Go. Previously at Stripe and a fintech startup. Comfortable owning systems end-to-end.
+
+Skills
+Python, Go, PostgreSQL, REST APIs, Kubernetes, AWS, Docker, system design, observability, CI/CD
+
+Experience
+- Designed and shipped a payments routing service handling 40K requests per second.
+- Reduced latency on a hot path by 38% by introducing connection pooling and prepared statements.
+- Mentored 4 junior engineers across two teams.
+
+Education
+B.S. Computer Science, UC Berkeley
+"
+real-002,"Priya Subramanian
+Boston, MA
+
+Summary
+Data scientist focused on retention modeling and experimentation. 4 years of experience at consumer subscription companies.
+
+Skills
+Python, SQL, pandas, scikit-learn, A/B testing, statistics, Tableau, machine learning
+
+Experience
+- Built a churn prediction model that lifted retention by 12% over 6 months.
+- Designed and analyzed 9 multi-variant experiments shipping to 1.2M users.
+- Owned weekly retention readouts to leadership.
+
+Education
+M.S. Statistics, Boston University
+"
+real-003,"Marco DeLuca
+Brooklyn, NY
+
+I want a job in marketing. I am hardworking and a fast learner. Please consider me.
+
+I have done some work in social media and a campaign once.
+
+Tools: Excel
+"
+real-004,"Sara Lin
+Remote
+
+Summary
+Junior ML engineer with 2 years of professional experience. Recently rotated from a software engineering role into ML platform work.
+
+Skills
+Python, PyTorch, Docker, model serving, AWS, monitoring, machine learning
+
+Experience
+- Helped migrate inference services to a feature store, cutting drift incidents in half.
+- Built drift monitoring dashboards used by 3 production models.
+- Wrote integration tests covering the model-serving path; raised coverage from 35% to 72%.
+
+Education
+B.S. Computer Science, University of Washington
+"
+real-005,"Daniel Park
+Austin, TX
+
+Summary
+Mid-level data analyst with 5 years experiance in retail analytics and reporting. I have worked with multiple stakehldrs across product and finance teams.
+
+Skills
+SQL, Excel, Tableau, Looker, dbt, data cleaning, business metrics, stakeholder reporting
+
+Experience
+- Built and maintained dashboards used by 60 weekly stakeholders.
+- Automated reporting workflows that saved 24 analyst hours monthly.
+- Identified a 9% conversion lift in funnel analysys for the checkout team.
+
+Education
+B.A. Economics, UT Austin
+"

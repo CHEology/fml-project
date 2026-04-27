@@ -117,6 +117,39 @@ Eval artifacts are also gitignored. Current synthetic retrieval metrics should
 be treated as diagnostics for improving retrieval quality, not as final model
 performance claims.
 
+### Real resumes (optional, for validation)
+
+For end-to-end validation against real candidate resumes, download a public corpus into `data/raw/resumes/`. Recommended:
+[Kaggle "Updated Resume Dataset"](https://www.kaggle.com/datasets/snehaanbhawal/resume-dataset) (~960 resumes, category labels, no salary).
+
+Then normalise it into the canonical schema:
+
+```bash
+uv run python scripts/load_real_resumes.py \
+    --input data/raw/resumes/UpdatedResumeDataSet.csv \
+    --out   data/eval/real_resumes.parquet
+```
+
+The loader auto-detects CSV / parquet / JSONL files, directories of PDFs / TXTs (via `pdfplumber`), redacts emails / phones / URLs, and clamps very long uploads. See `scripts/load_real_resumes.py` for options.
+
+### Real-resume validation harness
+
+Once Task 2.1 (`ml.embeddings.Encoder`) is available, the validation harness exercises the full pipeline on real input:
+
+```bash
+uv run python scripts/validate_on_real_resumes.py \
+    --resumes data/eval/real_resumes.parquet \
+    --index   models/jobs.index \
+    --meta    models/jobs_meta.parquet \
+    --salary-model  models/resume_salary_model.pt \
+    --salary-scaler models/resume_salary_model.scaler.json \
+    --quality-model models/quality_model.pt
+```
+
+The harness reports rule-based quality (real-resume-safe; uses `ml.quality.score_resume_quality`), the learned MLP score plus its rank correlation with the rule, and a **self-consistency** salary metric: predicted q50 vs. the median salary of the top-k retrieved jobs. Each section degrades gracefully when artifacts are missing; pass `--smoke` to run with deterministic random embeddings.
+
+> **Calibration caveat.** The learned quality MLP was trained on the synthetic generator's `quality_score` formula and the JD-side salary model has a domain shift on resume embeddings. Treat numbers from these as proxies until real labels exist. The rule-based scorer + self-consistency salary check are what we trust on real input.
+
 ## Repo Structure
 
 ```
