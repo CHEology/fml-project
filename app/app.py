@@ -4,7 +4,7 @@ import importlib
 import importlib.util
 import re
 import sys
-from html import unescape
+from html import escape, unescape
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -55,7 +55,7 @@ Experience:
 - Built retrieval and ranking pipelines for job recommendations.
 - Shipped PyTorch models for salary forecasting and churn prediction.
 - Deployed Streamlit prototypes for internal stakeholders.
-- Worked with Python, SQL, pandas, FAISS, AWS, Docker, and Airflow.
+- Worked with Python, SQL, pandas, vector search, AWS, Docker, and Airflow.
 
 Skills:
 machine learning, recommender systems, nlp, embeddings, python, pytorch,
@@ -98,12 +98,57 @@ TRACK_KEYWORDS = {
         "stakeholder",
         "growth",
     ],
+    "Human Resources": [
+        "human resources",
+        "hr",
+        "talent",
+        "recruiting",
+        "benefits",
+        "employee relations",
+        "people operations",
+    ],
+    "Finance / Accounting": [
+        "finance",
+        "accounting",
+        "financial",
+        "budget",
+        "forecast",
+        "audit",
+        "fp&a",
+    ],
+    "Marketing": [
+        "marketing",
+        "campaign",
+        "brand",
+        "content",
+        "demand generation",
+        "seo",
+        "crm",
+    ],
+    "Sales / Customer Success": [
+        "sales",
+        "account",
+        "customer success",
+        "client",
+        "pipeline",
+        "renewal",
+        "quota",
+    ],
+    "Operations / Administration": [
+        "operations",
+        "office",
+        "administrative",
+        "process",
+        "vendor",
+        "scheduling",
+        "coordination",
+    ],
 }
 
 SKILL_GROUPS = {
     "Python": ["python"],
     "SQL": ["sql", "postgres", "snowflake"],
-    "ML Modeling": [
+    "Predictive Modeling": [
         "machine learning",
         "model",
         "xgboost",
@@ -114,6 +159,9 @@ SKILL_GROUPS = {
     "NLP / Retrieval": ["nlp", "llm", "embedding", "retrieval", "faiss", "vector"],
     "Cloud / Ops": ["aws", "gcp", "docker", "kubernetes", "airflow"],
     "Product Sense": ["experiment", "stakeholder", "roadmap", "product", "growth"],
+    "People Operations": ["hr", "talent", "recruiting", "benefits", "employee"],
+    "Financial Planning": ["finance", "accounting", "budget", "forecast", "audit"],
+    "Go-to-Market": ["marketing", "sales", "customer", "campaign", "account"],
 }
 
 SYNTHETIC_JOBS = [
@@ -126,7 +174,7 @@ SYNTHETIC_JOBS = [
         "state": "NY",
         "experience_level": "Mid-Senior level",
         "work_type": "Remote",
-        "text": "Build recommendation models, embeddings, and retrieval systems with Python, PyTorch, FAISS, and AWS.",
+        "text": "Build recommendation models, embeddings, and retrieval systems with Python, PyTorch, vector search, and AWS.",
     },
     {
         "job_id": 102,
@@ -191,6 +239,11 @@ BASE_SALARY = {
     "Software Engineering": 155000,
     "Analytics": 128000,
     "Product / Strategy": 145000,
+    "Human Resources": 102000,
+    "Finance / Accounting": 118000,
+    "Marketing": 112000,
+    "Sales / Customer Success": 125000,
+    "Operations / Administration": 94000,
 }
 
 SENIORITY_MULTIPLIER = {
@@ -203,38 +256,38 @@ SENIORITY_MULTIPLIER = {
 
 THEMES = {
     "Light": {
-        "bg_start": "#fcf6ed",
-        "bg_end": "#f4ecdf",
-        "flare_a": "rgba(255, 141, 93, 0.22)",
-        "flare_b": "rgba(12, 124, 120, 0.18)",
-        "panel": "rgba(255, 249, 241, 0.92)",
-        "ink": "#1d1b18",
-        "muted": "#6b6257",
-        "line": "rgba(29, 27, 24, 0.08)",
-        "pill_bg": "rgba(199, 239, 231, 0.65)",
-        "pill_ink": "#084744",
-        "hero_a": "rgba(255,255,255,0.78)",
-        "hero_b": "rgba(255,255,255,0.55)",
-        "shadow": "rgba(70, 42, 18, 0.08)",
-        "score_bg": "rgba(255, 141, 93, 0.16)",
-        "score_ink": "#9a4b1f",
+        "bg_start": "#f7f8fa",
+        "bg_end": "#eef1f4",
+        "flare_a": "transparent",
+        "flare_b": "transparent",
+        "panel": "#ffffff",
+        "ink": "#17202a",
+        "muted": "#667085",
+        "line": "#d9dee7",
+        "pill_bg": "#edf4ff",
+        "pill_ink": "#175cd3",
+        "hero_a": "#ffffff",
+        "hero_b": "#ffffff",
+        "shadow": "rgba(16, 24, 40, 0.08)",
+        "score_bg": "#ecfdf3",
+        "score_ink": "#027a48",
     },
     "Dark": {
-        "bg_start": "#121416",
-        "bg_end": "#1d2127",
-        "flare_a": "rgba(255, 141, 93, 0.16)",
-        "flare_b": "rgba(12, 124, 120, 0.16)",
-        "panel": "rgba(28, 33, 39, 0.92)",
-        "ink": "#eef2f4",
-        "muted": "#a7b0b5",
-        "line": "rgba(238, 242, 244, 0.09)",
-        "pill_bg": "rgba(12, 124, 120, 0.28)",
-        "pill_ink": "#c9f7f3",
-        "hero_a": "rgba(36,41,49,0.92)",
-        "hero_b": "rgba(26,30,36,0.86)",
-        "shadow": "rgba(0, 0, 0, 0.28)",
-        "score_bg": "rgba(255, 141, 93, 0.22)",
-        "score_ink": "#ffd6c4",
+        "bg_start": "#101418",
+        "bg_end": "#151a21",
+        "flare_a": "transparent",
+        "flare_b": "transparent",
+        "panel": "#1b222b",
+        "ink": "#f2f4f7",
+        "muted": "#a5adba",
+        "line": "#2d3642",
+        "pill_bg": "#182b45",
+        "pill_ink": "#84caff",
+        "hero_a": "#1b222b",
+        "hero_b": "#1b222b",
+        "shadow": "rgba(0, 0, 0, 0.24)",
+        "score_bg": "#12372a",
+        "score_ink": "#75e0a7",
     },
 }
 
@@ -298,12 +351,37 @@ TRACK_SUMMARIES = {
         "Built strategy narratives using product, revenue, and customer behavior signals.",
         "Connected business goals to measurable experiments and planning frameworks.",
     ],
+    "Human Resources": [
+        "Led recruiting, onboarding, and employee programs across growing teams.",
+        "Improved people operations workflows with clearer policies and reporting.",
+        "Partnered with managers on talent planning, retention, and employee relations.",
+    ],
+    "Finance / Accounting": [
+        "Owned budgeting, forecasting, reconciliations, and financial reporting workflows.",
+        "Built planning models that clarified spend, revenue, and operating tradeoffs.",
+        "Partnered with leaders on controls, audits, and monthly business reviews.",
+    ],
+    "Marketing": [
+        "Led campaign planning, lifecycle messaging, and brand performance reporting.",
+        "Improved acquisition and engagement programs through structured experiments.",
+        "Connected audience insight, content strategy, and measurable business outcomes.",
+    ],
+    "Sales / Customer Success": [
+        "Managed account planning, pipeline reviews, customer health, and renewal motions.",
+        "Built repeatable client workflows that improved retention and expansion signals.",
+        "Translated customer needs into concise plans for product and revenue teams.",
+    ],
+    "Operations / Administration": [
+        "Coordinated office operations, vendor processes, scheduling, and executive support.",
+        "Improved administrative workflows with clearer ownership and operating cadence.",
+        "Supported cross-functional teams through practical process and communication systems.",
+    ],
 }
 TRACK_SKILLS = {
     "Machine Learning": [
         "Python",
         "PyTorch",
-        "FAISS",
+        "Vector Search",
         "NLP",
         "Embeddings",
         "SQL",
@@ -345,6 +423,46 @@ TRACK_SKILLS = {
         "Growth",
         "Presentation",
     ],
+    "Human Resources": [
+        "Talent Acquisition",
+        "Employee Relations",
+        "Onboarding",
+        "HRIS",
+        "Benefits",
+        "Workforce Planning",
+    ],
+    "Finance / Accounting": [
+        "Budgeting",
+        "Forecasting",
+        "Accounting",
+        "Financial Reporting",
+        "Excel",
+        "Audit Support",
+    ],
+    "Marketing": [
+        "Campaign Strategy",
+        "Content",
+        "CRM",
+        "SEO",
+        "Lifecycle Marketing",
+        "Analytics",
+    ],
+    "Sales / Customer Success": [
+        "Account Management",
+        "Pipeline Review",
+        "Renewals",
+        "Customer Health",
+        "CRM",
+        "Executive Communication",
+    ],
+    "Operations / Administration": [
+        "Process Improvement",
+        "Vendor Management",
+        "Scheduling",
+        "Office Operations",
+        "Documentation",
+        "Stakeholder Support",
+    ],
 }
 TRACK_TITLES = {
     "Machine Learning": [
@@ -367,6 +485,31 @@ TRACK_TITLES = {
         "Product Strategy Lead",
         "Growth Strategist",
         "Product Analyst",
+    ],
+    "Human Resources": [
+        "People Operations Manager",
+        "Talent Acquisition Partner",
+        "HR Generalist",
+    ],
+    "Finance / Accounting": [
+        "Financial Analyst",
+        "Accounting Manager",
+        "FP&A Analyst",
+    ],
+    "Marketing": [
+        "Marketing Manager",
+        "Growth Marketing Specialist",
+        "Lifecycle Marketing Lead",
+    ],
+    "Sales / Customer Success": [
+        "Customer Success Manager",
+        "Account Executive",
+        "Revenue Operations Analyst",
+    ],
+    "Operations / Administration": [
+        "Operations Manager",
+        "Administrative Coordinator",
+        "Business Operations Associate",
     ],
 }
 SENIORITY_LABELS = {
@@ -407,6 +550,36 @@ TRACK_INITIATIVES = {
         "growth prioritization framework",
         "portfolio strategy review",
     ],
+    "Human Resources": [
+        "structured hiring workflow",
+        "onboarding and retention program",
+        "employee relations intake process",
+        "manager enablement cadence",
+    ],
+    "Finance / Accounting": [
+        "monthly close workflow",
+        "budget variance review",
+        "forecast planning model",
+        "audit readiness program",
+    ],
+    "Marketing": [
+        "lifecycle campaign calendar",
+        "brand performance review",
+        "content measurement workflow",
+        "demand generation program",
+    ],
+    "Sales / Customer Success": [
+        "account health review",
+        "renewal planning workflow",
+        "pipeline inspection cadence",
+        "customer expansion program",
+    ],
+    "Operations / Administration": [
+        "vendor management process",
+        "office operations rhythm",
+        "executive scheduling workflow",
+        "cross-team coordination system",
+    ],
 }
 TRACK_PROJECTS = {
     "Machine Learning": [
@@ -434,6 +607,31 @@ TRACK_PROJECTS = {
         "roadmap tradeoff memo series",
         "customer segment sizing model",
     ],
+    "Human Resources": [
+        "talent funnel scorecard",
+        "onboarding journey map",
+        "employee feedback tracker",
+    ],
+    "Finance / Accounting": [
+        "budget variance model",
+        "monthly close checklist",
+        "cash planning dashboard",
+    ],
+    "Marketing": [
+        "campaign performance brief",
+        "content calendar scorecard",
+        "audience segment review",
+    ],
+    "Sales / Customer Success": [
+        "renewal risk dashboard",
+        "account planning toolkit",
+        "customer health review",
+    ],
+    "Operations / Administration": [
+        "vendor tracker",
+        "office workflow audit",
+        "meeting cadence planner",
+    ],
 }
 TRACK_METRICS = {
     "Machine Learning": "matching quality",
@@ -441,6 +639,11 @@ TRACK_METRICS = {
     "Software Engineering": "service reliability",
     "Analytics": "report turnaround time",
     "Product / Strategy": "planning clarity",
+    "Human Resources": "hiring cycle time",
+    "Finance / Accounting": "forecast accuracy",
+    "Marketing": "campaign conversion",
+    "Sales / Customer Success": "renewal readiness",
+    "Operations / Administration": "process turnaround time",
 }
 SECTION_ALIASES = {
     "Summary": ["summary", "professional summary", "profile"],
@@ -463,24 +666,21 @@ def inject_styles(theme_name: str) -> None:
     theme = THEMES[theme_name]
     css = """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
         :root {
             --panel: __PANEL__;
             --ink: __INK__;
             --muted: __MUTED__;
             --line: __LINE__;
-            --sun: #ff8d5d;
-            --teal: #0c7c78;
-            --gold: #d8a24c;
-            --mint: #c7efe7;
+            --accent: #175cd3;
+            --accent-soft: __PILL_BG__;
+            --success: #027a48;
+            --warning: #b54708;
         }
 
         .stApp {
-            background:
-                radial-gradient(circle at top left, __FLARE_A__, transparent 26%),
-                radial-gradient(circle at top right, __FLARE_B__, transparent 24%),
-                linear-gradient(180deg, __BG_START__ 0%, __BG_END__ 100%);
+            background: linear-gradient(180deg, __BG_START__ 0%, __BG_END__ 100%);
             color: var(--ink);
         }
 
@@ -494,7 +694,7 @@ def inject_styles(theme_name: str) -> None:
         }
 
         html, body, [class*="css"] {
-            font-family: "Space Grotesk", "Avenir Next", sans-serif;
+            font-family: "Inter", "Avenir Next", sans-serif;
         }
 
         .mono {
@@ -502,12 +702,19 @@ def inject_styles(theme_name: str) -> None:
             color: var(--muted);
         }
 
+        .sidebar-source-path {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
         .hero {
-            background: linear-gradient(135deg, __HERO_A__, __HERO_B__);
+            background: __HERO_A__;
             border: 1px solid var(--line);
-            border-radius: 26px;
-            padding: 1.5rem 1.6rem 1.3rem 1.6rem;
-            box-shadow: 0 18px 48px __SHADOW__;
+            border-radius: 8px;
+            padding: 1.35rem 1.45rem 1.2rem 1.45rem;
+            box-shadow: 0 10px 24px __SHADOW__;
             margin-bottom: 1rem;
         }
 
@@ -515,14 +722,15 @@ def inject_styles(theme_name: str) -> None:
             letter-spacing: 0.12em;
             text-transform: uppercase;
             font-size: 0.76rem;
-            color: var(--teal);
+            color: var(--accent);
             font-weight: 700;
         }
 
         .hero h1 {
             margin: 0.3rem 0 0.7rem 0;
-            font-size: 3rem;
-            line-height: 0.95;
+            font-size: 2.25rem;
+            line-height: 1.08;
+            letter-spacing: 0;
         }
 
         .hero p {
@@ -552,9 +760,9 @@ def inject_styles(theme_name: str) -> None:
         .metric-card, .info-card, .job-card {
             background: var(--panel);
             border: 1px solid var(--line);
-            border-radius: 22px;
+            border-radius: 8px;
             padding: 1rem 1.1rem;
-            box-shadow: 0 12px 28px __SHADOW__;
+            box-shadow: 0 6px 16px __SHADOW__;
             height: 100%;
         }
 
@@ -567,7 +775,7 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .metric-value {
-            font-size: 1.9rem;
+            font-size: 1.65rem;
             font-weight: 700;
             line-height: 1.05;
         }
@@ -579,7 +787,7 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .job-title {
-            font-size: 1.05rem;
+            font-size: 1.02rem;
             font-weight: 700;
             margin-bottom: 0.2rem;
         }
@@ -596,23 +804,94 @@ def inject_styles(theme_name: str) -> None:
             border-radius: 999px;
             background: __SCORE_BG__;
             color: __SCORE_INK__;
-            font-weight: 700;
+            font-weight: 600;
             font-size: 0.8rem;
             margin-bottom: 0.6rem;
         }
 
         .salary-band {
-            background: linear-gradient(90deg, rgba(12,124,120,0.18), rgba(255,141,93,0.18));
+            background: var(--accent-soft);
             border-radius: 999px;
-            height: 14px;
-            margin: 0.45rem 0 0.2rem 0;
+            height: 10px;
+            margin: 0.8rem 0 0.65rem 0;
             overflow: hidden;
         }
 
         .salary-fill {
-            background: linear-gradient(90deg, #0c7c78, #ff8d5d);
-            height: 14px;
+            background: var(--accent);
+            height: 10px;
             border-radius: 999px;
+        }
+
+        .salary-headline {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.75rem;
+            align-items: end;
+            margin-bottom: 0.4rem;
+        }
+
+        .salary-main {
+            font-size: 2.15rem;
+            line-height: 1;
+            font-weight: 700;
+        }
+
+        .salary-range {
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        .salary-source {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 0.35rem 0.6rem;
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .salary-strip {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(7.5rem, 1fr));
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.03);
+            margin-top: 0.75rem;
+        }
+
+        .salary-step {
+            padding: 0.68rem 0.75rem;
+            border-left: 1px solid var(--line);
+        }
+
+        .salary-step:first-child {
+            border-left: 0;
+        }
+
+        .salary-step-label {
+            color: var(--muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+
+        .salary-step-value {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-top: 0.18rem;
+            white-space: nowrap;
+        }
+
+        .evidence-line {
+            color: var(--muted);
+            font-size: 0.86rem;
+            line-height: 1.45;
+            margin-top: 0.7rem;
         }
 
         .section-label {
@@ -635,7 +914,7 @@ def inject_styles(theme_name: str) -> None:
         .panel-kicker {
             text-transform: uppercase;
             letter-spacing: 0.11em;
-            color: var(--teal);
+            color: var(--accent);
             font-size: 0.74rem;
             font-weight: 700;
             margin-bottom: 0.2rem;
@@ -654,11 +933,11 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .signal-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+            background: rgba(255,255,255,0.03);
             border: 1px solid var(--line);
-            border-radius: 18px;
+            border-radius: 8px;
             padding: 0.9rem 0.95rem;
-            min-height: 124px;
+            min-height: 110px;
         }
 
         .signal-label {
@@ -700,7 +979,7 @@ def inject_styles(theme_name: str) -> None:
         .callout {
             border: 1px solid var(--line);
             background: rgba(255,255,255,0.04);
-            border-radius: 18px;
+            border-radius: 8px;
             padding: 0.95rem 1rem;
             margin-top: 0.75rem;
         }
@@ -729,13 +1008,13 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .status-pill.ready {
-            background: rgba(12,124,120,0.18);
-            color: #0c7c78;
+            background: __SCORE_BG__;
+            color: __SCORE_INK__;
         }
 
         .status-pill.missing {
-            background: rgba(255,141,93,0.16);
-            color: #b85d2d;
+            background: rgba(181, 71, 8, 0.12);
+            color: var(--warning);
         }
 
         .stTabs [data-baseweb="tab-list"] {
@@ -751,8 +1030,61 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .stTabs [aria-selected="true"] {
-            background: rgba(12,124,120,0.16);
-            color: var(--ink);
+            background: __PILL_BG__;
+            color: __PILL_INK__;
+            border-color: __PILL_INK__;
+        }
+
+        @media (max-width: 900px) {
+            .salary-headline {
+                grid-template-columns: 1fr;
+                align-items: start;
+            }
+
+            .salary-source {
+                width: fit-content;
+            }
+
+            .salary-strip {
+                grid-template-columns: repeat(2, minmax(8rem, 1fr));
+            }
+
+            .salary-step {
+                border-left: 0;
+                border-top: 1px solid var(--line);
+            }
+
+            .salary-step:first-child,
+            .salary-step:nth-child(2) {
+                border-top: 0;
+            }
+
+            .salary-step:nth-child(even) {
+                border-left: 1px solid var(--line);
+            }
+        }
+
+        @media (max-width: 520px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+
+            .salary-main {
+                font-size: 1.75rem;
+            }
+
+            .salary-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .salary-step,
+            .salary-step:nth-child(even) {
+                border-left: 0;
+            }
+
+            .salary-step:first-child {
+                border-top: 0;
+            }
         }
         </style>
     """
@@ -789,7 +1121,7 @@ def load_jobs() -> tuple[pd.DataFrame, str, bool]:
             True,
         )
 
-    return pd.DataFrame(SYNTHETIC_JOBS), "Synthetic demo dataset", False
+    return pd.DataFrame(SYNTHETIC_JOBS), "Sample role catalog", False
 
 
 def artifact_status() -> list[dict[str, Any]]:
@@ -964,7 +1296,7 @@ def fetch_public_webpage_text(url: str) -> tuple[str, str]:
     return cleaned[:8000], parsed.netloc.lower()
 
 
-def generate_fake_resume(
+def generate_sample_profile(
     track: str,
     seniority: str,
     preferred_location: str,
@@ -1019,7 +1351,7 @@ def generate_fake_resume(
 
     return f"""{name}
 {headline}
-{preferred_place} | {contact_slug}@example.com | github.com/{contact_slug} | linkedin.com/in/{contact_slug}-demo
+{preferred_place} | {contact_slug}@example.com | github.com/{contact_slug} | linkedin.com/in/{contact_slug}
 
 PROFESSIONAL SUMMARY
 {track} operator with {years} years of experience turning ambiguous business goals into reliable systems, clear metrics, and execution plans. Strongest in {skills[0]}, {skills[1]}, and {skills[2]}, with a bias toward shipping practical results instead of isolated analysis.
@@ -1037,7 +1369,7 @@ EXPERIENCE
 - Ran {experiment_count}+ scoped iterations across analytics, automation, and tooling, improving speed-to-insight by {impact_two}% and creating cleaner handoffs between technical and business teams.
 
 SELECTED PROJECTS
-- {project_name.title()}: Created a reusable demo asset that combined representative market data, narrative framing, and actionable reporting for internal reviews.
+- {project_name.title()}: Created a reusable market review asset that combined representative data, narrative framing, and actionable reporting for internal reviews.
 - Resume Market Mapper: Synthesized public role patterns into a structured candidate story and surfaced the missing proof points needed for stronger role alignment.
 
 EDUCATION
@@ -1050,8 +1382,8 @@ SKILLS
 
 def linkedin_dataset_note(has_real_data: bool) -> str:
     if has_real_data:
-        return "Using the processed LinkedIn Job Postings Kaggle dataset from the local pipeline."
-    return "Using a synthetic LinkedIn-style jobs catalog because no processed local dataset is available yet."
+        return "Using the local LinkedIn job catalog."
+    return "Using sample roles because the local job catalog is not available yet."
 
 
 def extract_uploaded_text(uploaded_file) -> str:
@@ -1074,15 +1406,13 @@ def extract_uploaded_text(uploaded_file) -> str:
     return ""
 
 
-def detect_profile(resume_text: str, preferred_track: str) -> dict[str, Any]:
+def detect_profile(resume_text: str) -> dict[str, Any]:
     lowered = resume_text.lower()
     track_scores = {
         track: sum(lowered.count(keyword) for keyword in keywords)
         for track, keywords in TRACK_KEYWORDS.items()
     }
     detected_track = max(track_scores, key=track_scores.get)
-    if track_scores[detected_track] == 0:
-        detected_track = preferred_track
 
     seniority = "Mid"
     if any(
@@ -1230,12 +1560,15 @@ def fmt_money(value: float | int | None) -> str:
 
 
 def render_metric_card(label: str, value: str, helper: str) -> None:
+    label_html = escape(str(label))
+    value_html = escape(str(value))
+    helper_html = escape(str(helper))
     st.markdown(
         f"""
         <div class="metric-card">
-            <div class="metric-label">{label}</div>
-            <div class="metric-value">{value}</div>
-            <div class="mono">{helper}</div>
+            <div class="metric-label">{label_html}</div>
+            <div class="metric-value">{value_html}</div>
+            <div class="mono">{helper_html}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1243,12 +1576,15 @@ def render_metric_card(label: str, value: str, helper: str) -> None:
 
 
 def render_panel_banner(kicker: str, title: str, body: str) -> None:
+    kicker_html = escape(str(kicker))
+    title_html = escape(str(title))
+    body_html = escape(str(body))
     st.markdown(
         f"""
         <div class="panel-banner">
-            <div class="panel-kicker">{kicker}</div>
-            <div class="panel-title">{title}</div>
-            <div class="panel-copy">{body}</div>
+            <div class="panel-kicker">{kicker_html}</div>
+            <div class="panel-title">{title_html}</div>
+            <div class="panel-copy">{body_html}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1256,12 +1592,15 @@ def render_panel_banner(kicker: str, title: str, body: str) -> None:
 
 
 def render_signal_card(label: str, value: str, copy: str) -> None:
+    label_html = escape(str(label))
+    value_html = escape(str(value))
+    copy_html = escape(str(copy))
     st.markdown(
         f"""
         <div class="signal-card">
-            <div class="signal-label">{label}</div>
-            <div class="signal-value">{value}</div>
-            <div class="signal-copy">{copy}</div>
+            <div class="signal-label">{label_html}</div>
+            <div class="signal-value">{value_html}</div>
+            <div class="signal-copy">{copy_html}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1269,18 +1608,24 @@ def render_signal_card(label: str, value: str, copy: str) -> None:
 
 
 def render_job_card(row: pd.Series) -> None:
-    summary = str(row.get("text", ""))[:190]
+    summary = escape(str(row.get("text", ""))[:190])
     similarity = row.get("similarity", np.nan)
-    score_label = (
-        f"Cosine {float(similarity):.3f}" if not pd.isna(similarity) else "FAISS match"
-    )
+    score_label = "Strong match"
+    if not pd.isna(similarity):
+        score_label = f"{float(similarity) * 100:.0f}% similarity"
+    title = escape(str(row.get("title", "Untitled role")))
+    company = escape(str(row.get("company_name", "Unknown company")))
+    location = escape(str(row.get("location", "Unknown location")))
+    work_type = escape(str(row.get("work_type", "Work type TBD")))
+    experience = escape(str(row.get("experience_level", "Experience TBD")))
+    salary = fmt_money(row.get("salary_annual"))
     st.markdown(
         f"""
         <div class="job-card">
             <div class="score-chip">{score_label}</div>
-            <div class="job-title">{row.get("title", "Untitled role")}</div>
-            <div class="job-meta">{row.get("company_name", "Unknown company")} · {row.get("location", "Unknown location")} · {row.get("work_type", "Work type TBD")}</div>
-            <div><strong>{fmt_money(row.get("salary_annual"))}</strong> · {row.get("experience_level", "Experience TBD")}</div>
+            <div class="job-title">{title}</div>
+            <div class="job-meta">{company} · {location} · {work_type}</div>
+            <div><strong>{salary}</strong> · {experience}</div>
             <div class="mono" style="margin-top:0.6rem;">{summary}</div>
         </div>
         """,
@@ -1289,50 +1634,75 @@ def render_job_card(row: pd.Series) -> None:
 
 
 def render_salary_band(band: dict[str, Any]) -> None:
-    st.markdown(
-        '<div class="section-label">Matched-market salary corridor</div>',
-        unsafe_allow_html=True,
-    )
-    width = max(
-        12, min(100, int((band["q75"] - band["q10"]) / max(band["q90"], 1) * 100))
-    )
-    start = max(0, int(band["q10"] / max(band["q90"], 1) * 100))
+    source_labels = {
+        "retrieved_jobs": "Matched roles",
+        "bls": "Occupation wage data",
+        "neural_model": "Model estimate",
+    }
+    evidence = band.get("evidence", {})
+    primary = source_labels.get(str(band.get("primary_source")), "Available evidence")
+    confidence = str(band.get("confidence", "unknown")).title()
+    low = fmt_money(band["q10"])
+    midpoint = fmt_money(band["q50"])
+    high = fmt_money(band["q90"])
+    source_badge = escape(f"{primary} · {confidence}")
     st.markdown(
         f"""
-        <div class="salary-band">
-            <div class="salary-fill" style="width:{width}%; margin-left:{start}%;"></div>
+        <div class="section-label">Matched-market salary range</div>
+        <div class="salary-headline">
+            <div>
+                <div class="salary-main">{midpoint}</div>
+                <div class="salary-range">{low} to {high} expected market range</div>
+            </div>
+            <div class="salary-source">{source_badge}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    cols = st.columns(5)
-    for col, key in zip(cols, ("q10", "q25", "q50", "q75", "q90"), strict=True):
-        col.metric(key.upper(), fmt_money(band[key]))
-
-    source_labels = {
-        "retrieved_jobs": "retrieved job salaries",
-        "bls": "BLS occupation wages",
-        "neural_model": "neural salary model",
+    st.markdown(
+        """
+        <div class="salary-band">
+            <div class="salary-fill" style="width:100%;"></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    quantile_labels = {
+        "q10": "Low",
+        "q25": "Lower mid",
+        "q50": "Median",
+        "q75": "Upper mid",
+        "q90": "High",
     }
-    evidence = band.get("evidence", {})
-    primary = source_labels.get(str(band.get("primary_source")), "available evidence")
-    confidence = str(band.get("confidence", "unknown")).title()
+    cells = "".join(
+        '<div class="salary-step">'
+        f'<div class="salary-step-label">{escape(quantile_labels[key])}</div>'
+        f'<div class="salary-step-value">{escape(fmt_money(band[key]))}</div>'
+        "</div>"
+        for key in ("q10", "q25", "q50", "q75", "q90")
+    )
+    st.markdown(f'<div class="salary-strip">{cells}</div>', unsafe_allow_html=True)
+
     pieces = [
-        f"Primary source: {primary}",
+        f"Source: {primary}",
         f"Confidence: {confidence}",
     ]
     salary_count = evidence.get("salary_count")
     if salary_count is not None:
-        pieces.append(f"{int(salary_count)} salary-bearing matches")
+        pieces.append(f"{int(salary_count)} roles with salary data")
     median_similarity = evidence.get("median_similarity")
     if median_similarity is not None and not pd.isna(median_similarity):
-        pieces.append(f"median cosine {float(median_similarity):.3f}")
+        pieces.append(f"{float(median_similarity) * 100:.0f}% median similarity")
     occupation_title = evidence.get("occupation_title")
     if occupation_title:
         pieces.append(str(occupation_title))
     if evidence.get("model_bls_disagreement"):
         pieces.append("supporting sources disagree")
-    st.caption(" · ".join(pieces))
+    evidence_html = escape(" · ".join(pieces))
+    st.markdown(
+        f'<div class="evidence-line">{evidence_html}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def main() -> None:
@@ -1351,9 +1721,9 @@ def main() -> None:
 
     with st.sidebar:
         st.markdown("## ResuMatch")
-        st.caption("Local frontend shell for the NYU final project")
+        st.caption("Resume market analysis and role matching")
         theme_choice = st.radio(
-            "Background mode",
+            "Theme",
             ["Light", "Dark"],
             index=0 if st.session_state.theme_name == "Light" else 1,
         )
@@ -1361,11 +1731,20 @@ def main() -> None:
             st.session_state.theme_name = theme_choice
             st.rerun()
 
+        source_path = Path(data_source)
+        source_label = source_path.name if source_path.suffix else data_source
+        source_parent = str(source_path.parent) if source_path.suffix else ""
+        source_detail = (
+            f'<div class="sidebar-source-path">{escape(source_parent)}</div>'
+            if source_parent and source_parent != "."
+            else ""
+        )
         st.markdown(
             f"""
             <div class="info-card">
-                <div class="info-title">Runtime mode</div>
-                <div class="mono">{data_source}</div>
+                <div class="info-title">Data source</div>
+                <div><strong>{escape(source_label)}</strong></div>
+                {source_detail}
             </div>
             """,
             unsafe_allow_html=True,
@@ -1376,29 +1755,29 @@ def main() -> None:
             st.session_state.resume_source = "Built-in sample resume"
             st.rerun()
 
-        st.markdown("### Artifact status")
-        for item in status:
-            flag = "Ready" if item["ready"] else "Missing"
-            st.write(f"{flag}: `{item['path']}`")
+        with st.expander("Data readiness", expanded=False):
+            for item in status:
+                flag = "Ready" if item["ready"] else "Missing"
+                st.write(f"{flag}: `{item['path']}`")
 
         st.info(linkedin_dataset_note(has_real_data))
 
     st.markdown(
         """
         <div class="hero">
-            <div class="eyebrow">Resume intelligence • artifact-backed ML</div>
-            <h1>ResuMatch turns a raw resume into market direction.</h1>
+            <div class="eyebrow">Resume market intelligence</div>
+            <h1>Understand role fit, salary range, and market position.</h1>
             <p>
-                Upload or paste a resume to query the FAISS job index, predict a PyTorch
-                quantile-regression salary range, and locate the resume within the clustered
-                LinkedIn job market.
+                Upload or paste a resume to compare it with salary-bearing LinkedIn roles,
+                review relevant opportunities, and identify practical ways to strengthen
+                the candidate profile.
             </p>
             <div class="pill-row">
-                <span class="pill">Resume intake</span>
-                <span class="pill">FAISS retrieval</span>
-                <span class="pill">Quantile salary model</span>
-                <span class="pill">KMeans market clusters</span>
-                <span class="pill">Resume studio</span>
+                <span class="pill">Resume profile</span>
+                <span class="pill">Role matching</span>
+                <span class="pill">Salary range</span>
+                <span class="pill">Market position</span>
+                <span class="pill">Profile guidance</span>
             </div>
         </div>
         """,
@@ -1420,11 +1799,11 @@ def main() -> None:
     with metric_cols[2]:
         ready_count = sum(item["ready"] for item in status)
         render_metric_card(
-            "Artifacts ready", f"{ready_count}/{len(status)}", "pipeline completeness"
+            "Data readiness", f"{ready_count}/{len(status)}", "available resources"
         )
 
     launchpad_tab, radar_tab, pipeline_tab = st.tabs(
-        ["Launchpad", "Job Radar", "Pipeline"]
+        ["Resume Analysis", "Market Overview", "Setup"]
     )
 
     with launchpad_tab:
@@ -1432,9 +1811,9 @@ def main() -> None:
 
         with left, st.container(border=True):
             render_panel_banner(
-                "Input Studio",
-                "Build the candidate story",
-                "Upload a real resume, paste a summary, or synthesize a fake profile for a fast local demo.",
+                "Resume Input",
+                "Add candidate information",
+                "Upload a resume, paste profile text, or create a sample profile for review.",
             )
             uploader = st.file_uploader(
                 "Upload a resume (.pdf or .txt)", type=["pdf", "txt"]
@@ -1490,53 +1869,56 @@ def main() -> None:
                 height=280,
                 placeholder="Paste a resume, portfolio bio, or achievement summary here...",
             )
+            preview_text = st.session_state.resume_text.strip() or SAMPLE_RESUME
+            preview_profile = detect_profile(preview_text)
 
-            pref_a, pref_b, pref_c, pref_d = st.columns(4)
+            pref_a, pref_b, pref_c = st.columns([1, 1, 1], gap="medium")
             with pref_a:
-                preferred_track = st.selectbox("Focus track", list(TRACK_KEYWORDS))
-            with pref_b:
                 preferred_location = st.selectbox(
                     "Preferred location",
                     ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"],
                 )
+            with pref_b:
+                seniority_level = st.selectbox(
+                    "Seniority level", list(SENIORITY_MULTIPLIER)
+                )
             with pref_c:
-                fake_level = st.selectbox("Demo seniority", list(SENIORITY_MULTIPLIER))
-            with pref_d:
                 remote_only = st.toggle("Remote only", value=False)
+            st.caption(
+                f"Detected focus: {preview_profile['track']}. The app infers this from the resume instead of asking you to choose a track."
+            )
 
             action_a, action_b = st.columns(2)
             with action_a:
-                if st.button("Generate fake resume", width="stretch"):
-                    st.session_state.resume_text = generate_fake_resume(
-                        preferred_track,
-                        fake_level,
+                if st.button("Generate sample profile", width="stretch"):
+                    st.session_state.resume_text = generate_sample_profile(
+                        preview_profile["track"],
+                        seniority_level,
                         preferred_location,
                         jobs,
                     )
                     st.session_state.resume_source = (
-                        f"Generated {preferred_track} demo resume"
+                        f"Generated {preview_profile['track']} sample profile"
                     )
                     st.rerun()
             with action_b:
                 analyze_clicked = st.button(
-                    "Run ML analysis", type="primary", width="stretch"
+                    "Run analysis", type="primary", width="stretch"
                 )
 
         with right, st.container(border=True):
             render_panel_banner(
-                "Signal Deck",
-                "See how the app will read the candidate",
-                "The right panel mirrors the left panel's baseline so both surfaces stay visually locked while you edit inputs.",
+                "Candidate Snapshot",
+                "Preview the profile signals",
+                "A concise read of the candidate direction, seniority, structure, and available market data.",
             )
-            preview_text = st.session_state.resume_text.strip() or SAMPLE_RESUME
-            preview_profile = detect_profile(preview_text, preferred_track)
             preview_structure = resume_structure(preview_text)
             signal_cols = st.columns(4, gap="small")
             with signal_cols[0]:
                 render_signal_card(
-                    "Track",
+                    "Detected focus",
                     preview_profile["track"],
-                    "Dominant role direction from resume language.",
+                    "Inferred from resume language and market evidence.",
                 )
             with signal_cols[1]:
                 render_signal_card(
@@ -1553,24 +1935,28 @@ def main() -> None:
             with signal_cols[3]:
                 render_signal_card(
                     "Data mode",
-                    "Real" if has_real_data else "Demo",
-                    "Switches to local LinkedIn data when artifacts exist.",
+                    "Live data" if has_real_data else "Sample data",
+                    "Uses the local LinkedIn job catalog when it is available.",
                 )
 
+            profile_track_html = escape(str(preview_profile["track"]))
+            profile_confidence_html = escape(str(preview_profile["confidence"]))
             st.markdown(
-                '<div class="callout"><div class="callout-title">Resume read</div><div class="callout-body">The app currently sees a candidate oriented toward <strong>{}</strong> with approximately <strong>{}%</strong> confidence. Preferred location and demo seniority then bias the market output and fake-resume generator.</div></div>'.format(
-                    preview_profile["track"], preview_profile["confidence"]
-                ),
+                f'<div class="callout"><div class="callout-title">Profile read</div><div class="callout-body">The current resume reads as a <strong>{profile_track_html}</strong> profile with approximately <strong>{profile_confidence_html}%</strong> confidence. Location and seniority preferences guide the market comparison.</div></div>',
                 unsafe_allow_html=True,
             )
 
+            resume_source_html = escape(str(st.session_state.resume_source))
+            word_count_html = escape(str(preview_structure["word_count"]))
+            bullet_count_html = escape(str(preview_structure["bullet_count"]))
+            link_count_html = escape(str(preview_structure["link_count"]))
             st.markdown(
                 f"""
                 <div class="callout">
                     <div class="callout-title">Resume source</div>
                     <div class="callout-body">
-                        <strong>{st.session_state.resume_source}</strong><br/>
-                        {preview_structure["word_count"]} words • {preview_structure["bullet_count"]} bullets • {preview_structure["link_count"]} links detected
+                        <strong>{resume_source_html}</strong><br/>
+                        {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
                     </div>
                 </div>
                 """,
@@ -1588,7 +1974,7 @@ def main() -> None:
             st.markdown(
                 '<div class="chip-cloud">'
                 + "".join(
-                    f'<span class="mini-chip">{skill}</span>'
+                    f'<span class="mini-chip">{escape(str(skill))}</span>'
                     for skill in present_skills[:6]
                 )
                 + "</div>",
@@ -1605,7 +1991,7 @@ def main() -> None:
             st.markdown(
                 '<div class="chip-cloud">'
                 + "".join(
-                    f'<span class="mini-chip">{section}</span>'
+                    f'<span class="mini-chip">{escape(str(section))}</span>'
                     for section in structure_chips
                 )
                 + "</div>",
@@ -1618,12 +2004,12 @@ def main() -> None:
                 )
 
             st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Data feed</div>',
+                '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
                 unsafe_allow_html=True,
             )
             st.markdown(
                 f"""
-                <span class="status-pill {"ready" if has_real_data else "missing"}">{"Processed LinkedIn parquet" if has_real_data else "Synthetic LinkedIn-style feed"}</span>
+                <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
                 """,
                 unsafe_allow_html=True,
             )
@@ -1632,17 +2018,17 @@ def main() -> None:
         if analyze_clicked and st.session_state.resume_text.strip():
             if not has_real_data:
                 st.error(
-                    "Real processed data is required for ML analysis. Run preprocessing before using this path."
+                    "The job catalog is not ready. Run preprocessing before using this analysis path."
                 )
                 return
             if not artifacts_ready(status, "retrieval"):
                 st.error(
-                    "Retrieval artifacts are missing. Build `models/jobs.index`, `models/jobs_meta.parquet`, and `models/job_embeddings.npy` first."
+                    "Role-matching data is not ready. Build the job index and metadata first."
                 )
                 return
 
             try:
-                with st.spinner("Encoding resume and querying FAISS..."):
+                with st.spinner("Matching resume to relevant roles..."):
                     retriever, encoder = load_retriever_resource()
                     resume_embedding = encode_resume(
                         encoder, st.session_state.resume_text
@@ -1658,7 +2044,7 @@ def main() -> None:
 
                 neural_band = None
                 if salary_artifacts_ready(PROJECT_ROOT):
-                    with st.spinner("Predicting neural salary reference..."):
+                    with st.spinner("Calculating salary reference..."):
                         salary_model, salary_scaler = load_salary_resource()
                         neural_band = salary_band_from_model(
                             salary_model, resume_embedding, salary_scaler
@@ -1684,7 +2070,7 @@ def main() -> None:
 
                 cluster = None
                 if artifacts_ready(status, "clustering"):
-                    with st.spinner("Assigning market cluster..."):
+                    with st.spinner("Finding market segment..."):
                         kmeans_model, _, cluster_labels = load_cluster_resource()
                         cluster = cluster_position(
                             kmeans_model, cluster_labels, resume_embedding
@@ -1694,102 +2080,113 @@ def main() -> None:
                     st.session_state.resume_text, matches, cluster
                 )
             except Exception as exc:  # pragma: no cover - UI guardrail
-                st.error(f"ML analysis failed: {exc}")
+                st.error(f"Analysis failed: {exc}")
                 return
 
             st.write("")
-            top_row = st.columns([0.65, 0.35], gap="large")
-            with top_row[0]:
-                render_panel_banner(
-                    "Market Readout",
-                    "Salary corridor",
-                    "This matched-market estimate is anchored to the salaries in retrieved roles, with optional BLS and model references.",
-                )
-                with st.container(border=True):
-                    if band is not None:
-                        render_salary_band(band)
-                    else:
-                        st.warning(
-                            "No salary evidence is available from retrieved jobs, BLS, or the neural model."
-                        )
-            with top_row[1]:
-                render_panel_banner(
-                    "Profile Signal",
-                    "Market cluster",
-                    "A compact view of where the resume lands in the KMeans job-market segmentation.",
-                )
-                with st.container(border=True):
-                    if cluster is not None:
-                        signal_cols = st.columns(2, gap="small")
-                        with signal_cols[0]:
-                            render_signal_card(
-                                "Cluster",
-                                str(cluster["cluster_id"]),
-                                cluster["label"],
-                            )
-                        with signal_cols[1]:
-                            render_signal_card(
-                                "Distance",
-                                f"{cluster['distance']:.3f}",
-                                "Nearest-centroid distance.",
-                            )
-                        st.markdown(
-                            '<div class="chip-cloud">'
-                            + "".join(
-                                f'<span class="mini-chip">{term}</span>'
-                                for term in cluster["top_terms"][:6]
-                            )
-                            + "</div>",
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.warning(
-                            "Clustering artifacts are missing, so market position is unavailable."
-                        )
+            render_panel_banner(
+                "Market Readout",
+                "Salary range",
+                "This estimate is anchored to the salary data from the most relevant roles.",
+            )
+            with st.container(border=True):
+                if band is not None:
+                    render_salary_band(band)
+                else:
+                    st.warning(
+                        "No salary evidence is available from retrieved jobs, BLS, or the neural model."
+                    )
 
             st.write("")
-            insight_cols = st.columns(2, gap="large")
-            with insight_cols[0]:
-                render_panel_banner(
-                    "Retrieved Evidence",
-                    "FAISS match strength",
-                    "These signals come from cosine similarity against the real job index.",
-                )
-                with st.container(border=True):
+            render_panel_banner(
+                "Profile Signal",
+                "Market segment and match evidence",
+                "The app infers the closest market segment and shows the strength of the role matches in one row.",
+            )
+            with st.container(border=True):
+                signal_cols = st.columns(4, gap="small")
+                with signal_cols[0]:
+                    if cluster is not None:
+                        render_signal_card(
+                            "Segment",
+                            str(cluster["cluster_id"]),
+                            cluster["label"],
+                        )
+                    else:
+                        render_signal_card(
+                            "Segment",
+                            "Unavailable",
+                            "Market segment data is not available.",
+                        )
+                with signal_cols[1]:
+                    if cluster is not None:
+                        alignment = max(
+                            0, min(100, int(round(100 / (1 + cluster["distance"]))))
+                        )
+                        render_signal_card(
+                            "Alignment",
+                            f"{alignment}%",
+                            "Relative closeness to this segment.",
+                        )
+                    else:
+                        render_signal_card(
+                            "Alignment", "N/A", "Build segment data first."
+                        )
+                with signal_cols[2]:
                     if matches.empty:
-                        st.info("No matching roles passed the selected filters.")
+                        render_signal_card(
+                            "Top similarity", "N/A", "No matching roles passed filters."
+                        )
                     else:
                         render_signal_card(
                             "Top similarity",
-                            f"{matches.iloc[0]['similarity']:.3f}",
-                            "Highest cosine score returned by FAISS.",
+                            f"{matches.iloc[0]['similarity'] * 100:.0f}%",
+                            "Best role match after filters.",
                         )
-                        st.write("")
-                        render_signal_card(
-                            "Retrieved roles",
-                            f"{len(matches):,}",
-                            "Roles shown after filters.",
+                with signal_cols[3]:
+                    render_signal_card(
+                        "Retrieved roles",
+                        f"{len(matches):,}",
+                        "Roles shown after filters.",
+                    )
+                if cluster is not None:
+                    st.markdown(
+                        '<div class="chip-cloud">'
+                        + "".join(
+                            f'<span class="mini-chip">{escape(str(term))}</span>'
+                            for term in cluster["top_terms"][:8]
                         )
-            with insight_cols[1]:
-                render_panel_banner(
-                    "Opportunity Lens",
-                    "Gaps to close",
-                    "Target missing terms from the assigned cluster and top retrieved jobs.",
-                )
-                with st.container(border=True):
-                    if missing_terms:
-                        for item in missing_terms:
-                            st.markdown(f"- Add stronger evidence for **{item}**")
-                    else:
-                        st.markdown(
-                            "- Top retrieved roles and cluster labels are already reflected in the resume text."
+                        + "</div>",
+                        unsafe_allow_html=True,
+                    )
+
+            st.write("")
+            render_panel_banner(
+                "Opportunity Lens",
+                "Gaps to close",
+                "Missing terms from the strongest matching roles and market segment.",
+            )
+            with st.container(border=True):
+                if missing_terms:
+                    st.markdown(
+                        '<div class="chip-cloud">'
+                        + "".join(
+                            f'<span class="mini-chip">Add stronger evidence for {escape(str(item))}</span>'
+                            for item in missing_terms
                         )
+                        + "</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        "The strongest matching roles are already well reflected in the resume text."
+                    )
 
             st.write("")
             render_panel_banner(
                 "Match Board",
                 "Top matching roles",
-                "These cards are ordered by FAISS cosine similarity against the real job index.",
+                "These roles are ordered by similarity to the resume after the selected filters.",
             )
             if matches.empty:
                 st.info(
@@ -1809,7 +2206,7 @@ def main() -> None:
         render_panel_banner(
             "Market Radar",
             "Where the current feed is concentrated",
-            "A quick structural view of geography, seniority, and salary shape from the available job catalog.",
+            "A quick view of geography, seniority, and salary distribution in the available job catalog.",
         )
         display_jobs = jobs.copy()
         display_jobs["salary_annual"] = pd.to_numeric(
@@ -1841,7 +2238,7 @@ def main() -> None:
                     )
                     for cluster_id in assignments
                 ]
-                st.markdown("**KMeans market clusters**")
+                st.markdown("**Market segments**")
                 st.bar_chart(pd.Series(cluster_names).value_counts())
 
         with right, st.container(border=True):
@@ -1858,22 +2255,25 @@ def main() -> None:
             if has_real_data:
                 st.success(f"Loaded real project data from `{data_source}`.")
             else:
-                st.info(
-                    "Using synthetic LinkedIn-style roles so the frontend can be reviewed before the real preprocessing pipeline is run."
-                )
+                st.info("Using sample roles until the local job catalog is prepared.")
 
     with pipeline_tab:
         render_panel_banner(
-            "Pipeline",
-            "Artifact readiness",
-            "This view shows which offline project outputs are already available to upgrade the app from demo mode to project mode.",
+            "Setup",
+            "Data readiness",
+            "This view shows which local data resources are available for the full analysis workflow.",
         )
-        pipeline_cols = st.columns(len(status))
-        for col, item in zip(pipeline_cols, status, strict=True):
-            with col:
-                render_metric_card(
-                    item["label"], "Ready" if item["ready"] else "Missing", item["path"]
-                )
+        status_frame = pd.DataFrame(
+            [
+                {
+                    "Resource": item["label"],
+                    "Status": "Ready" if item["ready"] else "Missing",
+                    "Path": item["path"],
+                }
+                for item in status
+            ]
+        )
+        st.dataframe(status_frame, width="stretch", hide_index=True)
 
         st.write("")
         with st.container(border=True):
@@ -1894,7 +2294,7 @@ def main() -> None:
                 language="bash",
             )
             st.caption(
-                "Retrieved salaries power the primary corridor; resume-side salary and BLS artifacts add fallback/reference evidence."
+                "Retrieved salaries power the primary range; resume-side salary and BLS resources add fallback/reference evidence."
             )
 
 
