@@ -140,6 +140,37 @@ PERSONAS = (
     "career_switcher",
 )
 
+PERSONA_SALARY_RANGES: dict[str, tuple[float, float]] = {
+    "direct_match": (0.95, 1.05),
+    "over_qualified": (1.10, 1.25),
+    "under_qualified": (0.75, 0.90),
+    "career_switcher": (0.80, 1.05),
+}
+
+LEVEL_ORDINAL = {"entry": 1, "junior": 2, "mid": 3, "senior": 4}
+
+MULTI_WORD_SKILLS = (
+    "machine learning",
+    "system design",
+    "data cleaning",
+    "stakeholder reporting",
+    "stakeholder management",
+    "model serving",
+    "process improvement",
+    "feature stores",
+    "campaign planning",
+    "vendor management",
+    "email marketing",
+    "social media",
+    "business metrics",
+    "deep learning",
+    "data engineering",
+    "natural language processing",
+    "a/b testing",
+    "rest apis",
+    "ci/cd",
+)
+
 STYLES = (
     "concise_bullets",
     "first_person_bullets",
@@ -259,17 +290,29 @@ def generate_paired_synthetic_resumes(
     jobs: pd.DataFrame,
     n: int = 100,
     seed: int = DEFAULT_SEED,
+    n_hard_negatives: int = 1,
 ) -> pd.DataFrame:
-    """Create synthetic resumes paired to real source jobs and hard negatives."""
+    """Create synthetic resumes paired to real source jobs and hard negatives.
+
+    `n_hard_negatives` >= 1 controls how many same-family / different-level
+    negatives we attach. The first negative is exposed in the legacy scalar
+    columns (`hard_negative_job_id`, `hard_negative_title`, ...) for
+    backwards compatibility; the full ranked list is exposed in
+    `hard_negative_job_ids`.
+    """
     if n < 0:
         raise ValueError(f"n must be non-negative, got {n}")
+    if n_hard_negatives < 1:
+        raise ValueError(f"n_hard_negatives must be >= 1, got {n_hard_negatives}")
     if jobs.empty and n > 0:
         raise ValueError("jobs must contain at least one row when n > 0")
 
     rng = np.random.default_rng(seed)
     prepared = _prepare_jobs(jobs)
     source_indices = _stratified_source_indices(prepared, n, rng)
-    hard_negative_map = _build_hard_negative_map(prepared, source_indices, rng)
+    hard_negative_map = _build_hard_negative_map(
+        prepared, source_indices, rng, n_negatives=n_hard_negatives
+    )
 
     rows = []
     for i, source_idx in enumerate(source_indices):
@@ -293,17 +336,20 @@ def generate_paired_synthetic_resumes(
             style=style,
             rng=rng,
         )
-        neg_idx = hard_negative_map.get(int(source.name))
-        if neg_idx is not None:
-            negative = prepared.iloc[int(neg_idx)]
+        neg_indices = hard_negative_map.get(int(source.name), [])
+        if neg_indices:
+            primary = prepared.iloc[int(neg_indices[0])]
             row.update(
                 {
-                    "hard_negative_job_id": _optional_int(negative.get("job_id")),
-                    "hard_negative_title": _clean_text(negative.get("title")),
-                    "hard_negative_role_family": str(negative["_role_family"]),
-                    "hard_negative_reason": _negative_reason(source, negative),
+                    "hard_negative_job_id": _optional_int(primary.get("job_id")),
+                    "hard_negative_title": _clean_text(primary.get("title")),
+                    "hard_negative_role_family": str(primary["_role_family"]),
+                    "hard_negative_reason": _negative_reason(source, primary),
                 }
             )
+        row["hard_negative_job_ids"] = [
+            _optional_int(prepared.iloc[int(idx)].get("job_id")) for idx in neg_indices
+        ]
         rows.append(row)
 
     return pd.DataFrame(rows)
@@ -512,8 +558,14 @@ def _build_hard_negative_map(
     source_indices: list[int],
     rng: np.random.Generator,
     max_candidates_per_source: int = 750,
-) -> dict[int, int]:
-    mapping: dict[int, int] = {}
+    n_negatives: int = 1,
+) -> dict[int, list[int]]:
+    """Pick up to `n_negatives` ranked hard negatives per unique source row.
+
+    Returns a mapping from source row-index to a *list* of candidate row
+    indices, ordered by descending score (most-similar-but-wrong first).
+    """
+    mapping: dict[int, list[int]] = {}
     unique_sources = sorted(set(int(idx) for idx in source_indices))
     by_family = {
         family: group.index.to_numpy()
@@ -522,8 +574,6 @@ def _build_hard_negative_map(
 
     for idx in unique_sources:
         row = jobs.iloc[int(idx)]
-        best_idx = None
-        best_score = -1.0
         row_tokens = row["_tokens"]
         family_pool = by_family.get(str(row["_role_family"]), np.array([], dtype=int))
         family_pool = family_pool[family_pool != int(idx)]
@@ -541,6 +591,7 @@ def _build_hard_negative_map(
             sample_size = min(max_candidates_per_source, len(all_indices))
             candidate_indices = rng.choice(all_indices, size=sample_size, replace=False)
 
+        scored: list[tuple[float, int]] = []
         for candidate_idx in candidate_indices:
             candidate = jobs.iloc[int(candidate_idx)]
             if int(candidate_idx) == int(idx):
@@ -562,11 +613,11 @@ def _build_hard_negative_map(
                 score += 0.05
             if not different_title:
                 score -= 0.20
-            if score > best_score:
-                best_idx = int(candidate_idx)
-                best_score = score
-        if best_idx is not None:
-            mapping[int(idx)] = best_idx
+            scored.append((score, int(candidate_idx)))
+
+        if scored:
+            scored.sort(key=lambda pair: pair[0], reverse=True)
+            mapping[int(idx)] = [cand_idx for _, cand_idx in scored[:n_negatives]]
     return mapping
 
 
@@ -596,7 +647,7 @@ def _make_resume_row(
     skills = _dedupe(core_skills + nice_skills)
     missing_skills = [skill for skill in core_pool[:6] if skill not in core_skills]
 
-    project_count = int(rng.integers(1, 4))
+    project_count = int(np.clip(rng.poisson(2.0) + 1, 1, 5))
     projects = _make_projects(profile, project_count, has_metrics, rng)
     education = _choose_education(profile.family, persona, rng)
     location = (
@@ -646,6 +697,28 @@ def _make_resume_row(
         _clean_text(source_job.get("company_name")) if source_job is not None else None
     )
 
+    source_salary_annual = (
+        _optional_float(source_job.get("salary_annual"))
+        if source_job is not None
+        else None
+    )
+    source_salary_min = (
+        _optional_float(source_job.get("min_salary"))
+        if source_job is not None
+        else None
+    )
+    source_salary_max = (
+        _optional_float(source_job.get("max_salary"))
+        if source_job is not None
+        else None
+    )
+    expected_salary_annual = _expected_salary(source_salary_annual, persona, rng)
+
+    if source_job is not None and pd.notna(source_job.get("experience_level_ordinal")):
+        experience_level_ordinal = int(float(source_job["experience_level_ordinal"]))
+    else:
+        experience_level_ordinal = LEVEL_ORDINAL.get(level, 3)
+
     return {
         "resume_id": f"syn-{i + 1:05d}",
         "source_job_id": source_job_id,
@@ -654,6 +727,7 @@ def _make_resume_row(
         "target_title": profile.title,
         "role_family": profile.family,
         "level": level,
+        "experience_level_ordinal": experience_level_ordinal,
         "persona": persona,
         "writing_style": style,
         "years_experience": years,
@@ -666,10 +740,15 @@ def _make_resume_row(
         "education": education,
         "quality_score": score,
         "quality_label": label,
+        "source_salary_annual": source_salary_annual,
+        "source_salary_min": source_salary_min,
+        "source_salary_max": source_salary_max,
+        "expected_salary_annual": expected_salary_annual,
         "hard_negative_job_id": None,
         "hard_negative_title": None,
         "hard_negative_role_family": None,
         "hard_negative_reason": None,
+        "hard_negative_job_ids": [],
         "generation_notes": "No JD sentences copied; only limited skill/title signals sampled.",
         "resume_text": resume_text,
     }
@@ -733,19 +812,51 @@ def _quality_parameters(
 
 
 def _extract_job_skills(source: pd.Series, profile: RoleProfile) -> list[str]:
+    """Extract a small skill list from the source job.
+
+    Matches against a curated lexicon of role-profile skills and known
+    multi-word phrases (e.g., "machine learning") *before* falling back to
+    delimiter splitting, so multi-word skills survive.
+    """
     raw = source.get("skills_desc")
     if pd.isna(raw) or not str(raw).strip():
         raw = source.get("skills_desc_clean")
-    if pd.isna(raw) or not str(raw).strip():
-        return list(profile.core_skills + profile.nice_to_have)
 
-    parts = re.split(r"[,;|/\n]+|\s{2,}", str(raw))
-    skills = []
-    for part in parts:
-        cleaned = _clean_skill(part)
-        if cleaned and len(cleaned) <= 40:
-            skills.append(cleaned)
-    return _dedupe(skills)[:10] or list(profile.core_skills + profile.nice_to_have)
+    description = source.get("description") or source.get("text") or ""
+    haystack = f"{raw or ''} {description}".lower()
+
+    matches: list[str] = []
+    if haystack.strip():
+        lexicon = _skill_lexicon()
+        for skill in lexicon:
+            if skill.lower() in haystack and skill not in matches:
+                matches.append(skill)
+
+    # Then add anything from the raw delimiter-split that survives a length
+    # filter — picks up domain-specific tokens not in the lexicon.
+    if raw and not pd.isna(raw):
+        parts = re.split(r"[,;|/\n]+|\s{2,}", str(raw))
+        for part in parts:
+            cleaned = _clean_skill(part)
+            if cleaned and len(cleaned) <= 40 and cleaned not in matches:
+                matches.append(cleaned)
+
+    return _dedupe(matches)[:10] or list(profile.core_skills + profile.nice_to_have)
+
+
+def _skill_lexicon() -> list[str]:
+    """Union of every role profile's skill list plus known multi-word phrases.
+
+    Multi-word phrases are checked first via the caller's substring scan,
+    so single-token entries don't accidentally consume them.
+    """
+    lexicon: list[str] = list(MULTI_WORD_SKILLS)
+    for profile in ROLE_PROFILES:
+        for skill in profile.core_skills + profile.nice_to_have:
+            if skill not in lexicon:
+                lexicon.append(skill)
+    # Sort longest-first so "machine learning" matches before "learning".
+    return sorted(lexicon, key=len, reverse=True)
 
 
 def _clean_skill(value: Any) -> str:
@@ -807,7 +918,9 @@ def _quality_score(
     persona: str,
 ) -> int:
     skill_score = 45.0 * (core_count / max(total_core, 1))
-    nice_score = min(nice_count * 3.5, 15.0)
+    # Tapered nice-skill weights so each marginal skill contributes less.
+    nice_weights = (3.5, 2.5, 2.0, 1.5, 1.5, 1.0, 1.0, 1.0)
+    nice_score = min(sum(nice_weights[: max(0, nice_count)]), 15.0)
     experience_score = min(max(years - min_years + 1, 0) * 5.0, 15.0)
     project_score = min(project_count * 5.0, 15.0)
     metric_score = 10.0 if has_metrics else 0.0
@@ -831,6 +944,15 @@ def _quality_score(
 
 
 def _quality_label(score: int) -> str:
+    return quality_label_from_score(score)
+
+
+def quality_label_from_score(score: float) -> str:
+    """Public mapping from a 0–100 quality score to a categorical label.
+
+    Re-exported so downstream code (e.g., `ml.quality.predict_quality`)
+    can derive the same label without re-declaring the cutoffs.
+    """
     if score >= 75:
         return "strong"
     if score >= 50:
@@ -960,6 +1082,29 @@ def _optional_int(value: Any) -> int | None:
     return int(value)
 
 
+def _optional_float(value: Any) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    return float(value)
+
+
+def _expected_salary(
+    source_salary: float | None,
+    persona: str,
+    rng: np.random.Generator,
+) -> float | None:
+    """Apply a persona-specific multiplier to the source salary.
+
+    Returns None when the source has no usable salary so downstream
+    callers can ignore the row in salary-prediction evaluation.
+    """
+    if source_salary is None or source_salary <= 0:
+        return None
+    low, high = PERSONA_SALARY_RANGES.get(persona, (0.95, 1.05))
+    multiplier = float(rng.uniform(low, high))
+    return float(round(source_salary * multiplier, 2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate synthetic resume/JD eval pairs"
@@ -985,11 +1130,22 @@ def main() -> None:
         default=DEFAULT_OUTPUT,
         help="Output path ending in .parquet, .csv, or .jsonl",
     )
+    parser.add_argument(
+        "--n-hard-negatives",
+        type=int,
+        default=1,
+        help="Number of ranked hard negatives to attach per resume (>= 1)",
+    )
     args = parser.parse_args()
 
     if args.jobs.exists():
         jobs = load_jobs(args.jobs)
-        df = generate_paired_synthetic_resumes(jobs, n=args.n, seed=args.seed)
+        df = generate_paired_synthetic_resumes(
+            jobs,
+            n=args.n,
+            seed=args.seed,
+            n_hard_negatives=args.n_hard_negatives,
+        )
         mode = f"paired to {args.jobs}"
     else:
         df = generate_synthetic_resumes(args.n, seed=args.seed)

@@ -107,7 +107,9 @@
 |------|-------|--------|-------|
 | `pyproject.toml` / `uv.lock` — manage dependencies and virtual environment with uv | — | ✅ | Switched from `requirements.txt` on 2026-04-25 |
 | Ruff / pre-commit / GitHub Actions CI | — | ✅ | Formatting, linting, and tests enforced for code directories only |
-| `tests/` — pytest coverage for `ml/` | Alan, Ryan, Omer | ✅ | Salary, retrieval, clustering, preprocessing, and embeddings covered. |
+| `tests/` — pytest coverage for `ml/` | Alan, Ryan, Omer | ✅ | Salary, retrieval, clustering, preprocessing, embeddings, plus `test_synthetic_resumes.py` (14), `test_evaluate_retrieval.py` (6), `test_quality.py` (9), `test_evaluate_salary.py` (5) — 84 Ryan/Alan tests on the new surface alone, all passing. |
+| Resume-quality predictor (`ml/quality.py`) | Ryan | ✅ | Single-head PyTorch MLP; trained on synthetic `quality_score` via `scripts/train_quality_model.py` (`--smoke` for CI without `Encoder`). |
+| Salary-prediction evaluation (`scripts/evaluate_salary.py`) | Ryan | ✅ | Median MAE, pinball loss, [q10,q90]/[q25,q75] coverage, per-persona breakdown. Now able to run end-to-end since Omer landed Task 2.1. |
 | Set random seeds in all scripts | — | ⬜ | |
 | `.gitignore` — verify `data/raw/`, `models/` excluded | — | ⬜ | |
 | Final report / presentation | — | ⬜ | |
@@ -127,7 +129,7 @@ Phase 6  [░░░░░░░░░░]   0%
 Total    [█████░░░░░]  48%
 ```
 
-**Current state:** Preprocessing, embeddings, retrieval, clustering core, salary modeling, and a local Streamlit shell are implemented with synthetic/unit-test validation. Real end-to-end runs still need the Kaggle raw files in `data/raw/`, followed by `scripts/preprocess_data.py` and `scripts/build_index.py`.
+**Current state:** Preprocessing, embeddings, retrieval, clustering core, salary modeling, and a local Streamlit shell are implemented with synthetic/unit-test validation. Ryan also shipped the resume-quality predictor (`ml/quality.py`), the salary-prediction evaluator (`scripts/evaluate_salary.py`), the multi-hard-negative + persona-sliced retrieval evaluator, and a salary-aware synthetic resume generator — closing the integration gaps between Phase 2, Phase 4, and the upcoming Phase 5 feedback engine. Real end-to-end runs of these still need the Kaggle raw files in `data/raw/`, followed by `scripts/preprocess_data.py` and `scripts/build_index.py`; Task 2.1 (`ml/embeddings.Encoder`) has now landed via Omer's PR #10.
 
 ---
 
@@ -148,3 +150,4 @@ Total    [█████░░░░░]  48%
 | 2026-04-26 | Reran `notebooks/02_embedding_experiments.ipynb` with real artifacts and completed `notebooks/03_salary_regression.ipynb` on real embeddings/salaries. Salary q50 MAE: `$22.6K`; median-baseline improvement: `$20.6K`; q90 calibration remains slightly outside the ±5 pp target. |
 | 2026-04-26 | Enabled and ran `02_embedding_experiments.ipynb` hand-crafted retrieval checks and MiniLM-vs-mpnet comparison. Both models were available; retrieval returned plausible ML engineer, data analyst, and product manager roles. |
 | 2026-04-26 | Resolved `main`/PR #10 conflict in `02_embedding_experiments.ipynb` by preserving Omer's embedding/retrieval/model-comparison work and integrating Tanvi's PCA/elbow/KMeans clustering handoff section. |
+| 2026-04-26 | Ryan added the synthetic-data ↔ salary ↔ quality bridge: synthetic resumes now carry `source_salary_annual` / `expected_salary_annual` (persona-multiplier) / `experience_level_ordinal` / `hard_negative_job_ids` (multi-negative ranked list). Skill extraction merges multi-word phrases ("machine learning", "system design") before falling back to delimiter splits. New `ml/quality.py` (PyTorch single-head regressor on `quality_score`), `scripts/train_quality_model.py` (`--smoke`), `scripts/evaluate_salary.py` (median MAE, pinball, calibration coverage, per-persona). `scripts/evaluate_retrieval.py` now accepts `--k-sweep`, generalizes NDCG / discriminative_accuracy to multi-hard-negatives, and emits per-persona / per-quality_label slices. Test suite grew to 84 Ryan/Alan tests; ruff format + lint clean. |
