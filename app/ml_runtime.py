@@ -52,6 +52,15 @@ ARTIFACT_SPECS = (
     ArtifactSpec("Cluster centroids", "models/cluster_centroids.npy", "clustering"),
     ArtifactSpec("Cluster assignments", "models/cluster_assignments.npy", "clustering"),
     ArtifactSpec("Cluster labels", "models/cluster_labels.json", "clustering"),
+    ArtifactSpec(
+        "Public assessment metrics",
+        "models/public_assessment_metrics.json",
+        "public_assessment",
+    ),
+    ArtifactSpec("Public domain model", "models/public_domain_model.pt", "public_assessment"),
+    ArtifactSpec("Public ATS fit model", "models/public_ats_fit_model.pt", "public_assessment"),
+    ArtifactSpec("Public entity model", "models/public_entity_model.pt", "public_assessment"),
+    ArtifactSpec("Public section model", "models/public_section_model.pt", "public_assessment"),
 )
 
 
@@ -158,6 +167,28 @@ def load_cluster_artifacts(project_root: Path = PROJECT_ROOT):
     return model, assignments, labels
 
 
+def load_public_assessment_artifacts(project_root: Path = PROJECT_ROOT):
+    from ml.public_assessment import load_public_assessment_models
+
+    return load_public_assessment_models(Path(project_root))
+
+
+def public_resume_signals(public_models: Any | None, resume_text: str) -> dict[str, Any]:
+    from ml.public_assessment import resume_public_signals
+
+    return resume_public_signals(public_models, resume_text)
+
+
+def apply_public_ats_fit(
+    public_models: Any | None,
+    resume_text: str,
+    matches: pd.DataFrame,
+) -> pd.DataFrame:
+    from ml.public_assessment import score_matches_with_ats_model
+
+    return score_matches_with_ats_model(public_models, resume_text, matches)
+
+
 def encode_resume(encoder: Any, resume_text: str) -> np.ndarray:
     vector = encoder.encode([resume_text])
     return np.asarray(vector, dtype=np.float32).reshape(1, -1)
@@ -170,6 +201,7 @@ def retrieve_matches(
     *,
     preferred_location: str = "Anywhere",
     remote_only: bool = False,
+    target_seniority: str | None = None,
     top_k: int = 6,
     candidate_k: int = 120,
 ) -> pd.DataFrame:
@@ -179,6 +211,7 @@ def retrieve_matches(
         jobs,
         preferred_location=preferred_location,
         remote_only=remote_only,
+        target_seniority=target_seniority,
         top_k=top_k,
     )
 
@@ -189,6 +222,7 @@ def enrich_retrieval_matches(
     *,
     preferred_location: str = "Anywhere",
     remote_only: bool = False,
+    target_seniority: str | None = None,
     top_k: int = 6,
 ) -> pd.DataFrame:
     jobs = _ensure_app_columns(jobs)
@@ -214,6 +248,7 @@ def enrich_retrieval_matches(
         preferred_location=preferred_location,
         remote_only=remote_only,
     )
+    frame = _apply_seniority_fit(frame, target_seniority)
     return frame.head(top_k).reset_index(drop=True)
 
 
@@ -546,6 +581,91 @@ def _filter_matches(
         filtered = filtered[work_type]
 
     return filtered
+
+
+SENIORITY_RANKS = {
+    "Intern / Entry": 0,
+    "Associate": 1,
+    "Mid": 2,
+    "Senior": 3,
+    "Lead / Executive": 4,
+}
+
+
+def _normalise_seniority(label: str | None) -> int | None:
+    if not label:
+        return None
+    lowered = str(label).lower()
+    if any(token in lowered for token in ("internship", "intern ", "entry", "junior", "jr.")):
+        return 0
+    if "associate" in lowered:
+        return 1
+    if any(token in lowered for token in ("director", "executive", "vp", "vice president")):
+        return 4
+    if any(token in lowered for token in ("principal", "staff", "head of", "chief")):
+        return 4
+    if any(token in lowered for token in ("mid-senior", "senior", "sr.", "sr ")):
+        return 3
+    if any(token in lowered for token in ("lead", "technical leadership")):
+        return 3
+    if "mid" in lowered:
+        return 2
+    return SENIORITY_RANKS.get(str(label))
+
+
+def _infer_job_seniority(row: pd.Series) -> int | None:
+    experience_level = _normalise_seniority(str(row.get("experience_level", "")))
+    if experience_level is not None:
+        return experience_level
+
+    title_rank = _normalise_seniority(str(row.get("title", "")))
+    if title_rank is not None:
+        return title_rank
+
+    text = str(row.get("text", ""))[:600]
+    return _normalise_seniority(text)
+
+
+def _seniority_penalty(target_rank: int | None, job_rank: int | None) -> float:
+    if target_rank is None or job_rank is None:
+        return 0.0
+    gap = job_rank - target_rank
+    if gap <= 0:
+        return 0.0 if gap >= -1 else 3.0
+    if gap == 1:
+        return 7.0
+    if gap == 2:
+        return 18.0
+    if gap == 3:
+        return 32.0
+    return 45.0
+
+
+def _apply_seniority_fit(
+    frame: pd.DataFrame,
+    target_seniority: str | None,
+) -> pd.DataFrame:
+    if frame.empty or not target_seniority:
+        return frame
+
+    target_rank = _normalise_seniority(target_seniority)
+    if target_rank is None:
+        return frame
+
+    adjusted = frame.copy()
+    job_ranks = adjusted.apply(_infer_job_seniority, axis=1)
+    penalties = job_ranks.map(lambda rank: _seniority_penalty(target_rank, rank))
+    adjusted["job_seniority_rank"] = job_ranks
+    adjusted["seniority_penalty"] = penalties.astype(float)
+    adjusted["raw_match_score"] = pd.to_numeric(
+        adjusted["match_score"], errors="coerce"
+    ).fillna(0.0)
+    adjusted["match_score"] = (
+        adjusted["raw_match_score"] - adjusted["seniority_penalty"]
+    ).clip(lower=0.0)
+    return adjusted.sort_values(
+        ["match_score", "similarity"], ascending=[False, False]
+    )
 
 
 def _top_terms_from_text(texts: pd.Series, max_terms: int = 12) -> list[str]:

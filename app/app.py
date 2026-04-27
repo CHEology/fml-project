@@ -40,28 +40,17 @@ hybrid_salary_band = runtime.hybrid_salary_band
 load_cluster_artifacts = runtime.load_cluster_artifacts
 load_real_jobs = runtime.load_jobs
 load_occupation_router = runtime.load_occupation_router
+load_public_assessment_artifacts = runtime.load_public_assessment_artifacts
 load_retriever = runtime.load_retriever
 load_salary_artifacts = runtime.load_salary_artifacts
 load_wage_table = runtime.load_wage_table
+public_resume_signals = runtime.public_resume_signals
 retrieve_matches = runtime.retrieve_matches
 salary_band_from_model = runtime.salary_band_from_model
 salary_artifacts_ready = runtime.salary_artifacts_ready
+apply_public_ats_fit = runtime.apply_public_ats_fit
 
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
-
-SAMPLE_RESUME = """Alex Rivera
-Senior Machine Learning Engineer
-
-Experience:
-- Built retrieval and ranking pipelines for job recommendations.
-- Shipped PyTorch models for salary forecasting and churn prediction.
-- Deployed Streamlit prototypes for internal stakeholders.
-- Worked with Python, SQL, pandas, vector search, AWS, Docker, and Airflow.
-
-Skills:
-machine learning, recommender systems, nlp, embeddings, python, pytorch,
-sql, streamlit, analytics, product experimentation, data pipelines
-"""
 
 TRACK_KEYWORDS = {
     "Machine Learning": [
@@ -777,10 +766,237 @@ TRACK_METRICS = {
     "Sales / Customer Success": "renewal readiness",
     "Operations / Administration": "process turnaround time",
 }
+SAMPLE_FIELD_SKILLS = {
+    "Machine Learning": [
+        "Python",
+        "PyTorch",
+        "Feature Stores",
+        "Vector Search",
+        "Experiment Design",
+        "Model Monitoring",
+        "AWS",
+        "Docker",
+    ],
+    "Data Science": [
+        "Python",
+        "SQL",
+        "Causal Inference",
+        "A/B Testing",
+        "Forecasting",
+        "Tableau",
+        "Stakeholder Storytelling",
+    ],
+    "Software Engineering": [
+        "Python",
+        "Go",
+        "Postgres",
+        "Kubernetes",
+        "Distributed Systems",
+        "Observability",
+        "CI/CD",
+    ],
+    "Analytics": [
+        "SQL",
+        "dbt",
+        "Looker",
+        "Data Modeling",
+        "Metric Governance",
+        "Python",
+        "Executive Reporting",
+    ],
+    "Product / Strategy": [
+        "Roadmapping",
+        "Market Sizing",
+        "Customer Research",
+        "SQL",
+        "Pricing",
+        "Executive Communication",
+        "Experiment Planning",
+    ],
+    "Human Resources": [
+        "Talent Acquisition",
+        "Workday",
+        "Employee Relations",
+        "Compensation Planning",
+        "DEI Programs",
+        "Manager Coaching",
+        "People Analytics",
+    ],
+    "Finance / Accounting": [
+        "FP&A",
+        "Budgeting",
+        "Revenue Recognition",
+        "Excel",
+        "NetSuite",
+        "Audit Readiness",
+        "Board Reporting",
+    ],
+    "Marketing": [
+        "Lifecycle Marketing",
+        "HubSpot",
+        "Paid Social",
+        "SEO",
+        "Content Strategy",
+        "Attribution",
+        "Customer Segmentation",
+    ],
+    "Sales / Customer Success": [
+        "Salesforce",
+        "MEDDICC",
+        "Pipeline Forecasting",
+        "Renewal Strategy",
+        "Executive Business Reviews",
+        "Customer Health",
+        "Revenue Operations",
+    ],
+    "Operations / Administration": [
+        "Vendor Management",
+        "Process Improvement",
+        "Executive Support",
+        "Facilities",
+        "Procurement",
+        "Documentation",
+        "Scheduling",
+    ],
+    "Healthcare / Clinical": [
+        "Epic",
+        "Care Coordination",
+        "Patient Safety",
+        "Clinical Documentation",
+        "Quality Improvement",
+        "HIPAA",
+        "Interdisciplinary Rounds",
+    ],
+    "Education / Teaching": [
+        "Curriculum Design",
+        "Differentiated Instruction",
+        "Student Assessment",
+        "Learning Analytics",
+        "Classroom Management",
+        "IEP Support",
+        "Instructional Coaching",
+    ],
+    "Legal / Compliance": [
+        "Contract Review",
+        "Regulatory Analysis",
+        "Privacy Compliance",
+        "Negotiation",
+        "Policy Drafting",
+        "Risk Assessment",
+        "Legal Research",
+    ],
+    "Design / Creative": [
+        "Figma",
+        "Design Systems",
+        "User Research",
+        "Prototyping",
+        "Accessibility",
+        "Visual Design",
+        "Content Strategy",
+    ],
+    "Engineering / Hardware": [
+        "SolidWorks",
+        "DFMEA",
+        "Manufacturing Transfer",
+        "Tolerance Analysis",
+        "Test Fixtures",
+        "Supplier Quality",
+        "MATLAB",
+    ],
+    "Research / Academia": [
+        "Grant Writing",
+        "Statistical Modeling",
+        "IRB Protocols",
+        "Peer-Reviewed Publications",
+        "R",
+        "Experimental Design",
+        "Conference Presentations",
+    ],
+    "Public Sector / Policy": [
+        "Policy Analysis",
+        "Program Evaluation",
+        "Stakeholder Engagement",
+        "Legislative Research",
+        "Grant Reporting",
+        "Public Dashboards",
+        "Community Outreach",
+    ],
+    "Hospitality / Service": [
+        "Guest Experience",
+        "Team Scheduling",
+        "Inventory Control",
+        "POS Systems",
+        "Event Operations",
+        "Vendor Coordination",
+        "Service Recovery",
+    ],
+}
+SAMPLE_RESUME_SPECS = [
+    ("Alex Rivera", "Machine Learning", "Senior Machine Learning Engineer", "Senior", "New York, NY", "marketplace ranking", "excellent"),
+    ("Priya Shah", "Data Science", "Product Data Scientist", "Senior", "San Francisco, CA", "consumer growth", "excellent"),
+    ("Maya Hernandez", "Software Engineering", "Backend Platform Engineer", "Mid", "Austin, TX", "payments infrastructure", "excellent"),
+    ("Ethan Brooks", "Analytics", "Analytics Engineer", "Mid", "Chicago, IL", "subscription metrics", "excellent"),
+    ("Leila Hassan", "Product / Strategy", "Product Strategy Lead", "Lead / Executive", "Seattle, WA", "B2B pricing", "excellent"),
+    ("Noah Patel", "Human Resources", "People Operations Manager", "Senior", "Boston, MA", "distributed teams", "excellent"),
+    ("Ava Morales", "Finance / Accounting", "FP&A Manager", "Senior", "Denver, CO", "SaaS planning", "excellent"),
+    ("Lucas Chen", "Marketing", "Lifecycle Marketing Lead", "Senior", "Remote", "B2B retention", "excellent"),
+    ("Sofia Bennett", "Sales / Customer Success", "Enterprise Customer Success Manager", "Senior", "Atlanta, GA", "cloud accounts", "excellent"),
+    ("Owen Park", "Operations / Administration", "Business Operations Manager", "Mid", "Los Angeles, CA", "multi-site operations", "solid"),
+    ("Nadia Okafor", "Healthcare / Clinical", "Clinical Quality Improvement Nurse", "Senior", "Philadelphia, PA", "cardiology care", "excellent"),
+    ("Grace Lee", "Education / Teaching", "Instructional Coach", "Senior", "Queens, NY", "middle school math", "excellent"),
+    ("Marcus Reed", "Legal / Compliance", "Privacy Compliance Counsel", "Senior", "Washington, DC", "health technology", "excellent"),
+    ("Iris Wong", "Design / Creative", "Senior Product Designer", "Senior", "Portland, OR", "mobile onboarding", "excellent"),
+    ("Caleb Morgan", "Engineering / Hardware", "Mechanical Design Engineer", "Mid", "Detroit, MI", "EV battery systems", "excellent"),
+    ("Hannah Stein", "Research / Academia", "Research Scientist", "Senior", "Cambridge, MA", "computational biology", "excellent"),
+    ("Diego Alvarez", "Public Sector / Policy", "Policy Analyst", "Mid", "Sacramento, CA", "housing programs", "solid"),
+    ("Emma Johnson", "Hospitality / Service", "Hotel Operations Manager", "Mid", "Miami, FL", "luxury guest services", "solid"),
+    ("Sam Taylor", "Machine Learning", "Computer Vision Engineer", "Mid", "Pittsburgh, PA", "manufacturing inspection", "solid"),
+    ("Rina Mehta", "Data Science", "Decision Scientist", "Mid", "Remote", "risk analytics", "solid"),
+    ("Theo Martin", "Software Engineering", "Full Stack Engineer", "Associate", "Raleigh, NC", "healthcare scheduling", "solid"),
+    ("Camila Torres", "Analytics", "Business Intelligence Analyst", "Associate", "Dallas, TX", "retail inventory", "solid"),
+    ("Jasper Nguyen", "Product / Strategy", "Associate Product Manager", "Associate", "San Jose, CA", "developer tools", "solid"),
+    ("Mina Ali", "Human Resources", "Talent Acquisition Partner", "Mid", "Minneapolis, MN", "clinical hiring", "solid"),
+    ("Ben Carter", "Finance / Accounting", "Senior Accountant", "Mid", "Charlotte, NC", "manufacturing close", "solid"),
+    ("Talia Green", "Marketing", "Demand Generation Manager", "Mid", "Phoenix, AZ", "cybersecurity pipeline", "solid"),
+    ("Andre Wilson", "Sales / Customer Success", "Account Executive", "Mid", "Nashville, TN", "mid-market sales", "solid"),
+    ("Lena Brooks", "Operations / Administration", "Executive Assistant", "Associate", "New York, NY", "founder support", "solid"),
+    ("Mei Lin", "Healthcare / Clinical", "Physical Therapist", "Mid", "San Diego, CA", "orthopedic rehab", "solid"),
+    ("Patrick O'Neill", "Education / Teaching", "High School Science Teacher", "Mid", "Columbus, OH", "project-based learning", "solid"),
+    ("Alina Petrova", "Legal / Compliance", "Contracts Manager", "Mid", "Remote", "vendor agreements", "solid"),
+    ("Jonah Weiss", "Design / Creative", "Brand Designer", "Mid", "Brooklyn, NY", "consumer packaging", "solid"),
+    ("Sasha Kim", "Engineering / Hardware", "Electrical Engineer", "Associate", "San Jose, CA", "sensor boards", "solid"),
+    ("Omar Farouk", "Research / Academia", "Postdoctoral Researcher", "Mid", "Ann Arbor, MI", "urban mobility", "solid"),
+    ("Claire Dubois", "Public Sector / Policy", "Program Evaluation Specialist", "Mid", "Boston, MA", "workforce grants", "solid"),
+    ("Mateo Garcia", "Hospitality / Service", "Restaurant General Manager", "Mid", "Orlando, FL", "high-volume dining", "solid"),
+    ("Yuki Tanaka", "Machine Learning", "Junior ML Engineer", "Associate", "Seattle, WA", "recommendation prototypes", "solid"),
+    ("Fatima Khan", "Data Science", "Data Analyst", "Associate", "Houston, TX", "energy operations", "solid"),
+    ("Mason Wright", "Software Engineering", "Software Engineering Intern", "Intern / Entry", "Madison, WI", "campus tools", "thin"),
+    ("Elena Rossi", "Analytics", "Junior Analyst", "Intern / Entry", "Tampa, FL", "dashboard support", "thin"),
+    ("Daniel Kim", "Product / Strategy", "Product Intern", "Intern / Entry", "Remote", "student marketplace", "thin"),
+    ("Aisha Brown", "Human Resources", "HR Coordinator", "Associate", "Baltimore, MD", "onboarding operations", "thin"),
+    ("Liam Evans", "Finance / Accounting", "Accounting Assistant", "Associate", "Cleveland, OH", "accounts payable", "thin"),
+    ("Nora Murphy", "Marketing", "Social Media Coordinator", "Associate", "Salt Lake City, UT", "local campaigns", "thin"),
+    ("Luis Romero", "Sales / Customer Success", "Sales Development Representative", "Associate", "San Antonio, TX", "outbound prospecting", "thin"),
+    ("Zara Ahmed", "Operations / Administration", "Administrative Coordinator", "Associate", "Las Vegas, NV", "office scheduling", "thin"),
+    ("Victor Chen", "Healthcare / Clinical", "Medical Assistant", "Associate", "Fresno, CA", "primary care", "thin"),
+    ("Molly Adams", "Education / Teaching", "Teaching Assistant", "Intern / Entry", "Ithaca, NY", "undergraduate tutoring", "thin"),
+    ("Rachel Cohen", "Legal / Compliance", "Paralegal", "Associate", "Newark, NJ", "litigation support", "thin"),
+    ("Chris Miller", "Design / Creative", "UX Design Intern", "Intern / Entry", "Remote", "portfolio redesign", "thin"),
+]
 SECTION_ALIASES = {
     "Summary": ["summary", "professional summary", "profile"],
-    "Experience": ["experience", "professional experience", "work experience"],
-    "Projects": ["projects", "selected projects"],
+    "Experience": [
+        "experience",
+        "professional experience",
+        "work experience",
+        "employment history",
+    ],
+    "Projects": [
+        "projects",
+        "selected projects",
+        "research publications",
+        "publications",
+    ],
     "Education": ["education"],
     "Skills": ["skills", "core skills", "technical skills"],
 }
@@ -1310,8 +1526,20 @@ def inject_styles(theme_name: str) -> None:
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--muted);
-            margin-top: 0.7rem;
+            margin-top: 0;
             margin-bottom: 0.3rem;
+        }
+
+        .quality-feedback-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin-top: 0.75rem;
+        }
+
+        .quality-feedback-panel {
+            border-top: 1px solid var(--line);
+            padding-top: 0.7rem;
         }
 
         .quality-list {
@@ -1325,6 +1553,10 @@ def inject_styles(theme_name: str) -> None:
         .quality-list.strengths li { color: var(--success); }
 
         @media (max-width: 900px) {
+            .quality-feedback-grid {
+                grid-template-columns: 1fr;
+            }
+
             .salary-headline {
                 grid-template-columns: 1fr;
                 align-items: start;
@@ -1442,6 +1674,13 @@ def load_cluster_resource():
     return load_cluster_artifacts(PROJECT_ROOT)
 
 
+@st.cache_resource(show_spinner=False)
+def load_public_assessment_resource():
+    if not artifacts_ready(artifact_status(), "public_assessment"):
+        return None
+    return load_public_assessment_artifacts(PROJECT_ROOT)
+
+
 def track_job_subset(jobs: pd.DataFrame, track: str) -> pd.DataFrame:
     if jobs.empty:
         return jobs
@@ -1552,6 +1791,32 @@ def resume_structure(text: str) -> dict[str, Any]:
         "word_count": len(text.split()),
         "link_count": link_count,
     }
+
+
+PUBLIC_SECTION_MAP = {
+    "Sum": "Summary",
+    "Exp": "Experience",
+    "Edu": "Education",
+    "Skill": "Skills",
+}
+
+
+def enhance_structure_with_public_sections(
+    structure: dict[str, Any],
+    public_signals: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not public_signals or not public_signals.get("ready"):
+        return structure
+    counts = public_signals.get("sections", {}).get("counts", {})
+    found = list(structure.get("found_sections", []))
+    for public_label, app_label in PUBLIC_SECTION_MAP.items():
+        if counts.get(public_label, 0) > 0 and app_label not in found:
+            found.append(app_label)
+    missing = [label for label in SECTION_ALIASES if label not in found]
+    updated = dict(structure)
+    updated["found_sections"] = found
+    updated["missing_sections"] = missing
+    return updated
 
 
 @st.cache_data(show_spinner=False, ttl=1800)
@@ -1693,6 +1958,149 @@ SKILLS
 """
 
 
+def generate_premade_sample_resume(
+    spec: tuple[str, str, str, str, str, str, str],
+    jobs: pd.DataFrame,
+) -> str:
+    """Render one curated sample profile from the 50-profile sample library."""
+    name, track, title, seniority, location, domain, quality = spec
+    seed = sum((idx + 1) * ord(char) for idx, char in enumerate("|".join(spec)))
+    rng = np.random.default_rng(seed)
+    slug = slugify_name(name)
+    school = str(rng.choice(FAKE_SCHOOLS))
+    skills = SAMPLE_FIELD_SKILLS.get(track, TRACK_SKILLS.get(track, FALLBACK_TRACK_SKILLS))
+    primary, secondary, tertiary = skills[:3]
+    metric_name = TRACK_METRICS.get(track, "operating quality")
+    market_examples = choose_market_examples(jobs, track, location)
+    companies = (
+        market_examples["company_name"]
+        .replace("", np.nan)
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+    if len(companies) < 2:
+        companies.extend(company for company in FAKE_COMPANIES if company not in companies)
+    company_a, company_b = companies[:2]
+
+    if quality == "excellent":
+        impact_one = int(rng.integers(24, 48))
+        impact_two = int(rng.integers(16, 34))
+        impact_three = int(rng.integers(8, 21))
+        scope_one = int(rng.integers(6, 18))
+        scope_two = int(rng.integers(120, 900))
+        current_start = "2021"
+        prior_range = "2017 - 2021"
+        earlier_range = "2014 - 2017"
+        project_count = int(rng.integers(3, 8))
+        return f"""{name}
+{title}
+{location} | {slug}@example.com | linkedin.com/in/{slug} | github.com/{slug}
+
+PROFESSIONAL SUMMARY
+{seniority} {track.lower()} professional focused on {domain}. Known for combining {primary}, {secondary}, and {tertiary} with crisp operating judgment, measurable delivery, and cross-functional leadership across technical and business teams.
+
+CORE SKILLS
+{" | ".join(skills)}
+
+EXPERIENCE
+{company_a} | {title} | {current_start} - Present
+- Led the {domain} roadmap across {scope_one} teams, using {primary} and {secondary} to improve {metric_name} by {impact_one}% while reducing review cycles by {impact_three}%.
+- Built a weekly executive scorecard covering {scope_two:,}+ records, surfacing risk, ownership, and next actions for product, finance, and operations leaders.
+- Mentored 4 team members on evidence-backed problem framing, raising peer review quality and shortening stakeholder turnaround by {impact_two}%.
+- Partnered with legal, finance, and customer-facing teams to convert ambiguous requests into scoped delivery plans with clear metrics, owners, and launch criteria.
+
+{company_b} | {compose_headline("Mid", title.replace("Senior ", "").replace("Lead ", ""))} | {prior_range}
+- Owned a high-priority {domain} initiative from discovery through rollout, increasing adoption by {impact_two}% across {scope_one - 1 if scope_one > 7 else scope_one + 2} business units.
+- Rebuilt the reporting and documentation workflow in {tertiary}, cutting manual reconciliation from 9 hours to 3 hours per week.
+- Presented monthly findings to VP-level stakeholders and turned feedback into a sequenced roadmap with measurable acceptance criteria.
+
+{str(rng.choice(FAKE_COMPANIES))} | Associate {track.split('/')[0].strip()} Specialist | {earlier_range}
+- Supported operating reviews, QA checks, and customer research for a {domain} portfolio serving {int(scope_two / 2):,}+ users or records.
+- Created reusable templates that improved handoffs between analysts, operators, and managers.
+
+SELECTED PROJECTS
+- {domain.title()} Control Room: Built a reusable dashboard and decision log connecting leading indicators, owner actions, and post-launch impact.
+- Evidence Quality Rubric: Created a {project_count}-part review framework that helped teams distinguish activity updates from measurable outcomes.
+- Stakeholder Briefing Pack: Standardized monthly leadership narratives with metric definitions, risks, and recommended next steps.
+
+EDUCATION
+- B.S. in {track.split('/')[0].strip()} / Business Analytics, {school}
+
+CERTIFICATIONS
+- Advanced {primary} for Practitioners
+- Cross-Functional Leadership Workshop
+"""
+
+    if quality == "solid":
+        impact_one = int(rng.integers(10, 28))
+        impact_two = int(rng.integers(7, 19))
+        return f"""{name}
+{title}
+{location} | {slug}@example.com | linkedin.com/in/{slug}
+
+SUMMARY
+{track} professional with practical experience in {domain}, {primary}, and {secondary}. Comfortable working with managers and cross-functional partners to improve recurring workflows.
+
+SKILLS
+{" | ".join(skills[:6])}
+
+EXPERIENCE
+{company_a} | {title} | 2020 - Present
+- Managed day-to-day {domain} work using {primary} and {secondary}, improving {metric_name} by {impact_one}% over two planning cycles.
+- Created status reports and process documentation for 5 stakeholder groups.
+- Coordinated issue triage, follow-up actions, and handoffs between internal teams.
+
+{company_b} | Associate {track.split('/')[0].strip()} Specialist | 2018 - 2020
+- Supported reporting, quality checks, and stakeholder requests for a busy {domain} team.
+- Reduced recurring manual work by {impact_two}% by standardizing templates and review steps.
+
+PROJECTS
+- {domain.title()} Tracker: Built a shared tracker for open issues, owners, deadlines, and basic trend reporting.
+
+EDUCATION
+- B.A. in Business Administration, {school}
+"""
+
+    return f"""{name}
+{title}
+{location} | {slug}@example.com
+
+Summary
+Motivated {track.lower()} candidate interested in {domain}. I am organized, dependable, and eager to grow.
+
+Experience
+{company_a} | {title} | 2023 - Present
+- Responsible for helping with {domain} tasks.
+- Worked on reports and team requests.
+
+{company_b} | Intern | Summer 2022
+- Helped the team with research and coordination.
+
+Education
+- Coursework in business and technology, {school}
+
+Skills
+- {", ".join(skills[:4])}
+"""
+
+
+def random_premade_sample_resume(
+    jobs: pd.DataFrame,
+    previous_index: int | None = None,
+) -> tuple[str, str, int]:
+    rng = np.random.default_rng()
+    choices = list(range(len(SAMPLE_RESUME_SPECS)))
+    if previous_index in choices and len(choices) > 1:
+        choices.remove(previous_index)
+    index = int(rng.choice(choices))
+    spec = SAMPLE_RESUME_SPECS[index]
+    text = generate_premade_sample_resume(spec, jobs)
+    source = f"Random sample resume: {spec[0]}, {spec[2]}"
+    return text, source, index
+
+
 def linkedin_dataset_note(has_real_data: bool) -> str:
     if has_real_data:
         return "Using the local LinkedIn job catalog."
@@ -1713,10 +2121,20 @@ def extract_uploaded_text(uploaded_file) -> str:
         pages: list[str] = []
         with pdfplumber.open(uploaded_file) as pdf:
             for page in pdf.pages:
-                pages.append(page.extract_text() or "")
-        return "\n".join(pages).strip()
+                text = page.extract_text(x_tolerance=1, y_tolerance=3) or ""
+                if not text.strip():
+                    text = page.extract_text() or ""
+                pages.append(text)
+        return clean_extracted_pdf_text("\n".join(pages))
 
     return ""
+
+
+def clean_extracted_pdf_text(text: str) -> str:
+    text = re.sub(r"\(cid:\d+\)", " ", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 PRESTIGIOUS_COMPANY_TOKENS = (
@@ -1736,10 +2154,30 @@ PRESTIGIOUS_COMPANY_TOKENS = (
     "nasa", "lawrence livermore", "los alamos", "fermilab", "bell labs",
     "national institutes of health",
 )
+PRESTIGIOUS_EDUCATION_TOKENS = (
+    "stanford university", "stanford",
+    "massachusetts institute of technology", "mit",
+    "harvard university", "harvard",
+    "princeton university", "princeton",
+    "yale university", "yale",
+    "caltech", "california institute of technology",
+    "uc berkeley", "university of california berkeley", "berkeley",
+    "carnegie mellon", "cmu",
+    "university of chicago",
+    "columbia university", "columbia",
+    "cornell university", "cornell",
+    "university of pennsylvania", "upenn",
+    "oxford", "university of oxford",
+    "cambridge", "university of cambridge",
+    "eth zurich",
+    "tsinghua university", "tsinghua",
+    "peking university",
+)
 
 RIGOROUS_TITLE_TOKENS = (
     "software engineer", "machine learning engineer", "research scientist",
     "data scientist", "research engineer", "applied scientist",
+    "member of technical staff", "technical staff", "staff research scientist",
     "physician", "surgeon", "resident", "attending",
     "attorney", "lawyer", "associate attorney",
     "investment banker", "investment banking",
@@ -1845,15 +2283,161 @@ _MONTH_INDEX = {
     "jul": 7, "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
 }
 DATE_RANGE_REGEX = re.compile(
-    r"(?P<m1>" + "|".join(_MONTHS) + r")?\s*(?P<y1>20\d{2}|19\d{2})\s*[-–—]+\s*"
-    r"(?:(?P<present>present|current|now|today)|"
-    r"(?P<m2>" + "|".join(_MONTHS) + r")?\s*(?P<y2>20\d{2}|19\d{2}))",
+    r"(?:(?P<m1>" + "|".join(_MONTHS) + r")\s*)?"
+    r"(?P<y1>20\d{2}|19\d{2})(?:[./](?P<n1>\d{1,2}))?\s*[-–—]+\s*"
+    r"(?:\(?\s*(?P<present>present|current|now|today|expected)\s*\)?|"
+    r"(?:(?P<m2>" + "|".join(_MONTHS) + r")\s*)?"
+    r"(?P<y2>20\d{2}|19\d{2})(?:[./](?P<n2>\d{1,2}))?)",
     re.IGNORECASE,
 )
+WORK_SECTION_LABELS = {
+    "experience",
+    "professional experience",
+    "work experience",
+    "employment",
+    "employment history",
+    "career history",
+    "internships",
+}
+NON_WORK_SECTION_LABELS = {
+    "education",
+    "honors",
+    "honors and awards",
+    "awards",
+    "certifications",
+    "licenses",
+    "skills",
+    "technical skills",
+    "projects",
+    "selected projects",
+    "publications",
+    "activities",
+}
+NON_WORK_DATE_TOKENS = (
+    "honor",
+    "dean's list",
+    "deans list",
+    "award",
+    "scholarship",
+    "education",
+    "university",
+    "college",
+    "school",
+    "b.s.",
+    "b.a.",
+    "m.s.",
+    "m.a.",
+    "ph.d",
+    "gpa",
+    "graduation",
+    "expected",
+    "coursework",
+    "certification",
+    "license",
+)
+
+
+def _section_label_from_line(line: str) -> str | None:
+    label = re.sub(r"[^a-z/& ]+", "", line.lower()).strip(" :")
+    label = re.sub(r"\s+", " ", label)
+    if not label or len(label.split()) > 4:
+        return None
+    if label in WORK_SECTION_LABELS or label in NON_WORK_SECTION_LABELS:
+        return label
+    return None
+
+
+def _date_context_looks_like_non_work(line: str, context: str, section: str | None) -> bool:
+    lowered_line = line.lower()
+    lowered_context = context.lower()
+    if section in NON_WORK_SECTION_LABELS:
+        return True
+    if section in WORK_SECTION_LABELS:
+        return False
+    if any(token in lowered_line for token in NON_WORK_DATE_TOKENS):
+        work_tokens = RIGOROUS_TITLE_TOKENS + LOW_RIGOR_TITLE_TOKENS + (
+            "manager",
+            "engineer",
+            "analyst",
+            "designer",
+            "nurse",
+            "teacher",
+            "attorney",
+            "coordinator",
+            "specialist",
+            "associate",
+            "consultant",
+            "intern",
+        )
+        return not any(token in lowered_context for token in work_tokens)
+    return False
+
+
+def academic_cv_signals(text: str) -> dict[str, Any]:
+    lowered = text.lower()
+    school_hits = [
+        school
+        for school in PRESTIGIOUS_EDUCATION_TOKENS
+        if re.search(r"(?<![a-z0-9])" + re.escape(school) + r"(?![a-z0-9])", lowered)
+    ]
+    prestigious_education = [
+        school
+        for school in school_hits
+        if not any(
+            school != other and school in other and other in school_hits
+            for other in school_hits
+        )
+    ]
+    degree_hits = sum(
+        1
+        for token in (
+            "ph.d",
+            "phd",
+            "doctor of philosophy",
+            "m.sc",
+            "m.s.",
+            "b.sc",
+            "b.s.",
+        )
+        if token in lowered
+    )
+    publication_count = len(
+        re.findall(
+            r"\b(?:journal articles|preprints|physical review letters|journal of high energy physics|conference|proceedings|preprint)\b",
+            lowered,
+        )
+    )
+    numbered_publications = len(re.findall(r"(?m)^\s*\d+\s+[A-Z][^,\n]+,", text))
+    publication_count = max(publication_count, numbered_publications)
+    award_count = len(
+        re.findall(
+            r"\b(?:fellowship|award|prize|honor|highest honor|presidential award|dean's list)\b",
+            lowered,
+        )
+    )
+    referee_count = len(re.findall(r"\b(?:referee|reviewer|review service)\b", lowered))
+    return {
+        "prestigious_education": sorted(set(prestigious_education)),
+        "prestigious_education_count": len(set(prestigious_education)),
+        "degree_hits": degree_hits,
+        "publication_count": publication_count,
+        "award_count": award_count,
+        "referee_count": referee_count,
+    }
 
 
 def _months_between(y1: int, m1: int, y2: int, m2: int) -> int:
     return max(0, (y2 - y1) * 12 + (m2 - m1) + 1)
+
+
+def _date_match_month(match: re.Match[str], named_month: str, numeric_month: str, default: int) -> int:
+    month_name = match.group(named_month)
+    if month_name:
+        return _MONTH_INDEX.get(month_name.lower(), default)
+    month_number = match.group(numeric_month)
+    if month_number:
+        return max(1, min(12, int(month_number)))
+    return default
 
 
 def extract_work_history(text: str) -> dict[str, Any]:
@@ -1881,103 +2465,114 @@ def extract_work_history(text: str) -> dict[str, Any]:
     spans: list[dict[str, Any]] = []
     seen_keys: set[tuple[int, int, int, int]] = set()
 
-    for match in DATE_RANGE_REGEX.finditer(text):
-        y1 = int(match.group("y1"))
-        m1 = _MONTH_INDEX.get((match.group("m1") or "jan").lower(), 1)
-        if match.group("present"):
-            y2, m2 = today_y, today_m
-        else:
-            y2 = int(match.group("y2"))
-            m2 = _MONTH_INDEX.get((match.group("m2") or "dec").lower(), 12)
-        if (y2, m2) < (y1, m1):
-            continue
-        key = (y1, m1, y2, m2)
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
-
-        months = _months_between(y1, m1, y2, m2)
-        if months > 240:
+    lines = _resume_lines(text)
+    current_section: str | None = None
+    for idx, line in enumerate(lines):
+        section_label = _section_label_from_line(line)
+        if section_label is not None:
+            current_section = section_label
             continue
 
-        start, end = match.span()
-        ctx_start = max(0, start - 120)
-        ctx_end = min(len(text), end + 120)
-        context = text[ctx_start:ctx_end].lower()
+        window = " ".join(lines[max(0, idx - 1) : min(len(lines), idx + 2)])
+        if _date_context_looks_like_non_work(line, window, current_section):
+            continue
 
-        is_intern = any(
-            token in context
-            for token in (
-                "intern",
-                "internship",
-                "co-op",
-                "coop",
-                "practicum",
-                "summer associate",
+        for match in DATE_RANGE_REGEX.finditer(line):
+            y1 = int(match.group("y1"))
+            m1 = _date_match_month(match, "m1", "n1", 1)
+            if match.group("present"):
+                y2, m2 = today_y, today_m
+            else:
+                y2 = int(match.group("y2"))
+                m2 = _date_match_month(match, "m2", "n2", 12)
+            if (y2, m2) < (y1, m1):
+                continue
+            key = (y1, m1, y2, m2)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
+            months = _months_between(y1, m1, y2, m2)
+            if months > 240:
+                continue
+
+            context = window.lower()
+
+            is_intern = any(
+                token in context
+                for token in (
+                    "intern",
+                    "internship",
+                    "co-op",
+                    "coop",
+                    "practicum",
+                    "summer associate",
+                )
             )
-        )
-        is_academic = any(
-            token in context
-            for token in (
-                "teaching assistant",
-                "research assistant",
-                " ta ",
-                " ra ",
-                "graduate student",
-                "phd student",
-                "undergraduate research",
+            is_academic = any(
+                token in context
+                for token in (
+                    "teaching assistant",
+                    "research assistant",
+                    " ta ",
+                    " ra ",
+                    "graduate student",
+                    "phd student",
+                    "undergraduate research",
+                )
             )
-        )
-        seniority_kw = None
-        for kw, label in (
-            ("chief", "Lead / Executive"),
-            ("vice president", "Lead / Executive"),
-            ("director", "Lead / Executive"),
-            ("principal", "Lead / Executive"),
-            ("staff ", "Lead / Executive"),
-            ("lead ", "Senior"),
-            ("senior", "Senior"),
-            ("sr.", "Senior"),
-            ("associate", "Associate"),
-            ("junior", "Intern / Entry"),
-            ("intern", "Intern / Entry"),
-        ):
-            if kw in context:
-                seniority_kw = label
-                break
+            seniority_kw = None
+            for kw, label in (
+                ("chief", "Lead / Executive"),
+                ("vice president", "Lead / Executive"),
+                ("director", "Lead / Executive"),
+                ("principal", "Lead / Executive"),
+                ("staff ", "Lead / Executive"),
+                ("lead ", "Senior"),
+                ("senior", "Senior"),
+                ("sr.", "Senior"),
+                ("associate", "Associate"),
+                ("junior", "Intern / Entry"),
+                ("intern", "Intern / Entry"),
+            ):
+                if kw in context:
+                    seniority_kw = label
+                    break
 
-        rigorous_title = any(token in context for token in RIGOROUS_TITLE_TOKENS)
-        low_rigor_title = any(token in context for token in LOW_RIGOR_TITLE_TOKENS)
-        prestigious_company = any(
-            token in context for token in PRESTIGIOUS_COMPANY_TOKENS
-        )
+            rigorous_title = any(token in context for token in RIGOROUS_TITLE_TOKENS)
+            low_rigor_title = any(token in context for token in LOW_RIGOR_TITLE_TOKENS)
+            prestigious_company = any(
+                token in context for token in PRESTIGIOUS_COMPANY_TOKENS
+            )
 
-        # Per-span rigor weight in [0.2, 1.0]: thin "default" job at 0.55,
-        # bumped up by rigorous-title or prestigious-company evidence,
-        # pulled down by clearly low-rigor titles. Internships are scored
-        # separately by the internship multiplier later.
-        weight = 0.55
-        if rigorous_title:
-            weight += 0.25
-        if prestigious_company:
-            weight += 0.25
-        if low_rigor_title:
-            weight = min(weight, 0.3)
-        weight = max(0.2, min(1.0, weight))
+            # Per-span rigor weight in [0.2, 1.0]: thin "default" job at 0.55,
+            # bumped up by rigorous-title or prestigious-company evidence,
+            # pulled down by clearly low-rigor titles. Internships are scored
+            # separately by the internship multiplier later.
+            weight = 0.55
+            if rigorous_title:
+                weight += 0.25
+            if prestigious_company:
+                weight += 0.25
+            if low_rigor_title:
+                weight = min(weight, 0.3)
+            weight = max(0.2, min(1.0, weight))
 
-        spans.append(
-            {
-                "months": months,
-                "weight": weight,
-                "is_intern": is_intern,
-                "is_academic": is_academic,
-                "rigorous_title": rigorous_title,
-                "low_rigor_title": low_rigor_title,
-                "prestigious_company": prestigious_company,
-                "seniority_kw": seniority_kw,
-                "context": context,
-            }
-        )
+            spans.append(
+                {
+                    "months": months,
+                    "weight": weight,
+                    "is_intern": is_intern,
+                    "is_academic": is_academic,
+                    "rigorous_title": rigorous_title,
+                    "low_rigor_title": low_rigor_title,
+                    "prestigious_company": prestigious_company,
+                    "seniority_kw": seniority_kw,
+                    "context": context,
+                    "line": line,
+                    "section": current_section,
+                }
+            )
 
     ft_spans = [s for s in spans if not s["is_intern"] and not s["is_academic"]]
     intern_spans = [s for s in spans if s["is_intern"] or s["is_academic"]]
@@ -2108,6 +2703,90 @@ def score_projects(text: str) -> dict[str, Any]:
     }
 
 
+def _resume_lines(text: str) -> list[str]:
+    return [re.sub(r"\s+", " ", line.strip()) for line in text.splitlines() if line.strip()]
+
+
+def _quote_resume_line(line: str, max_chars: int = 120) -> str:
+    cleaned = line.lstrip("-*• ").strip()
+    if len(cleaned) > max_chars:
+        cleaned = cleaned[: max_chars - 3].rstrip() + "..."
+    return f'"{cleaned}"'
+
+
+def _find_resume_line(
+    text: str,
+    predicate,
+    *,
+    default: str = "",
+) -> str:
+    for line in _resume_lines(text):
+        if predicate(line):
+            return _quote_resume_line(line)
+    return default
+
+
+def _find_first_bullet(text: str) -> str:
+    return _find_resume_line(
+        text,
+        lambda line: line.startswith(("-", "*", "•")),
+        default="",
+    )
+
+
+def _work_history_date_example(work_history: dict[str, Any]) -> str:
+    spans = work_history.get("spans") or []
+    for span in spans:
+        if span.get("is_intern") or span.get("is_academic"):
+            continue
+        line = str(span.get("line") or "").strip()
+        if line:
+            return _quote_resume_line(line)
+    for span in spans:
+        line = str(span.get("line") or "").strip()
+        if line:
+            return _quote_resume_line(line)
+    return ""
+
+
+def _select_feedback_items(
+    items: list[str],
+    overall: int,
+    *,
+    positive: bool,
+) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        cleaned = re.sub(r"\s+", " ", item).strip()
+        if cleaned and cleaned not in seen:
+            unique.append(cleaned)
+            seen.add(cleaned)
+
+    if positive:
+        limit = 5 if overall >= 85 else 4 if overall >= 70 else 3 if overall >= 50 else 2
+    else:
+        limit = 1 if overall >= 85 else 2 if overall >= 70 else 3 if overall >= 50 else 4
+        if overall < 30:
+            limit = 5
+
+    if not unique:
+        return []
+    return unique[: max(1, min(5, limit))]
+
+
+def _format_school_name(name: str) -> str:
+    overrides = {
+        "uc berkeley": "UC Berkeley",
+        "mit": "MIT",
+        "cmu": "CMU",
+        "eth zurich": "ETH Zurich",
+        "upenn": "UPenn",
+    }
+    lowered = name.lower()
+    return overrides.get(lowered, name.title())
+
+
 def _seniority_from_ft_months(months: int) -> str:
     """Strict, prevalent seniority bands keyed off rigor-weighted FT months.
 
@@ -2132,6 +2811,7 @@ def assess_quality(
     structure: dict[str, Any],
     work_history: dict[str, Any],
     projects: dict[str, Any],
+    public_signals: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compute HR-style quality sub-scores, red flags, and strengths."""
     word_count = int(structure.get("word_count", 0))
@@ -2144,6 +2824,13 @@ def assess_quality(
     rigorous_role_count = int(work_history.get("rigorous_role_count", 0))
     low_rigor_role_count = int(work_history.get("low_rigor_role_count", 0))
     prestigious_company_count = int(work_history.get("prestigious_company_count", 0))
+    academic = academic_cv_signals(text)
+    publication_count = int(academic["publication_count"])
+    award_count = int(academic["award_count"])
+    prestigious_education_count = int(academic["prestigious_education_count"])
+    is_research_cv = publication_count >= 3 or (
+        prestigious_education_count > 0 and int(academic["degree_hits"]) > 0
+    )
 
     # Experience sub-score: dominated by rigor-weighted FT months, with a
     # progression bonus and a prestige bonus.
@@ -2155,6 +2842,14 @@ def assess_quality(
             experience_score = min(100, experience_score + 8)
         if prestigious_company_count > 0:
             experience_score = min(100, experience_score + 6)
+    if is_research_cv:
+        academic_experience_bonus = (
+            prestigious_education_count * 8
+            + min(publication_count, 12) * 2
+            + min(award_count, 4) * 3
+            + int(academic["degree_hits"]) * 4
+        )
+        experience_score = min(100, experience_score + min(40, academic_experience_bonus))
 
     # Impact sub-score: quantified outcomes density.
     impact_total = int(projects.get("impact_total", 0))
@@ -2163,11 +2858,24 @@ def assess_quality(
     else:
         density = impact_total / max(1, bullet_count)
         impact_score = min(100, int(density * 220))
+    if publication_count >= 3:
+        research_impact_score = min(
+            100,
+            45
+            + publication_count * 4
+            + min(award_count, 4) * 5
+            + min(int(academic["referee_count"]), 4) * 3,
+        )
+        impact_score = max(impact_score, research_impact_score)
 
     # Specificity sub-score: action verbs vs vague phrases.
     action_total = int(projects.get("action_total", 0))
     vague_total = int(projects.get("vague_total", 0))
     raw_specificity = action_total * 12 - vague_total * 18 + 30
+    if publication_count >= 3:
+        raw_specificity += 25
+    if prestigious_education_count > 0:
+        raw_specificity += 8
     specificity_score = max(0, min(100, raw_specificity))
 
     # Structure sub-score: sections present + bullets + reasonable length.
@@ -2182,6 +2890,8 @@ def assess_quality(
         structure_score += 15
     elif word_count >= 200:
         structure_score += 8
+    if is_research_cv and publication_count >= 3:
+        structure_score += 12
     structure_score = max(0, min(100, structure_score))
 
     overall = int(
@@ -2196,6 +2906,14 @@ def assess_quality(
     n_school = int(projects.get("n_school", 0))
     if n_total and n_school / n_total > 0.5:
         overall = max(0, overall - 12)
+    if is_research_cv:
+        academic_overall_bonus = min(
+            12,
+            prestigious_education_count * 2
+            + min(publication_count, 10) // 2
+            + min(award_count, 3),
+        )
+        overall = min(100, overall + academic_overall_bonus)
 
     if overall >= 75:
         band_label = "Strong"
@@ -2208,56 +2926,215 @@ def assess_quality(
 
     red_flags: list[str] = []
     strengths: list[str] = []
+    date_example = _work_history_date_example(work_history)
+    quantified_example = _find_resume_line(
+        text,
+        lambda line: IMPACT_REGEX.search(line) is not None,
+    )
+    action_example = _find_resume_line(
+        text,
+        lambda line: any(
+            re.search(r"\b" + verb + r"\b", line.lower()) for verb in ACTION_VERBS
+        ),
+    )
+    vague_example = _find_resume_line(
+        text,
+        lambda line: any(phrase in line.lower() for phrase in VAGUE_PHRASES),
+    )
+    first_bullet = _find_first_bullet(text)
+    skills_example = _find_resume_line(
+        text,
+        lambda line: "skill" in line.lower()
+        or any(skill.lower() in line.lower() for skill in SAMPLE_FIELD_SKILLS.get(profile["track"], [])[:4]),
+    )
 
     if ft_months == 0 and intern_months == 0:
         red_flags.append(
-            "No parseable employment dates — seniority defaults to Entry."
+            "No parseable employment date ranges were detected, so seniority defaults to Entry."
         )
     elif ft_months < 6 and intern_months > 0:
         red_flags.append(
-            "Experience reads as internships only — limited full-time evidence."
+            "Experience reads as internships only; full-time evidence is limited"
+            + (f" despite date evidence like {date_example}." if date_example else ".")
         )
 
     if n_total and n_school / max(1, n_total) > 0.5:
         red_flags.append(
-            "Most listed work appears to be coursework or class projects."
+            "Most listed work appears to be coursework or class projects, which weakens job-level evidence."
         )
     if low_rigor_role_count > 0 and rigorous_role_count == 0:
         red_flags.append(
-            "Listed roles read as service or retail positions — typical entry-tier work."
+            "Listed roles read as service or retail positions, so the resume needs stronger role-scope evidence."
         )
     if vague_total >= 3 and impact_total == 0:
         red_flags.append(
-            "Frequent vague phrasing ('worked on', 'responsible for') with no measurable outcomes."
+            "Frequent vague phrasing appears without measurable outcomes"
+            + (f", for example {vague_example}." if vague_example else ".")
         )
-    if impact_total == 0 and bullet_count >= 3:
+    if impact_total == 0 and bullet_count >= 3 and not is_research_cv:
         red_flags.append(
-            "No quantified outcomes detected — bullets lack numbers, percentages, or scale."
+            "No quantified outcomes were detected across the bullet list"
+            + (f"; add scale to lines like {first_bullet}." if first_bullet else ".")
         )
     if word_count < 150:
-        red_flags.append("Resume is short — under 150 words limits what can be evaluated.")
+        red_flags.append(
+            f"Resume is short at {word_count} words, which limits evidence depth."
+        )
     missing_sections = structure.get("missing_sections") or []
     if len(missing_sections) >= 3:
         red_flags.append(
             "Several standard sections missing: " + ", ".join(missing_sections[:3]) + "."
         )
+    elif missing_sections and structure_score < 70:
+        red_flags.append(
+            "Resume organization could be clearer; missing "
+            + ", ".join(missing_sections[:2])
+            + "."
+        )
+    if impact_score < 45 and impact_total > 0 and bullet_count >= 6 and not is_research_cv:
+        red_flags.append(
+            "Only a small share of bullets are quantified; add more numbers beyond "
+            + quantified_example
+            + "."
+        )
+    if specificity_score < 45 and vague_total > 0:
+        red_flags.append(
+            "Some bullets still rely on broad activity language instead of concrete ownership."
+        )
+    if experience_score < 45 and ft_months > 0:
+        red_flags.append(
+            "Work-history depth is still limited relative to the claimed level."
+        )
 
-    if weighted_months >= 24:
-        strengths.append("Multi-year full-time history parsed from dates.")
+    if weighted_months >= 24 and date_example:
+        strengths.append(
+            "Multi-year work history is supported by date evidence"
+            + (f" such as {date_example}." if date_example else ".")
+        )
+    if weighted_months >= 60 and int(work_history.get("ft_role_count", 0)) >= 2:
+        strengths.append("Experience spans multiple full-time roles with enough tenure to support level calibration.")
     if prestigious_company_count > 0:
-        strengths.append("History includes recognized, selective employers.")
+        strengths.append("History includes recognized, selective employers or labs.")
+    if prestigious_education_count > 0:
+        schools = ", ".join(
+            _format_school_name(str(school))
+            for school in academic["prestigious_education"][:3]
+        )
+        strengths.append(
+            f"Educational background includes highly selective institutions: {schools}."
+        )
+    if publication_count >= 5:
+        strengths.append(
+            f"Research output is unusually strong, with {publication_count}+ publications or preprints detected."
+        )
+    elif publication_count >= 3:
+        strengths.append(
+            f"Research output is substantial, with {publication_count}+ publications or preprints detected."
+        )
+    if award_count >= 2:
+        strengths.append(
+            f"Awards and fellowships add external validation, with {award_count} honor signals detected."
+        )
     if rigorous_role_count >= 2:
         strengths.append("Multiple rigorous, high-bar roles in the work history.")
     if work_history.get("has_progression"):
         strengths.append("Title progression visible across roles.")
     if impact_total >= 3:
-        strengths.append("Several bullets contain quantified impact.")
+        strengths.append(
+            "Several bullets contain quantified impact"
+            + (f", including {quantified_example}." if quantified_example else ".")
+        )
     elif impact_total >= 1:
-        strengths.append("At least one bullet shows quantified impact.")
+        strengths.append(
+            "At least one bullet shows quantified impact"
+            + (f": {quantified_example}." if quantified_example else ".")
+        )
     if action_total >= 5:
-        strengths.append("Strong action verbs throughout.")
+        strengths.append(
+            "Action verbs create a strong ownership signal"
+            + (f", as in {action_example}." if action_example else ".")
+        )
+    if specificity_score >= 70 and first_bullet:
+        strengths.append(
+            f"Bullet phrasing is reasonably concrete about work performed, for example {first_bullet}."
+        )
     if sections_found == sections_total:
         strengths.append("All standard resume sections present.")
+    elif sections_found >= 3:
+        strengths.append(
+            "The resume has a usable structure with sections including "
+            + ", ".join(structure.get("found_sections", [])[:3])
+            + "."
+        )
+    if 350 <= word_count <= 1200:
+        strengths.append(
+            f"The resume has enough depth for review at {word_count} words without becoming bloated."
+        )
+
+    if public_signals and public_signals.get("ready"):
+        public_domain = public_signals.get("domain", {})
+        domain_confidence = float(public_domain.get("confidence", 0.0) or 0.0)
+        if domain_confidence >= 0.18:
+            strengths.append(
+                "Public resume-domain model independently recognizes this as a "
+                f"{str(public_domain.get('label', 'professional')).title()} profile."
+            )
+        public_sections = public_signals.get("sections", {}).get("counts", {})
+        if public_sections.get("Exp", 0) and public_sections.get("Edu", 0):
+            strengths.append(
+                "Public section model finds separate experience and education evidence."
+            )
+        public_entities = public_signals.get("entities", {}).get("counts", {})
+        entity_evidence = [
+            label
+            for label in ("Companies worked at", "College Name", "Degree", "Designation", "Skills")
+            if int(public_entities.get(label, 0)) > 0
+        ]
+        if len(entity_evidence) >= 2:
+            strengths.append(
+                "Public entity model detects structured resume evidence: "
+                + ", ".join(entity_evidence[:3])
+                + "."
+            )
+
+    if not strengths:
+        if skills_example:
+            strengths.append(
+                f"The profile has at least one concrete domain signal in {skills_example}."
+            )
+        elif profile.get("track"):
+            strengths.append(
+                f"The language is specific enough to infer a {profile['track']} focus."
+            )
+        else:
+            strengths.append("The resume provides an initial base for evaluation.")
+
+    if not red_flags:
+        weakest = min(
+            (
+                ("experience", experience_score),
+                ("quantified impact", impact_score),
+                ("specificity", specificity_score),
+                ("structure", structure_score),
+            ),
+            key=lambda item: item[1],
+        )[0]
+        if weakest == "quantified impact" and first_bullet:
+            red_flags.append(
+                f"The next improvement is sharper quantified impact; add outcome scale to {first_bullet}."
+            )
+        elif weakest == "structure":
+            red_flags.append(
+                "Structure is the main remaining constraint; add or clarify standard sections."
+            )
+        elif weakest == "specificity" and first_bullet:
+            red_flags.append(
+                f"Some phrasing could still be more specific about ownership and scope, starting with {first_bullet}."
+            )
+        else:
+            red_flags.append(
+                "The resume is strong overall, but it can still add more context on scope, collaborators, and business outcome."
+            )
 
     return {
         "overall": overall,
@@ -2266,8 +3143,8 @@ def assess_quality(
         "impact_score": impact_score,
         "specificity_score": specificity_score,
         "structure_score": structure_score,
-        "red_flags": red_flags[:5],
-        "strengths": strengths[:5],
+        "red_flags": _select_feedback_items(red_flags, overall, positive=False),
+        "strengths": _select_feedback_items(strengths, overall, positive=True),
     }
 
 
@@ -2387,6 +3264,7 @@ def detect_profile(
 
     rigorous_role_count = int(work_history.get("rigorous_role_count", 0))
     low_rigor_role_count = int(work_history.get("low_rigor_role_count", 0))
+    prestigious_company_count = int(work_history.get("prestigious_company_count", 0))
     ft_role_count = int(work_history.get("ft_role_count", 0))
 
     if work_history.get("role_count", 0) == 0:
@@ -2415,6 +3293,35 @@ def detect_profile(
     else:
         seniority = floor_seniority
 
+    academic = academic_cv_signals(resume_text)
+    academic_pub_count = int(academic["publication_count"])
+    academic_degree_hits = int(academic["degree_hits"])
+    academic_prestige_count = int(academic["prestigious_education_count"])
+    academic_floor = None
+    if academic_pub_count >= 10 and academic_prestige_count > 0 and rigorous_role_count > 0:
+        academic_floor = "Senior"
+    elif academic_pub_count >= 5 and academic_degree_hits > 0:
+        academic_floor = "Mid"
+    elif academic_prestige_count > 0 and academic_degree_hits > 0:
+        academic_floor = "Associate"
+
+    if academic_floor and progression_order.index(academic_floor) > progression_order.index(seniority):
+        seniority = academic_floor
+        seniority_reason = (
+            f"Raised to {academic_floor} — publication record and elite academic background support a higher research level."
+        )
+
+    if (
+        title_cap == "Lead / Executive"
+        and academic_pub_count >= 10
+        and rigorous_role_count >= 2
+        and prestigious_company_count > 0
+    ):
+        seniority = "Lead / Executive"
+        seniority_reason = (
+            "Raised to Lead / Executive — senior/staff research title is backed by publications and elite employers."
+        )
+
     structure = structure or {}
     projects = projects or {}
     word_count = int(structure.get("word_count", 0))
@@ -2440,6 +3347,10 @@ def detect_profile(
         confidence += 10
     if word_count >= 350:
         confidence += 5
+    if academic_pub_count >= 5:
+        confidence += 15
+    if academic_prestige_count > 0:
+        confidence += 8
     if n_total and n_school > n_total / 2:
         confidence -= 15
     if vague_total >= 3 and impact_total == 0:
@@ -2615,6 +3526,9 @@ def render_job_card(row: pd.Series) -> None:
     score_label = "Strong match"
     if not pd.isna(similarity):
         score_label = f"{float(similarity) * 100:.0f}% similarity"
+    public_ats = row.get("public_ats_score", np.nan)
+    if not pd.isna(public_ats):
+        score_label += f" · {float(public_ats):.0f}% public fit"
     title = escape(str(row.get("title", "Untitled role")))
     company = escape(str(row.get("company_name", "Unknown company")))
     location = escape(str(row.get("location", "Unknown location")))
@@ -2652,21 +3566,19 @@ def render_quality_scorecard(quality: dict[str, Any]) -> None:
     )
     flags = quality.get("red_flags") or []
     strengths = quality.get("strengths") or []
-    flags_html = (
-        '<div class="quality-section-label">What stood out as risk</div>'
-        '<ul class="quality-list flags">'
-        + "".join(f"<li>{escape(str(f))}</li>" for f in flags)
-        + "</ul>"
-        if flags
-        else ""
-    )
     strengths_html = (
+        '<div class="quality-feedback-panel">'
         '<div class="quality-section-label">What stood out positively</div>'
         '<ul class="quality-list strengths">'
-        + "".join(f"<li>{escape(str(s))}</li>" for s in strengths)
-        + "</ul>"
-        if strengths
-        else ""
+        + "".join(f"<li>{escape(str(s))}</li>" for s in strengths[:5])
+        + "</ul></div>"
+    )
+    flags_html = (
+        '<div class="quality-feedback-panel">'
+        '<div class="quality-section-label">What needs work</div>'
+        '<ul class="quality-list flags">'
+        + "".join(f"<li>{escape(str(f))}</li>" for f in flags[:5])
+        + "</ul></div>"
     )
     band_label_safe = escape(band_label)
     overall_html = (
@@ -2684,11 +3596,48 @@ def render_quality_scorecard(quality: dict[str, Any]) -> None:
         '<div class="quality-card">'
         + headline
         + f'<div class="quality-subscores">{sub_html}</div>'
-        + flags_html
-        + strengths_html
+        + f'<div class="quality-feedback-grid">{strengths_html}{flags_html}</div>'
         + '</div>'
     )
     st.markdown(body, unsafe_allow_html=True)
+
+
+def render_public_model_card(public_signals: dict[str, Any] | None) -> None:
+    if not public_signals or not public_signals.get("ready"):
+        return
+    domain = public_signals.get("domain", {})
+    domain_label = str(domain.get("label", "Unknown")).title()
+    domain_confidence = float(domain.get("confidence", 0.0) or 0.0)
+    sections = public_signals.get("sections", {}).get("counts", {})
+    entities = public_signals.get("entities", {}).get("counts", {})
+    chips = [
+        f"Domain: {domain_label} ({domain_confidence * 100:.0f}%)",
+        "Sections: "
+        + ", ".join(
+            f"{label}:{count}"
+            for label, count in sections.items()
+            if label in {"Exp", "Edu", "Skill", "Sum"}
+        ),
+        "Entities: "
+        + ", ".join(
+            f"{label}:{count}"
+            for label, count in entities.items()
+            if label in {"Companies worked at", "College Name", "Degree", "Designation", "Skills"}
+        ),
+    ]
+    chips = [chip for chip in chips if not chip.endswith(": ")]
+    if not chips:
+        return
+    st.markdown(
+        '<div class="section-label" style="margin-top:0.9rem;">Public-data model checks</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="chip-cloud">'
+        + "".join(f'<span class="mini-chip">{escape(chip)}</span>' for chip in chips[:5])
+        + "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def render_salary_band(band: dict[str, Any]) -> None:
@@ -2781,6 +3730,8 @@ def main() -> None:
         st.session_state.theme_name = "Light"
     if "assessment" not in st.session_state:
         st.session_state.assessment = None
+    if "sample_resume_index" not in st.session_state:
+        st.session_state.sample_resume_index = None
 
     inject_styles(st.session_state.theme_name)
     jobs, data_source, has_real_data = load_jobs()
@@ -2922,29 +3873,16 @@ def main() -> None:
             word_count = len(st.session_state.resume_text.split())
             st.caption(f"{word_count} words · click Analyze to evaluate.")
 
-            sec_a, sec_b = st.columns(2)
-            with sec_a:
-                if st.button("Load sample resume", width="stretch"):
-                    st.session_state.resume_text = SAMPLE_RESUME
-                    st.session_state.resume_source = "Built-in sample resume"
-                    st.session_state.assessment = None
-                    st.rerun()
-            with sec_b:
-                if st.button("Generate sample profile", width="stretch"):
-                    one_shot = detect_profile(
-                        st.session_state.resume_text.strip() or SAMPLE_RESUME
-                    )
-                    st.session_state.resume_text = generate_sample_profile(
-                        one_shot["track"],
-                        one_shot["seniority"],
-                        "Anywhere",
-                        jobs,
-                    )
-                    st.session_state.resume_source = (
-                        f"Generated {one_shot['track']} sample profile"
-                    )
-                    st.session_state.assessment = None
-                    st.rerun()
+            if st.button("Load random sample resume", width="stretch"):
+                sample_text, sample_source, sample_index = random_premade_sample_resume(
+                    jobs,
+                    st.session_state.sample_resume_index,
+                )
+                st.session_state.resume_text = sample_text
+                st.session_state.resume_source = sample_source
+                st.session_state.sample_resume_index = sample_index
+                st.session_state.assessment = None
+                st.rerun()
 
             st.write("")
             action_a, action_b = st.columns(2)
@@ -2960,16 +3898,10 @@ def main() -> None:
                     st.rerun()
 
         with right:
-            st.markdown("## Candidate snapshot")
-
             assessment = st.session_state.get("assessment")
             current_text = st.session_state.resume_text.strip()
-            if assessment is None or not current_text:
-                st.caption("Click Analyze profile to see the assessment.")
-                st.info(
-                    "Add a resume on the left, then click **Analyze profile** to evaluate it."
-                )
-            else:
+            if assessment is not None and current_text:
+                st.markdown("## Candidate snapshot")
                 if assessment.get("resume_text", "") != current_text:
                     st.warning(
                         "Resume text changed since the last analysis. Click Analyze profile to refresh."
@@ -2978,8 +3910,10 @@ def main() -> None:
                 profile = assessment["profile"]
                 structure = assessment["structure"]
                 quality = assessment["quality"]
+                public_signals = assessment.get("public_signals")
 
                 render_quality_scorecard(quality)
+                render_public_model_card(public_signals)
 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -3101,14 +4035,24 @@ def main() -> None:
             resume_text_now = st.session_state.resume_text
             try:
                 with st.spinner("Reviewing resume content..."):
+                    public_models = load_public_assessment_resource()
+                    public_signals = public_resume_signals(public_models, resume_text_now)
                     structure = resume_structure(resume_text_now)
+                    structure = enhance_structure_with_public_sections(
+                        structure, public_signals
+                    )
                     work_history = extract_work_history(resume_text_now)
                     projects = score_projects(resume_text_now)
                     profile = detect_profile(
                         resume_text_now, work_history, projects, structure
                     )
                     quality = assess_quality(
-                        resume_text_now, profile, structure, work_history, projects
+                        resume_text_now,
+                        profile,
+                        structure,
+                        work_history,
+                        projects,
+                        public_signals,
                     )
 
                 with st.spinner("Matching resume to relevant roles..."):
@@ -3118,7 +4062,13 @@ def main() -> None:
                         retriever,
                         jobs,
                         resume_embedding,
+                        target_seniority=profile["seniority"],
                         top_k=6,
+                    )
+                    matches = apply_public_ats_fit(
+                        public_models,
+                        resume_text_now,
+                        matches,
                     )
 
                 neural_band = None
@@ -3169,6 +4119,7 @@ def main() -> None:
                 "work_history": work_history,
                 "projects": projects,
                 "quality": quality,
+                "public_signals": public_signals,
                 "matches": matches,
                 "band": band,
                 "cluster": cluster,
@@ -3177,7 +4128,7 @@ def main() -> None:
             st.rerun()
         elif analyze_clicked:
             st.warning(
-                "Paste a resume or load the sample resume before running the analysis."
+                "Paste a resume or load a random sample resume before running the analysis."
             )
 
         assessment = st.session_state.get("assessment")
