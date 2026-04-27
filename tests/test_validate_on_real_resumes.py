@@ -9,7 +9,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from ml.occupation_router import OccupationMatch  # noqa: E402
 from ml.retrieval import JobMatch  # noqa: E402
+from ml.wage_bands import WageBandTable  # noqa: E402
 from scripts.validate_on_real_resumes import _spearman, validate  # noqa: E402
 
 
@@ -72,6 +74,18 @@ def _stub_quality_predictor(_embedding: np.ndarray) -> dict[str, float | str]:
     return {"score": 65.0, "label": "medium"}
 
 
+class _StubOccupationRouter:
+    def route(self, _embedding: np.ndarray, k: int) -> list[OccupationMatch]:
+        assert k == 1
+        return [
+            OccupationMatch(
+                soc_code="15-1252.00",
+                occupation_title="Software Developers",
+                similarity=0.91,
+            )
+        ]
+
+
 def test_validate_rule_only_returns_summary_and_per_row() -> None:
     df = _fixture_resumes()
     embeddings = np.zeros((len(df), 8), dtype=np.float32)
@@ -124,6 +138,37 @@ def test_validate_reports_rule_vs_learned_spearman_when_available() -> None:
     assert "rule_vs_learned_spearman" in summary
     assert summary["rule_vs_learned_spearman"] == pytest.approx(1.0)
     assert per_row["learned_score"].iloc[0] == 90.0
+
+
+def test_validate_adds_category_quality_and_bls_wage_bands() -> None:
+    df = _fixture_resumes()
+    df["category"] = ["Engineering", "Analytics", "General"]
+    embeddings = np.zeros((len(df), 8), dtype=np.float32)
+    wage_table = WageBandTable.from_dataframe(
+        pd.DataFrame(
+            {
+                "soc_code": ["15-1252.00"],
+                "occupation_title": ["Software Developers"],
+                "p10": [70_000.0],
+                "p25": [90_000.0],
+                "p50": [120_000.0],
+                "p75": [155_000.0],
+                "p90": [190_000.0],
+            }
+        )
+    )
+
+    summary, per_row = validate(
+        df,
+        embeddings,
+        occupation_router=_StubOccupationRouter(),
+        wage_table=wage_table,
+    )
+
+    assert summary["category_quality"]["Engineering"]["n"] == 1
+    assert summary["bls_wage_band"]["coverage"] == pytest.approx(1.0)
+    assert per_row["soc_code"].tolist() == ["15-1252.00"] * 3
+    assert per_row["bls_p50"].tolist() == [120_000.0] * 3
 
 
 def test_validate_rejects_misaligned_inputs() -> None:
