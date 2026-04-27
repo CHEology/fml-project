@@ -143,6 +143,129 @@ TRACK_KEYWORDS = {
         "scheduling",
         "coordination",
     ],
+    "Healthcare / Clinical": [
+        "nursing",
+        "nurse",
+        "clinical",
+        "patient",
+        "physician",
+        "hospital",
+        "medical",
+        "pharmacy",
+        "therapist",
+        "diagnosis",
+        "ehr",
+        "epic",
+        "cerner",
+        "rn ",
+        "ms n",
+        "phlebotomy",
+    ],
+    "Education / Teaching": [
+        "teaching",
+        "teacher",
+        "curriculum",
+        "classroom",
+        "professor",
+        "lecturer",
+        "instructional",
+        "lesson plan",
+        "k-12",
+        "pedagogy",
+        "student outcomes",
+        "edtech",
+        "tutor",
+    ],
+    "Legal / Compliance": [
+        "attorney",
+        "lawyer",
+        "litigation",
+        "paralegal",
+        "contract review",
+        "general counsel",
+        "regulatory",
+        "compliance",
+        "legal research",
+        "deposition",
+        "law firm",
+        "juris doctor",
+    ],
+    "Design / Creative": [
+        "designer",
+        "ux",
+        "ui",
+        "user experience",
+        "user interface",
+        "figma",
+        "sketch",
+        "photoshop",
+        "illustrator",
+        "branding",
+        "wireframe",
+        "prototype",
+        "visual design",
+        "art direction",
+        "creative direction",
+    ],
+    "Engineering / Hardware": [
+        "mechanical engineer",
+        "civil engineer",
+        "electrical engineer",
+        "structural",
+        "manufacturing",
+        "cad",
+        "solidworks",
+        "autocad",
+        "fea",
+        "pcb",
+        "embedded systems",
+        "firmware",
+        "hardware",
+        "matlab",
+    ],
+    "Research / Academia": [
+        "research",
+        "publication",
+        "peer-review",
+        "peer review",
+        "laboratory",
+        "postdoc",
+        "phd",
+        "dissertation",
+        "principal investigator",
+        "grant",
+        "conference",
+        "abstract",
+        "journal",
+    ],
+    "Public Sector / Policy": [
+        "government",
+        "federal agency",
+        "policy analysis",
+        "civic",
+        "public administration",
+        "nonprofit",
+        "advocacy",
+        "legislative",
+        "constituent",
+        "municipal",
+        "public sector",
+        "ngo",
+    ],
+    "Hospitality / Service": [
+        "hospitality",
+        "restaurant",
+        "hotel",
+        "concierge",
+        "barista",
+        "chef",
+        "food service",
+        "front of house",
+        "back of house",
+        "guest services",
+        "front desk",
+        "events coordinator",
+    ],
 }
 
 SKILL_GROUPS = {
@@ -244,6 +367,14 @@ BASE_SALARY = {
     "Marketing": 112000,
     "Sales / Customer Success": 125000,
     "Operations / Administration": 94000,
+    "Healthcare / Clinical": 96000,
+    "Education / Teaching": 68000,
+    "Legal / Compliance": 132000,
+    "Design / Creative": 102000,
+    "Engineering / Hardware": 118000,
+    "Research / Academia": 84000,
+    "Public Sector / Policy": 86000,
+    "Hospitality / Service": 58000,
 }
 
 SENIORITY_MULTIPLIER = {
@@ -1020,21 +1151,36 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .stTabs [data-baseweb="tab-list"] {
-            gap: 0.55rem;
-            margin-bottom: 0.55rem;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--line);
         }
 
         .stTabs [data-baseweb="tab"] {
-            border-radius: 999px;
-            border: 1px solid var(--line);
-            background: rgba(255,255,255,0.04);
-            padding: 0.45rem 0.95rem;
+            border-radius: 0;
+            border: 0;
+            background: transparent;
+            padding: 0.6rem 0.25rem;
+            margin-right: 1.5rem;
+            font-weight: 500;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .stTabs [data-baseweb="tab"]:hover {
+            color: var(--ink);
         }
 
         .stTabs [aria-selected="true"] {
-            background: __PILL_BG__;
-            color: __PILL_INK__;
-            border-color: __PILL_INK__;
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            font-weight: 600;
+        }
+
+        .stTabs [data-baseweb="tab-highlight"],
+        .stTabs [data-baseweb="tab-border"] {
+            display: none;
         }
 
         .field-label {
@@ -1232,20 +1378,31 @@ def track_job_subset(jobs: pd.DataFrame, track: str) -> pd.DataFrame:
     return subset if not subset.empty else jobs.copy()
 
 
+FALLBACK_TRACK_SKILLS = [
+    "Communication",
+    "Project Management",
+    "Stakeholder Engagement",
+    "Process Improvement",
+    "Documentation",
+    "Problem Solving",
+]
+
+
 def market_skill_stack(jobs: pd.DataFrame, track: str, limit: int = 8) -> list[str]:
     subset = track_job_subset(jobs, track)
     searchable = (
         subset["title"].astype(str) + " " + subset["text"].astype(str)
     ).str.lower()
 
+    track_skills = TRACK_SKILLS.get(track, FALLBACK_TRACK_SKILLS)
     ranked_skills: list[tuple[int, str]] = []
-    for skill in TRACK_SKILLS[track]:
+    for skill in track_skills:
         count = int(searchable.str.count(skill.lower()).sum())
         ranked_skills.append((count, skill))
 
     ranked_skills.sort(key=lambda item: (-item[0], item[1]))
     ordered = [skill for count, skill in ranked_skills if count > 0]
-    for skill in TRACK_SKILLS[track]:
+    for skill in track_skills:
         if skill not in ordered:
             ordered.append(skill)
     return ordered[:limit]
@@ -1383,13 +1540,26 @@ def generate_sample_profile(
     company_a, company_b = companies[0], companies[1]
 
     titles = subset["title"].replace("", np.nan).dropna().astype(str).unique().tolist()
-    title = titles[0] if titles else str(rng.choice(TRACK_TITLES[track]))
+    track_titles = TRACK_TITLES.get(track, ["Specialist", "Coordinator", "Manager"])
+    title = titles[0] if titles else str(rng.choice(track_titles))
     secondary_title = (
-        titles[1] if len(titles) > 1 else str(rng.choice(TRACK_TITLES[track]))
+        titles[1] if len(titles) > 1 else str(rng.choice(track_titles))
     )
     skills = market_skill_stack(jobs, track, limit=7)
-    initiatives = rng.choice(TRACK_INITIATIVES[track], size=2, replace=False)
-    project_name = str(rng.choice(TRACK_PROJECTS[track]))
+    track_initiatives = TRACK_INITIATIVES.get(
+        track,
+        [
+            "delivery workflow program",
+            "stakeholder review cadence",
+            "operating improvement initiative",
+        ],
+    )
+    initiatives = rng.choice(track_initiatives, size=2, replace=False)
+    track_projects = TRACK_PROJECTS.get(
+        track,
+        ["operating playbook", "improvement roadmap", "stakeholder review brief"],
+    )
+    project_name = str(rng.choice(track_projects))
     years = {
         "Intern / Entry": "0-2",
         "Associate": "2-4",
@@ -1402,7 +1572,7 @@ def generate_sample_profile(
     )
     contact_slug = slugify_name(name)
     headline = compose_headline(seniority, title)
-    metric_name = TRACK_METRICS[track]
+    metric_name = TRACK_METRICS.get(track, "operating quality")
     impact_one = int(rng.integers(18, 42))
     impact_two = int(rng.integers(24, 57))
     stakeholder_count = int(rng.integers(4, 11))
@@ -1635,13 +1805,11 @@ def render_metric_card(label: str, value: str, helper: str) -> None:
 
 
 def render_panel_banner(kicker: str, title: str, body: str) -> None:
-    kicker_html = escape(str(kicker))
     title_html = escape(str(title))
     body_html = escape(str(body))
     st.markdown(
         f"""
         <div class="panel-banner">
-            <div class="panel-kicker">{kicker_html}</div>
             <div class="panel-title">{title_html}</div>
             <div class="panel-copy">{body_html}</div>
         </div>
@@ -1811,12 +1979,6 @@ def main() -> None:
             unsafe_allow_html=True,
         )
         st.write("")
-
-        with st.expander("Data readiness", expanded=False):
-            for item in status:
-                flag = "Ready" if item["ready"] else "Missing"
-                st.write(f"{flag}: `{item['path']}`")
-
         st.caption(linkedin_dataset_note(has_real_data))
 
     st.markdown(
@@ -1848,8 +2010,8 @@ def main() -> None:
             "from current dataset",
         )
 
-    launchpad_tab, radar_tab, pipeline_tab = st.tabs(
-        ["Resume Analysis", "Market Overview", "Setup"]
+    launchpad_tab, radar_tab = st.tabs(
+        ["Resume Analysis", "Market Overview"]
     )
 
     with launchpad_tab:
@@ -1922,20 +2084,8 @@ def main() -> None:
             preview_text = st.session_state.resume_text.strip() or SAMPLE_RESUME
             preview_profile = detect_profile(preview_text)
 
-            pref_a, pref_b, pref_c = st.columns([1, 1, 1], gap="medium")
-            with pref_a:
-                preferred_location = st.selectbox(
-                    "Preferred location",
-                    ["Anywhere", "NY", "CA", "TX", "WA", "MA", "IL"],
-                )
-            with pref_b:
-                seniority_level = st.selectbox(
-                    "Seniority level", list(SENIORITY_MULTIPLIER)
-                )
-            with pref_c:
-                remote_only = st.toggle("Remote only", value=False)
             st.caption(
-                f"Detected focus: {preview_profile['track']}. The app infers this from the resume instead of asking you to choose a track."
+                f"Detected focus: {preview_profile['track']} · Seniority: {preview_profile['seniority']}. Both are inferred from the resume."
             )
 
             sec_a, sec_b = st.columns(2)
@@ -1948,8 +2098,8 @@ def main() -> None:
                 if st.button("Generate sample profile", width="stretch"):
                     st.session_state.resume_text = generate_sample_profile(
                         preview_profile["track"],
-                        seniority_level,
-                        preferred_location,
+                        preview_profile["seniority"],
+                        "Anywhere",
                         jobs,
                     )
                     st.session_state.resume_source = (
@@ -2006,9 +2156,10 @@ def main() -> None:
                     )
 
                 profile_track_html = escape(str(preview_profile["track"]))
+                profile_seniority_html = escape(str(preview_profile["seniority"]))
                 profile_confidence_html = escape(str(preview_profile["confidence"]))
                 st.markdown(
-                    f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Profile read</div><div class="signal-copy">The current resume reads as a <strong>{profile_track_html}</strong> profile with approximately <strong>{profile_confidence_html}%</strong> confidence. Location and seniority preferences guide the market comparison.</div></div>',
+                    f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Profile read</div><div class="signal-copy">The current resume reads as a <strong>{profile_track_html}</strong> profile at the <strong>{profile_seniority_html}</strong> level with approximately <strong>{profile_confidence_html}%</strong> confidence.</div></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -2092,10 +2243,6 @@ def main() -> None:
                     next_steps.append(
                         "Use bulleted achievements to surface quantified wins."
                     )
-                if preferred_location == "Anywhere":
-                    next_steps.append(
-                        "Set a preferred location for sharper salary comparison."
-                    )
                 if int(preview_profile["confidence"]) < 70:
                     next_steps.append(
                         "Strengthen the seniority signal with leadership or scope keywords."
@@ -2137,8 +2284,6 @@ def main() -> None:
                         retriever,
                         jobs,
                         resume_embedding,
-                        preferred_location=preferred_location,
-                        remote_only=remote_only,
                         top_k=6,
                     )
 
@@ -2290,7 +2435,7 @@ def main() -> None:
             )
             if matches.empty:
                 st.info(
-                    "No roles matched the selected filters. Try Anywhere or disable Remote only."
+                    "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
                 )
             else:
                 card_cols = st.columns(2, gap="medium")
@@ -2357,45 +2502,6 @@ def main() -> None:
             else:
                 st.info("Using sample roles until the local job catalog is prepared.")
 
-    with pipeline_tab:
-        render_panel_banner(
-            "Setup",
-            "Data readiness",
-            "This view shows which local data resources are available for the full analysis workflow.",
-        )
-        status_frame = pd.DataFrame(
-            [
-                {
-                    "Resource": item["label"],
-                    "Status": "Ready" if item["ready"] else "Missing",
-                    "Path": item["path"],
-                }
-                for item in status
-            ]
-        )
-        st.dataframe(status_frame, width="stretch", hide_index=True)
-
-        st.write("")
-        with st.container(border=True):
-            st.markdown("**Recommended next commands**")
-            st.code(
-                "\n".join(
-                    [
-                        "uv run python scripts/preprocess_data.py",
-                        "uv run python scripts/build_index.py",
-                        "uv run python scripts/train_salary_model.py --embeddings models/job_embeddings.npy --salaries data/processed/salaries.npy --output models/salary_model.pt",
-                        "uv run python scripts/train_resume_salary_model.py --resumes data/eval/synthetic_resumes.parquet --out models/resume_salary_model.pt",
-                        "uv run python scripts/load_onet_skills.py --download",
-                        "uv run python scripts/load_bls_oews.py --download",
-                        "uv run python scripts/build_clusters.py",
-                        "uv run streamlit run app/app.py",
-                    ]
-                ),
-                language="bash",
-            )
-            st.caption(
-                "Retrieved salaries power the primary range; resume-side salary and BLS resources add fallback/reference evidence."
-            )
 
 
 if __name__ == "__main__":
