@@ -95,6 +95,22 @@ uv run python scripts/build_index.py --smoke
 
 See `data/README.md` for the expected raw layout and additional details.
 
+### Optional federal occupation data
+
+For broader non-tech coverage, build the optional O*NET skill lexicon and BLS
+OEWS wage table. Both sources are public-domain federal data and are written
+under `data/external/`, which is gitignored:
+
+```bash
+uv run python scripts/load_onet_skills.py --download
+uv run python scripts/load_bls_oews.py --download
+```
+
+The first command creates `data/external/onet_skills.parquet`, which
+`ml.quality.score_resume_quality` uses automatically when present. The second
+creates `data/external/bls_wages.parquet`, which the real-resume validation
+harness can use with O*NET routing to report SOC-level wage bands.
+
 ## Retrieval Evaluation
 
 After building the real index, generate synthetic resume/job pairs and evaluate
@@ -141,12 +157,16 @@ uv run python scripts/validate_on_real_resumes.py \
     --resumes data/eval/real_resumes.parquet \
     --index   models/jobs.index \
     --meta    models/jobs_meta.parquet \
+    --onet-skills data/external/onet_skills.parquet \
+    --bls-wages   data/external/bls_wages.parquet \
     --salary-model  models/resume_salary_model.pt \
     --salary-scaler models/resume_salary_model.scaler.json \
     --quality-model models/quality_model.pt
 ```
 
 The harness reports rule-based quality (real-resume-safe; uses `ml.quality.score_resume_quality`), the learned MLP score plus its rank correlation with the rule, and a **self-consistency** salary metric: predicted q50 vs. the median salary of the top-k retrieved jobs. Each section degrades gracefully when artifacts are missing; pass `--smoke` to run with deterministic random embeddings.
+When O*NET/BLS artifacts are present, it also reports the nearest SOC
+occupation, federal p10-p90 wage band, and per-category quality distribution.
 
 > **Calibration caveat.** The learned quality MLP was trained on the synthetic generator's `quality_score` formula and the JD-side salary model has a domain shift on resume embeddings. Treat numbers from these as proxies until real labels exist. The rule-based scorer + self-consistency salary check are what we trust on real input.
 

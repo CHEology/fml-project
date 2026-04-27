@@ -67,6 +67,8 @@ from ml.quality import score_resume_quality  # noqa: E402
 DEFAULT_RESUMES = PROJECT_ROOT / "data" / "eval" / "real_resumes.parquet"
 DEFAULT_INDEX = PROJECT_ROOT / "models" / "jobs.index"
 DEFAULT_META = PROJECT_ROOT / "models" / "jobs_meta.parquet"
+DEFAULT_ONET_SKILLS = PROJECT_ROOT / "data" / "external" / "onet_skills.parquet"
+DEFAULT_BLS_WAGES = PROJECT_ROOT / "data" / "external" / "bls_wages.parquet"
 DEFAULT_SALARY_MODEL = PROJECT_ROOT / "models" / "resume_salary_model.pt"
 DEFAULT_SALARY_SCALER = PROJECT_ROOT / "models" / "resume_salary_model.scaler.json"
 DEFAULT_QUALITY_MODEL = PROJECT_ROOT / "models" / "quality_model.pt"
@@ -82,6 +84,8 @@ def validate(
     retriever: Any | None = None,
     salary_predictor: Any | None = None,
     quality_predictor: Any | None = None,
+    occupation_router: Any | None = None,
+    wage_table: Any | None = None,
     k: int = 10,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     """Run the validation pipeline and return (summary, per-row DataFrame)."""
@@ -114,6 +118,29 @@ def validate(
             except Exception as exc:  # pragma: no cover - defensive
                 record["learned_score"] = float("nan")
                 record["learned_error"] = str(exc)
+
+        if occupation_router is not None:
+            try:
+                matches = occupation_router.route(embedding, k=1)
+                if matches:
+                    match = matches[0]
+                    record["soc_code"] = match.soc_code
+                    record["occupation_title"] = match.occupation_title
+                    record["soc_similarity"] = float(match.similarity)
+                    if wage_table is not None:
+                        band = wage_table.lookup(match.soc_code)
+                        if band is not None:
+                            record.update(
+                                {
+                                    "bls_p10": band.p10,
+                                    "bls_p25": band.p25,
+                                    "bls_p50": band.p50,
+                                    "bls_p75": band.p75,
+                                    "bls_p90": band.p90,
+                                }
+                            )
+            except Exception as exc:  # pragma: no cover - defensive
+                record["occupation_error"] = str(exc)
 
         retrieved_salaries: list[float] = []
         if retriever is not None:
@@ -172,6 +199,18 @@ def _aggregate(per_row: pd.DataFrame) -> dict[str, Any]:
     summary["rule_label_counts"] = {
         str(k): int(v) for k, v in per_row["rule_label"].value_counts().items()
     }
+    if "category" in per_row.columns and per_row["category"].notna().any():
+        category_summary: dict[str, Any] = {}
+        for category, group in per_row.dropna(subset=["category"]).groupby("category"):
+            category_summary[str(category)] = {
+                "n": int(len(group)),
+                "rule_score_mean": float(group["rule_score"].mean()),
+                "rule_label_counts": {
+                    str(k): int(v)
+                    for k, v in group["rule_label"].value_counts().items()
+                },
+            }
+        summary["category_quality"] = category_summary
 
     if "learned_score" in per_row.columns and per_row["learned_score"].notna().any():
         learned = per_row["learned_score"].dropna()
@@ -204,6 +243,14 @@ def _aggregate(per_row: pd.DataFrame) -> dict[str, Any]:
         summary["pred_q50"] = {
             "mean": float(per_row["pred_q50"].mean()),
             "median": float(per_row["pred_q50"].median()),
+        }
+    if "bls_p50" in per_row.columns and per_row["bls_p50"].notna().any():
+        valid = per_row["bls_p50"].dropna()
+        summary["bls_wage_band"] = {
+            "matched": int(len(valid)),
+            "coverage": float(len(valid) / len(per_row)),
+            "p50_mean": float(valid.mean()),
+            "p50_median": float(valid.median()),
         }
     if "self_consistency_abs_err" in per_row.columns:
         valid = per_row["self_consistency_abs_err"].dropna()
@@ -322,6 +369,27 @@ def _load_quality_predictor(model_path: Path, scaler_path: Path, embedding_dim: 
     return predictor
 
 
+def _load_occupation_router(skills_path: Path, encoder_name: str):
+    if not skills_path.exists():
+        return None
+    try:
+        from ml.embeddings import Encoder
+        from ml.occupation_router import OccupationRouter
+    except ImportError:
+        return None
+    return OccupationRouter.from_onet_skills(
+        skills_path, Encoder(model_name=encoder_name)
+    )
+
+
+def _load_wage_table(wages_path: Path):
+    if not wages_path.exists():
+        return None
+    from ml.wage_bands import WageBandTable
+
+    return WageBandTable.from_parquet(wages_path)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -343,6 +411,8 @@ def main() -> None:
     parser.add_argument("--resumes", type=Path, default=DEFAULT_RESUMES)
     parser.add_argument("--index", type=Path, default=DEFAULT_INDEX)
     parser.add_argument("--meta", type=Path, default=DEFAULT_META)
+    parser.add_argument("--onet-skills", type=Path, default=DEFAULT_ONET_SKILLS)
+    parser.add_argument("--bls-wages", type=Path, default=DEFAULT_BLS_WAGES)
     parser.add_argument("--salary-model", type=Path, default=DEFAULT_SALARY_MODEL)
     parser.add_argument("--salary-scaler", type=Path, default=DEFAULT_SALARY_SCALER)
     parser.add_argument("--quality-model", type=Path, default=DEFAULT_QUALITY_MODEL)
@@ -394,12 +464,26 @@ def main() -> None:
             f"{args.quality_model})"
         )
 
+    occupation_router = None
+    if not args.smoke:
+        occupation_router = _load_occupation_router(args.onet_skills, args.encoder)
+        if occupation_router is None:
+            print(
+                f"  occupation router skipped (no O*NET skills at {args.onet_skills})"
+            )
+
+    wage_table = _load_wage_table(args.bls_wages)
+    if wage_table is None:
+        print(f"  BLS wage bands skipped (no wage table at {args.bls_wages})")
+
     summary, per_row = validate(
         df,
         embeddings,
         retriever=retriever,
         salary_predictor=salary_predictor,
         quality_predictor=quality_predictor,
+        occupation_router=occupation_router,
+        wage_table=wage_table,
         k=args.k,
     )
 

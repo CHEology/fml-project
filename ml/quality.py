@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -40,6 +42,9 @@ DEFAULT_EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
 SEED = 42
 
 QUALITY_DIMENSIONS = ("skills", "experience", "projects", "metrics", "typos")
+DEFAULT_ONET_SKILLS_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "external" / "onet_skills.parquet"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -426,10 +431,39 @@ def _dimension_scores(features: dict[str, float]) -> dict[str, float]:
     }
 
 
-def _quality_skill_lexicon() -> list[str]:
+def _quality_skill_lexicon(external_path: str | Path | None = None) -> list[str]:
     skills: list[str] = list(MULTI_WORD_SKILLS)
     for profile in ROLE_PROFILES:
         for skill in profile.core_skills + profile.nice_to_have:
             if skill not in skills:
                 skills.append(skill)
+    for skill in _load_external_skill_terms(
+        str(external_path or DEFAULT_ONET_SKILLS_PATH)
+    ):
+        if skill not in skills:
+            skills.append(skill)
     return skills
+
+
+@lru_cache(maxsize=4)
+def _load_external_skill_terms(path: str) -> tuple[str, ...]:
+    """Load optional O*NET-derived terms, falling back silently if absent."""
+    skill_path = Path(path)
+    if not skill_path.exists():
+        return ()
+    try:
+        import pandas as pd
+
+        df = pd.read_parquet(skill_path, columns=["skill"])
+    except Exception:
+        return ()
+
+    seen: set[str] = set()
+    terms: list[str] = []
+    for raw in df["skill"].dropna().astype(str):
+        term = raw.strip()
+        key = term.lower()
+        if 2 <= len(term) <= 80 and key not in seen:
+            seen.add(key)
+            terms.append(term)
+    return tuple(terms)

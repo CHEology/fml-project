@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import uuid
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,7 @@ from ml.quality import (  # noqa: E402
     QualityDataset,
     QualityScaler,
     ResumeQualityModel,
+    _load_external_skill_terms,
     predict_quality,
     predict_quality_from_text,
     quality_features_from_text,
@@ -345,3 +347,21 @@ def test_score_resume_quality_is_deterministic() -> None:
     a = score_resume_quality(_STRONG_RESUME)
     b = score_resume_quality(_STRONG_RESUME)
     assert a == b
+
+
+def test_quality_features_can_use_external_onet_lexicon(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scratch = Path(".tmp_smoke") / f"quality-onet-{uuid.uuid4().hex}"
+    scratch.mkdir(parents=True, exist_ok=True)
+    skills_path = scratch / "onet_skills.parquet"
+    pd = pytest.importorskip("pandas")
+    pd.DataFrame({"skill": ["neonatal care"]}).to_parquet(skills_path, index=False)
+    monkeypatch.setattr("ml.quality.DEFAULT_ONET_SKILLS_PATH", skills_path)
+    _load_external_skill_terms.cache_clear()
+
+    features = quality_features_from_text(
+        "Registered nurse with neonatal care experience."
+    )
+
+    assert features["skills"] >= 1.0

@@ -88,3 +88,24 @@ models/job_embeddings.npy
 models/jobs.index
 models/jobs_meta.parquet
 ```
+
+## Optional External Data
+
+These files are also gitignored and can be regenerated locally:
+
+```bash
+uv run python scripts/load_onet_skills.py --download
+uv run python scripts/load_bls_oews.py --download
+```
+
+Expected outputs:
+
+```text
+data/external/onet_skills.parquet
+data/external/bls_wages.parquet
+```
+
+O*NET expands the rule-based quality scorer's skill lexicon beyond the bundled
+tech/business terms. BLS OEWS adds SOC-level federal wage bands for real-resume
+validation. Both loaders also accept `--input` if the source files were
+downloaded manually.

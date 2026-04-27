@@ -23,9 +23,11 @@ env/
 data/raw/*
 data/processed/*
 data/eval/*
+data/external/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/eval/.gitkeep
+!data/external/.gitkeep
 *.csv
 *.parquet
 *.json.gz
@@ -59,3 +61,6 @@ Thumbs.db
 .pytest_tmp/
 .tmp_pytest/
 .tmp_smoke/
+.tmp_pytest_run/
+pytesttmp/
+manual_tmp_dir/
