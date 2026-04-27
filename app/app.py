@@ -35,12 +35,16 @@ artifacts_ready = runtime.artifacts_ready
 cluster_position = runtime.cluster_position
 encode_resume = runtime.encode_resume
 feedback_terms = runtime.feedback_terms
+hybrid_salary_band = runtime.hybrid_salary_band
 load_cluster_artifacts = runtime.load_cluster_artifacts
 load_real_jobs = runtime.load_jobs
+load_occupation_router = runtime.load_occupation_router
 load_retriever = runtime.load_retriever
 load_salary_artifacts = runtime.load_salary_artifacts
+load_wage_table = runtime.load_wage_table
 retrieve_matches = runtime.retrieve_matches
 salary_band_from_model = runtime.salary_band_from_model
+salary_artifacts_ready = runtime.salary_artifacts_ready
 
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
 
@@ -803,6 +807,16 @@ def load_salary_resource():
 
 
 @st.cache_resource(show_spinner=False)
+def load_occupation_resource(_encoder):
+    return load_occupation_router(PROJECT_ROOT, _encoder)
+
+
+@st.cache_resource(show_spinner=False)
+def load_wage_resource():
+    return load_wage_table(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
 def load_cluster_resource():
     return load_cluster_artifacts(PROJECT_ROOT)
 
@@ -1274,9 +1288,9 @@ def render_job_card(row: pd.Series) -> None:
     )
 
 
-def render_salary_band(band: dict[str, int]) -> None:
+def render_salary_band(band: dict[str, Any]) -> None:
     st.markdown(
-        '<div class="section-label">Projected salary corridor</div>',
+        '<div class="section-label">Matched-market salary corridor</div>',
         unsafe_allow_html=True,
     )
     width = max(
@@ -1294,6 +1308,31 @@ def render_salary_band(band: dict[str, int]) -> None:
     cols = st.columns(5)
     for col, key in zip(cols, ("q10", "q25", "q50", "q75", "q90"), strict=True):
         col.metric(key.upper(), fmt_money(band[key]))
+
+    source_labels = {
+        "retrieved_jobs": "retrieved job salaries",
+        "bls": "BLS occupation wages",
+        "neural_model": "neural salary model",
+    }
+    evidence = band.get("evidence", {})
+    primary = source_labels.get(str(band.get("primary_source")), "available evidence")
+    confidence = str(band.get("confidence", "unknown")).title()
+    pieces = [
+        f"Primary source: {primary}",
+        f"Confidence: {confidence}",
+    ]
+    salary_count = evidence.get("salary_count")
+    if salary_count is not None:
+        pieces.append(f"{int(salary_count)} salary-bearing matches")
+    median_similarity = evidence.get("median_similarity")
+    if median_similarity is not None and not pd.isna(median_similarity):
+        pieces.append(f"median cosine {float(median_similarity):.3f}")
+    occupation_title = evidence.get("occupation_title")
+    if occupation_title:
+        pieces.append(str(occupation_title))
+    if evidence.get("model_bls_disagreement"):
+        pieces.append("supporting sources disagree")
+    st.caption(" · ".join(pieces))
 
 
 def main() -> None:
@@ -1617,13 +1656,31 @@ def main() -> None:
                         top_k=6,
                     )
 
-                band = None
-                if artifacts_ready(status, "salary"):
-                    with st.spinner("Predicting salary quantiles..."):
+                neural_band = None
+                if salary_artifacts_ready(PROJECT_ROOT):
+                    with st.spinner("Predicting neural salary reference..."):
                         salary_model, salary_scaler = load_salary_resource()
-                        band = salary_band_from_model(
+                        neural_band = salary_band_from_model(
                             salary_model, resume_embedding, salary_scaler
                         )
+
+                occupation_match = None
+                bls_band = None
+                occupation_router = load_occupation_resource(encoder)
+                wage_table = load_wage_resource()
+                if occupation_router is not None:
+                    soc_matches = occupation_router.route(resume_embedding, k=1)
+                    if soc_matches:
+                        occupation_match = soc_matches[0]
+                        if wage_table is not None:
+                            bls_band = wage_table.lookup(occupation_match.soc_code)
+
+                band = hybrid_salary_band(
+                    matches,
+                    neural_band=neural_band,
+                    bls_band=bls_band,
+                    occupation_match=occupation_match,
+                )
 
                 cluster = None
                 if artifacts_ready(status, "clustering"):
@@ -1646,14 +1703,14 @@ def main() -> None:
                 render_panel_banner(
                     "Market Readout",
                     "Salary corridor",
-                    "This band comes from the trained raw-PyTorch quantile regression model.",
+                    "This matched-market estimate is anchored to the salaries in retrieved roles, with optional BLS and model references.",
                 )
                 with st.container(border=True):
                     if band is not None:
                         render_salary_band(band)
                     else:
                         st.warning(
-                            "Salary model artifacts are missing, so quantile prediction is unavailable."
+                            "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                         )
             with top_row[1]:
                 render_panel_banner(
@@ -1827,6 +1884,9 @@ def main() -> None:
                         "uv run python scripts/preprocess_data.py",
                         "uv run python scripts/build_index.py",
                         "uv run python scripts/train_salary_model.py --embeddings models/job_embeddings.npy --salaries data/processed/salaries.npy --output models/salary_model.pt",
+                        "uv run python scripts/train_resume_salary_model.py --resumes data/eval/synthetic_resumes.parquet --out models/resume_salary_model.pt",
+                        "uv run python scripts/load_onet_skills.py --download",
+                        "uv run python scripts/load_bls_oews.py --download",
                         "uv run python scripts/build_clusters.py",
                         "uv run streamlit run app/app.py",
                     ]
@@ -1834,7 +1894,7 @@ def main() -> None:
                 language="bash",
             )
             st.caption(
-                "The salary checkpoint is required for quantile predictions; the KMeans artifacts power market-position output."
+                "Retrieved salaries power the primary corridor; resume-side salary and BLS artifacts add fallback/reference evidence."
             )
 
 

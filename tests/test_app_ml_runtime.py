@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import app.ml_runtime as runtime
 import numpy as np
 import pandas as pd
 import torch
@@ -9,6 +10,8 @@ from app.ml_runtime import (
     artifact_status,
     cluster_position,
     enrich_retrieval_matches,
+    hybrid_salary_band,
+    salary_artifacts_ready,
     salary_band_from_model,
 )
 from ml.retrieval import JobMatch
@@ -20,9 +23,57 @@ def test_artifact_status_tracks_salary_and_cluster_outputs(tmp_path: Path) -> No
 
     assert "models/salary_model.pt" in status_by_path
     assert "models/salary_model.scaler.json" in status_by_path
+    assert "models/resume_salary_model.pt" in status_by_path
+    assert "data/external/onet_skills.parquet" in status_by_path
+    assert "data/external/bls_wages.parquet" in status_by_path
     assert "models/kmeans_k8.pkl" in status_by_path
     assert "models/cluster_assignments.npy" in status_by_path
     assert "models/cluster_labels.json" in status_by_path
+
+
+def test_salary_artifacts_ready_accepts_resume_model_with_embedding_dim(
+    tmp_path: Path,
+) -> None:
+    models = tmp_path / "models"
+    models.mkdir()
+    (models / "resume_salary_model.pt").write_bytes(b"placeholder")
+    (models / "resume_salary_model.scaler.json").write_text(
+        '{"mean": 100000, "std": 10000, "embedding_dim": 384}',
+        encoding="utf-8",
+    )
+
+    assert salary_artifacts_ready(tmp_path)
+
+
+def test_load_salary_artifacts_prefers_resume_side_model(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    models = tmp_path / "models"
+    models.mkdir()
+    for name in ("salary_model.pt", "resume_salary_model.pt"):
+        (models / name).write_bytes(b"placeholder")
+    (models / "salary_model.scaler.json").write_text(
+        '{"mean": 1, "std": 1, "embedding_dim": 2}',
+        encoding="utf-8",
+    )
+    (models / "resume_salary_model.scaler.json").write_text(
+        '{"mean": 2, "std": 3, "embedding_dim": 4}',
+        encoding="utf-8",
+    )
+    calls: list[tuple[str, int]] = []
+
+    def fake_load_model(path: str, embedding_dim: int):
+        calls.append((path, embedding_dim))
+        return ConstantSalaryModel()
+
+    monkeypatch.setattr(runtime, "load_model", fake_load_model)
+
+    _, scaler = runtime.load_salary_artifacts(tmp_path)
+
+    assert calls == [(str(models / "resume_salary_model.pt"), 4)]
+    assert scaler.mean == 2
+    assert scaler.std == 3
 
 
 def test_enrich_retrieval_matches_preserves_faiss_order_and_similarity() -> None:
@@ -126,6 +177,107 @@ def test_salary_band_from_model_uses_quantile_model_and_scaler() -> None:
         "q75": 140_000,
         "q90": 150_000,
     }
+
+
+def test_hybrid_salary_band_prefers_retrieved_salary_evidence() -> None:
+    matches = pd.DataFrame(
+        {
+            "salary_annual": [100_000, 120_000, 140_000, 160_000, 180_000],
+            "similarity": [0.60, 0.55, 0.52, 0.50, 0.48],
+        }
+    )
+
+    band = hybrid_salary_band(
+        matches,
+        neural_band={
+            "q10": 90_000,
+            "q25": 100_000,
+            "q50": 130_000,
+            "q75": 150_000,
+            "q90": 170_000,
+        },
+    )
+
+    assert band is not None
+    assert band["primary_source"] == "retrieved_jobs"
+    assert band["confidence"] == "high"
+    assert band["q50"] == 140_000
+    assert band["evidence"]["salary_count"] == 5
+
+
+class FakeWageBand:
+    p10 = 70_000
+    p25 = 90_000
+    p50 = 110_000
+    p75 = 130_000
+    p90 = 150_000
+
+
+class FakeOccupationMatch:
+    soc_code = "15-1252"
+    occupation_title = "Software Developers"
+    similarity = 0.61
+
+
+def test_hybrid_salary_band_falls_back_to_bls_when_retrieved_sparse() -> None:
+    matches = pd.DataFrame(
+        {"salary_annual": [100_000, 120_000], "similarity": [0.5, 0.4]}
+    )
+
+    band = hybrid_salary_band(
+        matches,
+        bls_band=FakeWageBand(),
+        occupation_match=FakeOccupationMatch(),
+    )
+
+    assert band is not None
+    assert band["primary_source"] == "bls"
+    assert band["confidence"] == "medium"
+    assert band["q50"] == 110_000
+    assert band["evidence"]["occupation_title"] == "Software Developers"
+
+
+def test_hybrid_salary_band_falls_back_to_neural_model_at_low_confidence() -> None:
+    band = hybrid_salary_band(
+        pd.DataFrame({"salary_annual": [np.nan], "similarity": [0.7]}),
+        neural_band={
+            "q10": 80_000,
+            "q25": 95_000,
+            "q50": 110_000,
+            "q75": 125_000,
+            "q90": 140_000,
+        },
+    )
+
+    assert band is not None
+    assert band["primary_source"] == "neural_model"
+    assert band["confidence"] == "low"
+    assert band["q10"] <= band["q25"] <= band["q50"] <= band["q75"] <= band["q90"]
+
+
+def test_hybrid_salary_band_marks_medium_confidence_for_disagreement() -> None:
+    matches = pd.DataFrame(
+        {
+            "salary_annual": [100_000, 120_000, 140_000, 160_000, 180_000],
+            "similarity": [0.60, 0.55, 0.52, 0.50, 0.48],
+        }
+    )
+
+    band = hybrid_salary_band(
+        matches,
+        neural_band={
+            "q10": 230_000,
+            "q25": 240_000,
+            "q50": 250_000,
+            "q75": 260_000,
+            "q90": 270_000,
+        },
+    )
+
+    assert band is not None
+    assert band["primary_source"] == "retrieved_jobs"
+    assert band["confidence"] == "medium"
+    assert band["evidence"]["model_bls_disagreement"]
 
 
 class FakeKMeans:

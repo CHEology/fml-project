@@ -111,6 +111,16 @@ The first command creates `data/external/onet_skills.parquet`, which
 creates `data/external/bls_wages.parquet`, which the real-resume validation
 harness can use with O*NET routing to report SOC-level wage bands.
 
+### Salary output
+
+The app reports a matched-market salary corridor rather than a ground-truth
+candidate wage. When real retrieval artifacts exist, the primary band is based
+on salary percentiles from the filtered top matching jobs. Optional BLS/O*NET
+artifacts provide an occupation wage fallback/reference, and the neural salary
+model is used as a final fallback or supporting reference. If you train the
+resume-side model, the app prefers `models/resume_salary_model.pt` over the
+older JD-side `models/salary_model.pt`.
+
 ## Retrieval Evaluation
 
 After building the real index, generate synthetic resume/job pairs and evaluate
