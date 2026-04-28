@@ -68,10 +68,18 @@ ARTIFACT_SPECS = (
         "models/public_assessment_metrics.json",
         "public_assessment",
     ),
-    ArtifactSpec("Public domain model", "models/public_domain_model.pt", "public_assessment"),
-    ArtifactSpec("Public ATS fit model", "models/public_ats_fit_model.pt", "public_assessment"),
-    ArtifactSpec("Public entity model", "models/public_entity_model.pt", "public_assessment"),
-    ArtifactSpec("Public section model", "models/public_section_model.pt", "public_assessment"),
+    ArtifactSpec(
+        "Public domain model", "models/public_domain_model.pt", "public_assessment"
+    ),
+    ArtifactSpec(
+        "Public ATS fit model", "models/public_ats_fit_model.pt", "public_assessment"
+    ),
+    ArtifactSpec(
+        "Public entity model", "models/public_entity_model.pt", "public_assessment"
+    ),
+    ArtifactSpec(
+        "Public section model", "models/public_section_model.pt", "public_assessment"
+    ),
 )
 
 
@@ -188,7 +196,9 @@ def load_public_assessment_artifacts(project_root: Path = PROJECT_ROOT):
     return load_public_assessment_models(Path(project_root))
 
 
-def public_resume_signals(public_models: Any | None, resume_text: str) -> dict[str, Any]:
+def public_resume_signals(
+    public_models: Any | None, resume_text: str
+) -> dict[str, Any]:
     from ml.public_assessment import resume_public_signals
 
     return resume_public_signals(public_models, resume_text)
@@ -611,11 +621,16 @@ def _normalise_seniority(label: str | None) -> int | None:
     if not label:
         return None
     lowered = str(label).lower()
-    if any(token in lowered for token in ("internship", "intern ", "entry", "junior", "jr.")):
+    if any(
+        token in lowered
+        for token in ("internship", "intern ", "entry", "junior", "jr.")
+    ):
         return 0
     if "associate" in lowered:
         return 1
-    if any(token in lowered for token in ("director", "executive", "vp", "vice president")):
+    if any(
+        token in lowered for token in ("director", "executive", "vp", "vice president")
+    ):
         return 4
     if any(token in lowered for token in ("principal", "staff", "head of", "chief")):
         return 4
@@ -678,9 +693,9 @@ def _apply_seniority_fit(
     penalties = job_ranks.map(lambda rank: _seniority_penalty(target_rank, rank))
     adjusted["job_seniority_rank"] = job_ranks
     adjusted["seniority_gap"] = job_ranks.map(
-        lambda rank: np.nan
-        if rank is None or pd.isna(rank)
-        else int(rank) - target_rank
+        lambda rank: (
+            np.nan if rank is None or pd.isna(rank) else int(rank) - target_rank
+        )
     )
     adjusted["seniority_fit"] = adjusted["seniority_gap"].map(_seniority_fit_label)
     adjusted["salary_eligible"] = adjusted["seniority_gap"].map(
@@ -696,9 +711,7 @@ def _apply_seniority_fit(
     adjusted["match_score"] = (
         adjusted["raw_match_score"] - adjusted["seniority_penalty"]
     ).clip(lower=0.0)
-    return adjusted.sort_values(
-        ["match_score", "similarity"], ascending=[False, False]
-    )
+    return adjusted.sort_values(["match_score", "similarity"], ascending=[False, False])
 
 
 def _seniority_fit_label(gap: float | int | None) -> str:
