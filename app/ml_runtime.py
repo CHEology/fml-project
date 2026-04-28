@@ -10,9 +10,20 @@ import pandas as pd
 from ml.clustering import KMeans
 from ml.embeddings import Encoder
 from ml.retrieval import JobMatch, Retriever
-from ml.salary_model import SalaryScaler, load_model, predict_salary
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def load_model(path: str, *, embedding_dim: int) -> Any:
+    from ml.salary_model import load_model as _load_model
+
+    return _load_model(path, embedding_dim=embedding_dim)
+
+
+def predict_salary(model: Any, embedding: np.ndarray, *, scaler: Any | None) -> Any:
+    from ml.salary_model import predict_salary as _predict_salary
+
+    return _predict_salary(model, embedding, scaler=scaler)
 
 
 @dataclass(frozen=True)
@@ -94,6 +105,8 @@ def load_retriever(project_root: Path = PROJECT_ROOT, encoder: Any | None = None
 
 
 def load_salary_artifacts(project_root: Path = PROJECT_ROOT):
+    from ml.salary_model import SalaryScaler
+
     root = Path(project_root)
     model_path, scaler_path = _preferred_salary_paths(root)
     scaler_state = _read_scaler_state(scaler_path)
@@ -120,7 +133,9 @@ def salary_artifacts_ready(project_root: Path = PROJECT_ROOT) -> bool:
     return "embedding_dim" in _read_scaler_state(scaler_path)
 
 
-def load_salary_scaler(path: Path) -> SalaryScaler:
+def load_salary_scaler(path: Path) -> Any:
+    from ml.salary_model import SalaryScaler
+
     with Path(path).open() as f:
         return SalaryScaler.from_state_dict(json.load(f))
 
@@ -220,7 +235,7 @@ def enrich_retrieval_matches(
 def salary_band_from_model(
     model: Any,
     resume_embedding: np.ndarray,
-    scaler: SalaryScaler | None,
+    scaler: Any | None,
 ) -> dict[str, int]:
     predictions = predict_salary(
         model, np.asarray(resume_embedding).reshape(-1), scaler=scaler
