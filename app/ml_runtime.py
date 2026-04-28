@@ -642,9 +642,9 @@ def _infer_job_seniority(row: pd.Series) -> int | None:
 
 
 def _seniority_penalty(target_rank: int | None, job_rank: int | None) -> float:
-    if target_rank is None or job_rank is None:
+    if target_rank is None or job_rank is None or pd.isna(job_rank):
         return 0.0
-    gap = job_rank - target_rank
+    gap = int(job_rank) - target_rank
     if gap == 0:
         return 0.0
     if gap < 0:
@@ -678,7 +678,9 @@ def _apply_seniority_fit(
     penalties = job_ranks.map(lambda rank: _seniority_penalty(target_rank, rank))
     adjusted["job_seniority_rank"] = job_ranks
     adjusted["seniority_gap"] = job_ranks.map(
-        lambda rank: np.nan if rank is None else int(rank) - target_rank
+        lambda rank: np.nan
+        if rank is None or pd.isna(rank)
+        else int(rank) - target_rank
     )
     adjusted["seniority_fit"] = adjusted["seniority_gap"].map(_seniority_fit_label)
     adjusted["salary_eligible"] = adjusted["seniority_gap"].map(
