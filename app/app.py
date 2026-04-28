@@ -1,25 +1,23 @@
 from __future__ import annotations
 
-# Eager-load torch on the main thread BEFORE streamlit/numpy/pandas. On Windows,
-# importing torch later from Streamlit's script-runner thread (after MKL/OpenMP
-# have been pulled in by numpy/pandas) fails with WinError 1114 in c10.dll.
-# Loading it here makes the subsequent thread-side import a cached no-op.
-import torch  # noqa: E402, F401, I001
-
 import importlib
 import importlib.util
 import re
 import sys
 from datetime import date
-from html import escape, unescape
+from html import escape
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
-from urllib.request import Request, urlopen
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+# Eager-load torch on the main thread BEFORE streamlit/numpy/pandas. On Windows,
+# importing torch later from Streamlit's script-runner thread (after MKL/OpenMP
+# have been pulled in by numpy/pandas) fails with WinError 1114 in c10.dll.
+# Loading it here makes the subsequent thread-side import a cached no-op.
+import torch  # noqa: E402, F401, I001
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -56,24 +54,22 @@ salary_band_from_model = runtime.salary_band_from_model
 salary_artifacts_ready = runtime.salary_artifacts_ready
 apply_public_ats_fit = runtime.apply_public_ats_fit
 
+from app.components.cluster_view import (  # noqa: E402
+    render_missing_terms,
+)
 from app.components.job_results import (  # noqa: E402
     fmt_money,
-    render_job_card,
     render_job_results,
     render_metric_card,
     render_panel_banner,
     render_signal_card,
 )
-from app.components.salary_chart import render_salary_band, render_salary_fan_chart  # noqa: E402
-from app.components.cluster_view import (  # noqa: E402
-    render_cluster_browser,
-    render_cluster_position,
-    render_missing_terms,
-)
 from app.components.resume_upload import (  # noqa: E402
     extract_uploaded_text,
     fetch_public_webpage_text,
-    resume_input_widget,
+)
+from app.components.salary_chart import (  # noqa: E402
+    render_salary_band,
 )
 
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
@@ -958,56 +954,456 @@ SAMPLE_FIELD_SKILLS = {
     ],
 }
 SAMPLE_RESUME_SPECS = [
-    ("Alex Rivera", "Machine Learning", "Senior Machine Learning Engineer", "Senior", "New York, NY", "marketplace ranking", "excellent"),
-    ("Priya Shah", "Data Science", "Product Data Scientist", "Senior", "San Francisco, CA", "consumer growth", "excellent"),
-    ("Maya Hernandez", "Software Engineering", "Backend Platform Engineer", "Mid", "Austin, TX", "payments infrastructure", "excellent"),
-    ("Ethan Brooks", "Analytics", "Analytics Engineer", "Mid", "Chicago, IL", "subscription metrics", "excellent"),
-    ("Leila Hassan", "Product / Strategy", "Product Strategy Lead", "Lead / Executive", "Seattle, WA", "B2B pricing", "excellent"),
-    ("Noah Patel", "Human Resources", "People Operations Manager", "Senior", "Boston, MA", "distributed teams", "excellent"),
-    ("Ava Morales", "Finance / Accounting", "FP&A Manager", "Senior", "Denver, CO", "SaaS planning", "excellent"),
-    ("Lucas Chen", "Marketing", "Lifecycle Marketing Lead", "Senior", "Remote", "B2B retention", "excellent"),
-    ("Sofia Bennett", "Sales / Customer Success", "Enterprise Customer Success Manager", "Senior", "Atlanta, GA", "cloud accounts", "excellent"),
-    ("Owen Park", "Operations / Administration", "Business Operations Manager", "Mid", "Los Angeles, CA", "multi-site operations", "solid"),
-    ("Nadia Okafor", "Healthcare / Clinical", "Clinical Quality Improvement Nurse", "Senior", "Philadelphia, PA", "cardiology care", "excellent"),
-    ("Grace Lee", "Education / Teaching", "Instructional Coach", "Senior", "Queens, NY", "middle school math", "excellent"),
-    ("Marcus Reed", "Legal / Compliance", "Privacy Compliance Counsel", "Senior", "Washington, DC", "health technology", "excellent"),
-    ("Iris Wong", "Design / Creative", "Senior Product Designer", "Senior", "Portland, OR", "mobile onboarding", "excellent"),
-    ("Caleb Morgan", "Engineering / Hardware", "Mechanical Design Engineer", "Mid", "Detroit, MI", "EV battery systems", "excellent"),
-    ("Hannah Stein", "Research / Academia", "Research Scientist", "Senior", "Cambridge, MA", "computational biology", "excellent"),
-    ("Diego Alvarez", "Public Sector / Policy", "Policy Analyst", "Mid", "Sacramento, CA", "housing programs", "solid"),
-    ("Emma Johnson", "Hospitality / Service", "Hotel Operations Manager", "Mid", "Miami, FL", "luxury guest services", "solid"),
-    ("Sam Taylor", "Machine Learning", "Computer Vision Engineer", "Mid", "Pittsburgh, PA", "manufacturing inspection", "solid"),
-    ("Rina Mehta", "Data Science", "Decision Scientist", "Mid", "Remote", "risk analytics", "solid"),
-    ("Theo Martin", "Software Engineering", "Full Stack Engineer", "Associate", "Raleigh, NC", "healthcare scheduling", "solid"),
-    ("Camila Torres", "Analytics", "Business Intelligence Analyst", "Associate", "Dallas, TX", "retail inventory", "solid"),
-    ("Jasper Nguyen", "Product / Strategy", "Associate Product Manager", "Associate", "San Jose, CA", "developer tools", "solid"),
-    ("Mina Ali", "Human Resources", "Talent Acquisition Partner", "Mid", "Minneapolis, MN", "clinical hiring", "solid"),
-    ("Ben Carter", "Finance / Accounting", "Senior Accountant", "Mid", "Charlotte, NC", "manufacturing close", "solid"),
-    ("Talia Green", "Marketing", "Demand Generation Manager", "Mid", "Phoenix, AZ", "cybersecurity pipeline", "solid"),
-    ("Andre Wilson", "Sales / Customer Success", "Account Executive", "Mid", "Nashville, TN", "mid-market sales", "solid"),
-    ("Lena Brooks", "Operations / Administration", "Executive Assistant", "Associate", "New York, NY", "founder support", "solid"),
-    ("Mei Lin", "Healthcare / Clinical", "Physical Therapist", "Mid", "San Diego, CA", "orthopedic rehab", "solid"),
-    ("Patrick O'Neill", "Education / Teaching", "High School Science Teacher", "Mid", "Columbus, OH", "project-based learning", "solid"),
-    ("Alina Petrova", "Legal / Compliance", "Contracts Manager", "Mid", "Remote", "vendor agreements", "solid"),
-    ("Jonah Weiss", "Design / Creative", "Brand Designer", "Mid", "Brooklyn, NY", "consumer packaging", "solid"),
-    ("Sasha Kim", "Engineering / Hardware", "Electrical Engineer", "Associate", "San Jose, CA", "sensor boards", "solid"),
-    ("Omar Farouk", "Research / Academia", "Postdoctoral Researcher", "Mid", "Ann Arbor, MI", "urban mobility", "solid"),
-    ("Claire Dubois", "Public Sector / Policy", "Program Evaluation Specialist", "Mid", "Boston, MA", "workforce grants", "solid"),
-    ("Mateo Garcia", "Hospitality / Service", "Restaurant General Manager", "Mid", "Orlando, FL", "high-volume dining", "solid"),
-    ("Yuki Tanaka", "Machine Learning", "Junior ML Engineer", "Associate", "Seattle, WA", "recommendation prototypes", "solid"),
-    ("Fatima Khan", "Data Science", "Data Analyst", "Associate", "Houston, TX", "energy operations", "solid"),
-    ("Mason Wright", "Software Engineering", "Software Engineering Intern", "Intern / Entry", "Madison, WI", "campus tools", "thin"),
-    ("Elena Rossi", "Analytics", "Junior Analyst", "Intern / Entry", "Tampa, FL", "dashboard support", "thin"),
-    ("Daniel Kim", "Product / Strategy", "Product Intern", "Intern / Entry", "Remote", "student marketplace", "thin"),
-    ("Aisha Brown", "Human Resources", "HR Coordinator", "Associate", "Baltimore, MD", "onboarding operations", "thin"),
-    ("Liam Evans", "Finance / Accounting", "Accounting Assistant", "Associate", "Cleveland, OH", "accounts payable", "thin"),
-    ("Nora Murphy", "Marketing", "Social Media Coordinator", "Associate", "Salt Lake City, UT", "local campaigns", "thin"),
-    ("Luis Romero", "Sales / Customer Success", "Sales Development Representative", "Associate", "San Antonio, TX", "outbound prospecting", "thin"),
-    ("Zara Ahmed", "Operations / Administration", "Administrative Coordinator", "Associate", "Las Vegas, NV", "office scheduling", "thin"),
-    ("Victor Chen", "Healthcare / Clinical", "Medical Assistant", "Associate", "Fresno, CA", "primary care", "thin"),
-    ("Molly Adams", "Education / Teaching", "Teaching Assistant", "Intern / Entry", "Ithaca, NY", "undergraduate tutoring", "thin"),
-    ("Rachel Cohen", "Legal / Compliance", "Paralegal", "Associate", "Newark, NJ", "litigation support", "thin"),
-    ("Chris Miller", "Design / Creative", "UX Design Intern", "Intern / Entry", "Remote", "portfolio redesign", "thin"),
+    (
+        "Alex Rivera",
+        "Machine Learning",
+        "Senior Machine Learning Engineer",
+        "Senior",
+        "New York, NY",
+        "marketplace ranking",
+        "excellent",
+    ),
+    (
+        "Priya Shah",
+        "Data Science",
+        "Product Data Scientist",
+        "Senior",
+        "San Francisco, CA",
+        "consumer growth",
+        "excellent",
+    ),
+    (
+        "Maya Hernandez",
+        "Software Engineering",
+        "Backend Platform Engineer",
+        "Mid",
+        "Austin, TX",
+        "payments infrastructure",
+        "excellent",
+    ),
+    (
+        "Ethan Brooks",
+        "Analytics",
+        "Analytics Engineer",
+        "Mid",
+        "Chicago, IL",
+        "subscription metrics",
+        "excellent",
+    ),
+    (
+        "Leila Hassan",
+        "Product / Strategy",
+        "Product Strategy Lead",
+        "Lead / Executive",
+        "Seattle, WA",
+        "B2B pricing",
+        "excellent",
+    ),
+    (
+        "Noah Patel",
+        "Human Resources",
+        "People Operations Manager",
+        "Senior",
+        "Boston, MA",
+        "distributed teams",
+        "excellent",
+    ),
+    (
+        "Ava Morales",
+        "Finance / Accounting",
+        "FP&A Manager",
+        "Senior",
+        "Denver, CO",
+        "SaaS planning",
+        "excellent",
+    ),
+    (
+        "Lucas Chen",
+        "Marketing",
+        "Lifecycle Marketing Lead",
+        "Senior",
+        "Remote",
+        "B2B retention",
+        "excellent",
+    ),
+    (
+        "Sofia Bennett",
+        "Sales / Customer Success",
+        "Enterprise Customer Success Manager",
+        "Senior",
+        "Atlanta, GA",
+        "cloud accounts",
+        "excellent",
+    ),
+    (
+        "Owen Park",
+        "Operations / Administration",
+        "Business Operations Manager",
+        "Mid",
+        "Los Angeles, CA",
+        "multi-site operations",
+        "solid",
+    ),
+    (
+        "Nadia Okafor",
+        "Healthcare / Clinical",
+        "Clinical Quality Improvement Nurse",
+        "Senior",
+        "Philadelphia, PA",
+        "cardiology care",
+        "excellent",
+    ),
+    (
+        "Grace Lee",
+        "Education / Teaching",
+        "Instructional Coach",
+        "Senior",
+        "Queens, NY",
+        "middle school math",
+        "excellent",
+    ),
+    (
+        "Marcus Reed",
+        "Legal / Compliance",
+        "Privacy Compliance Counsel",
+        "Senior",
+        "Washington, DC",
+        "health technology",
+        "excellent",
+    ),
+    (
+        "Iris Wong",
+        "Design / Creative",
+        "Senior Product Designer",
+        "Senior",
+        "Portland, OR",
+        "mobile onboarding",
+        "excellent",
+    ),
+    (
+        "Caleb Morgan",
+        "Engineering / Hardware",
+        "Mechanical Design Engineer",
+        "Mid",
+        "Detroit, MI",
+        "EV battery systems",
+        "excellent",
+    ),
+    (
+        "Hannah Stein",
+        "Research / Academia",
+        "Research Scientist",
+        "Senior",
+        "Cambridge, MA",
+        "computational biology",
+        "excellent",
+    ),
+    (
+        "Diego Alvarez",
+        "Public Sector / Policy",
+        "Policy Analyst",
+        "Mid",
+        "Sacramento, CA",
+        "housing programs",
+        "solid",
+    ),
+    (
+        "Emma Johnson",
+        "Hospitality / Service",
+        "Hotel Operations Manager",
+        "Mid",
+        "Miami, FL",
+        "luxury guest services",
+        "solid",
+    ),
+    (
+        "Sam Taylor",
+        "Machine Learning",
+        "Computer Vision Engineer",
+        "Mid",
+        "Pittsburgh, PA",
+        "manufacturing inspection",
+        "solid",
+    ),
+    (
+        "Rina Mehta",
+        "Data Science",
+        "Decision Scientist",
+        "Mid",
+        "Remote",
+        "risk analytics",
+        "solid",
+    ),
+    (
+        "Theo Martin",
+        "Software Engineering",
+        "Full Stack Engineer",
+        "Associate",
+        "Raleigh, NC",
+        "healthcare scheduling",
+        "solid",
+    ),
+    (
+        "Camila Torres",
+        "Analytics",
+        "Business Intelligence Analyst",
+        "Associate",
+        "Dallas, TX",
+        "retail inventory",
+        "solid",
+    ),
+    (
+        "Jasper Nguyen",
+        "Product / Strategy",
+        "Associate Product Manager",
+        "Associate",
+        "San Jose, CA",
+        "developer tools",
+        "solid",
+    ),
+    (
+        "Mina Ali",
+        "Human Resources",
+        "Talent Acquisition Partner",
+        "Mid",
+        "Minneapolis, MN",
+        "clinical hiring",
+        "solid",
+    ),
+    (
+        "Ben Carter",
+        "Finance / Accounting",
+        "Senior Accountant",
+        "Mid",
+        "Charlotte, NC",
+        "manufacturing close",
+        "solid",
+    ),
+    (
+        "Talia Green",
+        "Marketing",
+        "Demand Generation Manager",
+        "Mid",
+        "Phoenix, AZ",
+        "cybersecurity pipeline",
+        "solid",
+    ),
+    (
+        "Andre Wilson",
+        "Sales / Customer Success",
+        "Account Executive",
+        "Mid",
+        "Nashville, TN",
+        "mid-market sales",
+        "solid",
+    ),
+    (
+        "Lena Brooks",
+        "Operations / Administration",
+        "Executive Assistant",
+        "Associate",
+        "New York, NY",
+        "founder support",
+        "solid",
+    ),
+    (
+        "Mei Lin",
+        "Healthcare / Clinical",
+        "Physical Therapist",
+        "Mid",
+        "San Diego, CA",
+        "orthopedic rehab",
+        "solid",
+    ),
+    (
+        "Patrick O'Neill",
+        "Education / Teaching",
+        "High School Science Teacher",
+        "Mid",
+        "Columbus, OH",
+        "project-based learning",
+        "solid",
+    ),
+    (
+        "Alina Petrova",
+        "Legal / Compliance",
+        "Contracts Manager",
+        "Mid",
+        "Remote",
+        "vendor agreements",
+        "solid",
+    ),
+    (
+        "Jonah Weiss",
+        "Design / Creative",
+        "Brand Designer",
+        "Mid",
+        "Brooklyn, NY",
+        "consumer packaging",
+        "solid",
+    ),
+    (
+        "Sasha Kim",
+        "Engineering / Hardware",
+        "Electrical Engineer",
+        "Associate",
+        "San Jose, CA",
+        "sensor boards",
+        "solid",
+    ),
+    (
+        "Omar Farouk",
+        "Research / Academia",
+        "Postdoctoral Researcher",
+        "Mid",
+        "Ann Arbor, MI",
+        "urban mobility",
+        "solid",
+    ),
+    (
+        "Claire Dubois",
+        "Public Sector / Policy",
+        "Program Evaluation Specialist",
+        "Mid",
+        "Boston, MA",
+        "workforce grants",
+        "solid",
+    ),
+    (
+        "Mateo Garcia",
+        "Hospitality / Service",
+        "Restaurant General Manager",
+        "Mid",
+        "Orlando, FL",
+        "high-volume dining",
+        "solid",
+    ),
+    (
+        "Yuki Tanaka",
+        "Machine Learning",
+        "Junior ML Engineer",
+        "Associate",
+        "Seattle, WA",
+        "recommendation prototypes",
+        "solid",
+    ),
+    (
+        "Fatima Khan",
+        "Data Science",
+        "Data Analyst",
+        "Associate",
+        "Houston, TX",
+        "energy operations",
+        "solid",
+    ),
+    (
+        "Mason Wright",
+        "Software Engineering",
+        "Software Engineering Intern",
+        "Intern / Entry",
+        "Madison, WI",
+        "campus tools",
+        "thin",
+    ),
+    (
+        "Elena Rossi",
+        "Analytics",
+        "Junior Analyst",
+        "Intern / Entry",
+        "Tampa, FL",
+        "dashboard support",
+        "thin",
+    ),
+    (
+        "Daniel Kim",
+        "Product / Strategy",
+        "Product Intern",
+        "Intern / Entry",
+        "Remote",
+        "student marketplace",
+        "thin",
+    ),
+    (
+        "Aisha Brown",
+        "Human Resources",
+        "HR Coordinator",
+        "Associate",
+        "Baltimore, MD",
+        "onboarding operations",
+        "thin",
+    ),
+    (
+        "Liam Evans",
+        "Finance / Accounting",
+        "Accounting Assistant",
+        "Associate",
+        "Cleveland, OH",
+        "accounts payable",
+        "thin",
+    ),
+    (
+        "Nora Murphy",
+        "Marketing",
+        "Social Media Coordinator",
+        "Associate",
+        "Salt Lake City, UT",
+        "local campaigns",
+        "thin",
+    ),
+    (
+        "Luis Romero",
+        "Sales / Customer Success",
+        "Sales Development Representative",
+        "Associate",
+        "San Antonio, TX",
+        "outbound prospecting",
+        "thin",
+    ),
+    (
+        "Zara Ahmed",
+        "Operations / Administration",
+        "Administrative Coordinator",
+        "Associate",
+        "Las Vegas, NV",
+        "office scheduling",
+        "thin",
+    ),
+    (
+        "Victor Chen",
+        "Healthcare / Clinical",
+        "Medical Assistant",
+        "Associate",
+        "Fresno, CA",
+        "primary care",
+        "thin",
+    ),
+    (
+        "Molly Adams",
+        "Education / Teaching",
+        "Teaching Assistant",
+        "Intern / Entry",
+        "Ithaca, NY",
+        "undergraduate tutoring",
+        "thin",
+    ),
+    (
+        "Rachel Cohen",
+        "Legal / Compliance",
+        "Paralegal",
+        "Associate",
+        "Newark, NJ",
+        "litigation support",
+        "thin",
+    ),
+    (
+        "Chris Miller",
+        "Design / Creative",
+        "UX Design Intern",
+        "Intern / Entry",
+        "Remote",
+        "portfolio redesign",
+        "thin",
+    ),
 ]
 SECTION_ALIASES = {
     "Summary": ["summary", "professional summary", "profile"],
@@ -1876,9 +2272,7 @@ def generate_sample_profile(
     titles = subset["title"].replace("", np.nan).dropna().astype(str).unique().tolist()
     track_titles = TRACK_TITLES.get(track, ["Specialist", "Coordinator", "Manager"])
     title = titles[0] if titles else str(rng.choice(track_titles))
-    secondary_title = (
-        titles[1] if len(titles) > 1 else str(rng.choice(track_titles))
-    )
+    secondary_title = titles[1] if len(titles) > 1 else str(rng.choice(track_titles))
     skills = market_skill_stack(jobs, track, limit=7)
     track_initiatives = TRACK_INITIATIVES.get(
         track,
@@ -1953,7 +2347,9 @@ def generate_premade_sample_resume(
     rng = np.random.default_rng(seed)
     slug = slugify_name(name)
     school = str(rng.choice(FAKE_SCHOOLS))
-    skills = SAMPLE_FIELD_SKILLS.get(track, TRACK_SKILLS.get(track, FALLBACK_TRACK_SKILLS))
+    skills = SAMPLE_FIELD_SKILLS.get(
+        track, TRACK_SKILLS.get(track, FALLBACK_TRACK_SKILLS)
+    )
     primary, secondary, tertiary = skills[:3]
     metric_name = TRACK_METRICS.get(track, "operating quality")
     market_examples = choose_market_examples(jobs, track, location)
@@ -1966,7 +2362,9 @@ def generate_premade_sample_resume(
         .tolist()
     )
     if len(companies) < 2:
-        companies.extend(company for company in FAKE_COMPANIES if company not in companies)
+        companies.extend(
+            company for company in FAKE_COMPANIES if company not in companies
+        )
     company_a, company_b = companies[:2]
 
     if quality == "excellent":
@@ -2001,7 +2399,7 @@ EXPERIENCE
 - Rebuilt the reporting and documentation workflow in {tertiary}, cutting manual reconciliation from 9 hours to 3 hours per week.
 - Presented monthly findings to VP-level stakeholders and turned feedback into a sequenced roadmap with measurable acceptance criteria.
 
-{str(rng.choice(FAKE_COMPANIES))} | Associate {track.split('/')[0].strip()} Specialist | {earlier_range}
+{str(rng.choice(FAKE_COMPANIES))} | Associate {track.split("/")[0].strip()} Specialist | {earlier_range}
 - Supported operating reviews, QA checks, and customer research for a {domain} portfolio serving {int(scope_two / 2):,}+ users or records.
 - Created reusable templates that improved handoffs between analysts, operators, and managers.
 
@@ -2011,7 +2409,7 @@ SELECTED PROJECTS
 - Stakeholder Briefing Pack: Standardized monthly leadership narratives with metric definitions, risks, and recommended next steps.
 
 EDUCATION
-- B.S. in {track.split('/')[0].strip()} / Business Analytics, {school}
+- B.S. in {track.split("/")[0].strip()} / Business Analytics, {school}
 
 CERTIFICATIONS
 - Advanced {primary} for Practitioners
@@ -2037,7 +2435,7 @@ EXPERIENCE
 - Created status reports and process documentation for 5 stakeholder groups.
 - Coordinated issue triage, follow-up actions, and handoffs between internal teams.
 
-{company_b} | Associate {track.split('/')[0].strip()} Specialist | 2018 - 2020
+{company_b} | Associate {track.split("/")[0].strip()} Specialist | 2018 - 2020
 - Supported reporting, quality checks, and stakeholder requests for a busy {domain} team.
 - Reduced recurring manual work by {impact_two}% by standardizing templates and review steps.
 
@@ -2093,62 +2491,164 @@ def linkedin_dataset_note(has_real_data: bool) -> str:
 
 
 PRESTIGIOUS_COMPANY_TOKENS = (
-    "google", "alphabet", "apple", "microsoft", "meta", "facebook", "amazon",
-    "netflix", "openai", "anthropic", "deepmind", "nvidia",
-    "stripe", "databricks", "snowflake", "palantir", "spacex", "tesla",
-    "airbnb", "uber", "linkedin", "tiktok", "bytedance",
-    "mckinsey", "boston consulting", "bain & company", "bain and company",
-    "goldman sachs", "morgan stanley", "j.p. morgan", "jpmorgan",
-    "blackstone", "blackrock",
-    "citadel", "jane street", "two sigma", "renaissance technologies", "de shaw",
-    "jump trading", "hudson river trading", "point72",
-    "mayo clinic", "johns hopkins", "cleveland clinic", "memorial sloan kettering",
-    "massachusetts general", "stanford health",
-    "cravath", "wachtell", "sullivan & cromwell", "latham & watkins",
-    "skadden", "kirkland & ellis", "davis polk",
-    "nasa", "lawrence livermore", "los alamos", "fermilab", "bell labs",
+    "google",
+    "alphabet",
+    "apple",
+    "microsoft",
+    "meta",
+    "facebook",
+    "amazon",
+    "netflix",
+    "openai",
+    "anthropic",
+    "deepmind",
+    "nvidia",
+    "stripe",
+    "databricks",
+    "snowflake",
+    "palantir",
+    "spacex",
+    "tesla",
+    "airbnb",
+    "uber",
+    "linkedin",
+    "tiktok",
+    "bytedance",
+    "mckinsey",
+    "boston consulting",
+    "bain & company",
+    "bain and company",
+    "goldman sachs",
+    "morgan stanley",
+    "j.p. morgan",
+    "jpmorgan",
+    "blackstone",
+    "blackrock",
+    "citadel",
+    "jane street",
+    "two sigma",
+    "renaissance technologies",
+    "de shaw",
+    "jump trading",
+    "hudson river trading",
+    "point72",
+    "mayo clinic",
+    "johns hopkins",
+    "cleveland clinic",
+    "memorial sloan kettering",
+    "massachusetts general",
+    "stanford health",
+    "cravath",
+    "wachtell",
+    "sullivan & cromwell",
+    "latham & watkins",
+    "skadden",
+    "kirkland & ellis",
+    "davis polk",
+    "nasa",
+    "lawrence livermore",
+    "los alamos",
+    "fermilab",
+    "bell labs",
     "national institutes of health",
 )
 PRESTIGIOUS_EDUCATION_TOKENS = (
-    "stanford university", "stanford",
-    "massachusetts institute of technology", "mit",
-    "harvard university", "harvard",
-    "princeton university", "princeton",
-    "yale university", "yale",
-    "caltech", "california institute of technology",
-    "uc berkeley", "university of california berkeley", "berkeley",
-    "carnegie mellon", "cmu",
+    "stanford university",
+    "stanford",
+    "massachusetts institute of technology",
+    "mit",
+    "harvard university",
+    "harvard",
+    "princeton university",
+    "princeton",
+    "yale university",
+    "yale",
+    "caltech",
+    "california institute of technology",
+    "uc berkeley",
+    "university of california berkeley",
+    "berkeley",
+    "carnegie mellon",
+    "cmu",
     "university of chicago",
-    "columbia university", "columbia",
-    "cornell university", "cornell",
-    "university of pennsylvania", "upenn",
-    "oxford", "university of oxford",
-    "cambridge", "university of cambridge",
+    "columbia university",
+    "columbia",
+    "cornell university",
+    "cornell",
+    "university of pennsylvania",
+    "upenn",
+    "oxford",
+    "university of oxford",
+    "cambridge",
+    "university of cambridge",
     "eth zurich",
-    "tsinghua university", "tsinghua",
+    "tsinghua university",
+    "tsinghua",
     "peking university",
 )
 
 RIGOROUS_TITLE_TOKENS = (
-    "software engineer", "machine learning engineer", "research scientist",
-    "data scientist", "research engineer", "applied scientist",
-    "member of technical staff", "technical staff", "staff research scientist",
-    "physician", "surgeon", "resident", "attending",
-    "attorney", "lawyer", "associate attorney",
-    "investment banker", "investment banking",
-    "quantitative researcher", "quant trader", "quantitative analyst",
-    "actuary", "tax lawyer",
-    "principal", "staff engineer", "senior engineer", "senior scientist",
-    "director", "chief", "vice president", "head of",
-    "fellow", "professor", "postdoctoral", "postdoc",
+    "software engineer",
+    "machine learning engineer",
+    "research scientist",
+    "data scientist",
+    "research engineer",
+    "applied scientist",
+    "member of technical staff",
+    "technical staff",
+    "staff research scientist",
+    "physician",
+    "surgeon",
+    "resident",
+    "attending",
+    "attorney",
+    "lawyer",
+    "associate attorney",
+    "investment banker",
+    "investment banking",
+    "quantitative researcher",
+    "quant trader",
+    "quantitative analyst",
+    "actuary",
+    "tax lawyer",
+    "principal",
+    "staff engineer",
+    "senior engineer",
+    "senior scientist",
+    "director",
+    "chief",
+    "vice president",
+    "head of",
+    "fellow",
+    "professor",
+    "postdoctoral",
+    "postdoc",
 )
 
 LOW_RIGOR_TITLE_TOKENS = (
-    "cashier", "server", "barista", "waiter", "waitress", "bartender",
-    "retail associate", "sales associate", "store associate",
-    "receptionist", "host", "hostess", "cleaner", "janitor",
-    "tutor", "babysitter", "delivery driver", "lifeguard", "camp counselor",
-    "front desk", "stocker", "dishwasher", "valet",
+    "cashier",
+    "server",
+    "barista",
+    "waiter",
+    "waitress",
+    "bartender",
+    "retail associate",
+    "sales associate",
+    "store associate",
+    "receptionist",
+    "host",
+    "hostess",
+    "cleaner",
+    "janitor",
+    "tutor",
+    "babysitter",
+    "delivery driver",
+    "lifeguard",
+    "camp counselor",
+    "front desk",
+    "stocker",
+    "dishwasher",
+    "valet",
 )
 
 
@@ -2234,8 +2734,19 @@ _MONTHS = (
     "dec",
 )
 _MONTH_INDEX = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-    "jul": 7, "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "sept": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 DATE_RANGE_REGEX = re.compile(
     r"(?:(?P<m1>" + "|".join(_MONTHS) + r")\s*)?"
@@ -2302,7 +2813,9 @@ def _section_label_from_line(line: str) -> str | None:
     return None
 
 
-def _date_context_looks_like_non_work(line: str, context: str, section: str | None) -> bool:
+def _date_context_looks_like_non_work(
+    line: str, context: str, section: str | None
+) -> bool:
     lowered_line = line.lower()
     lowered_context = context.lower()
     if section in NON_WORK_SECTION_LABELS:
@@ -2310,19 +2823,23 @@ def _date_context_looks_like_non_work(line: str, context: str, section: str | No
     if section in WORK_SECTION_LABELS:
         return False
     if any(token in lowered_line for token in NON_WORK_DATE_TOKENS):
-        work_tokens = RIGOROUS_TITLE_TOKENS + LOW_RIGOR_TITLE_TOKENS + (
-            "manager",
-            "engineer",
-            "analyst",
-            "designer",
-            "nurse",
-            "teacher",
-            "attorney",
-            "coordinator",
-            "specialist",
-            "associate",
-            "consultant",
-            "intern",
+        work_tokens = (
+            RIGOROUS_TITLE_TOKENS
+            + LOW_RIGOR_TITLE_TOKENS
+            + (
+                "manager",
+                "engineer",
+                "analyst",
+                "designer",
+                "nurse",
+                "teacher",
+                "attorney",
+                "coordinator",
+                "specialist",
+                "associate",
+                "consultant",
+                "intern",
+            )
         )
         return not any(token in lowered_context for token in work_tokens)
     return False
@@ -2385,7 +2902,9 @@ def _months_between(y1: int, m1: int, y2: int, m2: int) -> int:
     return max(0, (y2 - y1) * 12 + (m2 - m1) + 1)
 
 
-def _date_match_month(match: re.Match[str], named_month: str, numeric_month: str, default: int) -> int:
+def _date_match_month(
+    match: re.Match[str], named_month: str, numeric_month: str, default: int
+) -> int:
     month_name = match.group(named_month)
     if month_name:
         return _MONTH_INDEX.get(month_name.lower(), default)
@@ -2558,7 +3077,9 @@ def extract_work_history(text: str) -> dict[str, Any]:
         "Lead / Executive",
     ]
     seen_levels = [s["seniority_kw"] for s in spans if s["seniority_kw"]]
-    indices = [progression_order.index(lv) for lv in seen_levels if lv in progression_order]
+    indices = [
+        progression_order.index(lv) for lv in seen_levels if lv in progression_order
+    ]
     has_progression = len(indices) >= 2 and indices[-1] > indices[0]
 
     max_seniority_keyword = None
@@ -2659,7 +3180,9 @@ def score_projects(text: str) -> dict[str, Any]:
 
 
 def _resume_lines(text: str) -> list[str]:
-    return [re.sub(r"\s+", " ", line.strip()) for line in text.splitlines() if line.strip()]
+    return [
+        re.sub(r"\s+", " ", line.strip()) for line in text.splitlines() if line.strip()
+    ]
 
 
 def _quote_resume_line(line: str, max_chars: int = 120) -> str:
@@ -2719,9 +3242,13 @@ def _select_feedback_items(
             seen.add(cleaned)
 
     if positive:
-        limit = 5 if overall >= 85 else 4 if overall >= 70 else 3 if overall >= 50 else 2
+        limit = (
+            5 if overall >= 85 else 4 if overall >= 70 else 3 if overall >= 50 else 2
+        )
     else:
-        limit = 1 if overall >= 85 else 2 if overall >= 70 else 3 if overall >= 50 else 4
+        limit = (
+            1 if overall >= 85 else 2 if overall >= 70 else 3 if overall >= 50 else 4
+        )
         if overall < 30:
             limit = 5
 
@@ -2804,7 +3331,9 @@ def assess_quality(
             + min(award_count, 4) * 3
             + int(academic["degree_hits"]) * 4
         )
-        experience_score = min(100, experience_score + min(40, academic_experience_bonus))
+        experience_score = min(
+            100, experience_score + min(40, academic_experience_bonus)
+        )
 
     # Impact sub-score: quantified outcomes density.
     impact_total = int(projects.get("impact_total", 0))
@@ -2899,8 +3428,13 @@ def assess_quality(
     first_bullet = _find_first_bullet(text)
     skills_example = _find_resume_line(
         text,
-        lambda line: "skill" in line.lower()
-        or any(skill.lower() in line.lower() for skill in SAMPLE_FIELD_SKILLS.get(profile["track"], [])[:4]),
+        lambda line: (
+            "skill" in line.lower()
+            or any(
+                skill.lower() in line.lower()
+                for skill in SAMPLE_FIELD_SKILLS.get(profile["track"], [])[:4]
+            )
+        ),
     )
 
     if ft_months == 0 and intern_months == 0:
@@ -2938,7 +3472,9 @@ def assess_quality(
     missing_sections = structure.get("missing_sections") or []
     if len(missing_sections) >= 3:
         red_flags.append(
-            "Several standard sections missing: " + ", ".join(missing_sections[:3]) + "."
+            "Several standard sections missing: "
+            + ", ".join(missing_sections[:3])
+            + "."
         )
     elif missing_sections and structure_score < 70:
         red_flags.append(
@@ -2946,7 +3482,12 @@ def assess_quality(
             + ", ".join(missing_sections[:2])
             + "."
         )
-    if impact_score < 45 and impact_total > 0 and bullet_count >= 6 and not is_research_cv:
+    if (
+        impact_score < 45
+        and impact_total > 0
+        and bullet_count >= 6
+        and not is_research_cv
+    ):
         red_flags.append(
             "Only a small share of bullets are quantified; add more numbers beyond "
             + quantified_example
@@ -2967,7 +3508,9 @@ def assess_quality(
             + (f" such as {date_example}." if date_example else ".")
         )
     if weighted_months >= 60 and int(work_history.get("ft_role_count", 0)) >= 2:
-        strengths.append("Experience spans multiple full-time roles with enough tenure to support level calibration.")
+        strengths.append(
+            "Experience spans multiple full-time roles with enough tenure to support level calibration."
+        )
     if prestigious_company_count > 0:
         strengths.append("History includes recognized, selective employers or labs.")
     if prestigious_education_count > 0:
@@ -3042,7 +3585,13 @@ def assess_quality(
         public_entities = public_signals.get("entities", {}).get("counts", {})
         entity_evidence = [
             label
-            for label in ("Companies worked at", "College Name", "Degree", "Designation", "Skills")
+            for label in (
+                "Companies worked at",
+                "College Name",
+                "Degree",
+                "Designation",
+                "Skills",
+            )
             if int(public_entities.get(label, 0)) > 0
         ]
         if len(entity_evidence) >= 2:
@@ -3123,7 +3672,9 @@ def apply_quality_discount(
         notes.append("Adjusted downward — projects lack quantified outcomes.")
     if quality.get("specificity_score", 100) < 40:
         multiplier *= 0.95
-        notes.append("Adjusted downward — descriptions are vague, hard to verify scope.")
+        notes.append(
+            "Adjusted downward — descriptions are vague, hard to verify scope."
+        )
     if multiplier >= 0.999:
         return band
 
@@ -3177,7 +3728,9 @@ def assess_capability_tier(
 
     public_score = 0.0
     if public_signals and public_signals.get("ready"):
-        domain_conf = float(public_signals.get("domain", {}).get("confidence", 0.0) or 0.0)
+        domain_conf = float(
+            public_signals.get("domain", {}).get("confidence", 0.0) or 0.0
+        )
         entity_counts = public_signals.get("entities", {}).get("counts", {})
         public_score = min(
             100.0,
@@ -3221,17 +3774,25 @@ def assess_capability_tier(
 
     notes: list[str] = []
     if skill_hits:
-        notes.append("Track-specific skills detected: " + ", ".join(skill_hits[:4]) + ".")
+        notes.append(
+            "Track-specific skills detected: " + ", ".join(skill_hits[:4]) + "."
+        )
     if float(quality.get("impact_score", 0)) >= 70:
         notes.append("Impact evidence is strong for the claimed level.")
     elif float(quality.get("impact_score", 0)) < 40:
         notes.append("Impact evidence is light relative to similar-level candidates.")
     if prestige_score >= 55:
-        notes.append("High-rigor employers, titles, publications, or awards lift the tier.")
+        notes.append(
+            "High-rigor employers, titles, publications, or awards lift the tier."
+        )
     if public_score >= 35:
-        notes.append("Public-data models find corroborating skills, roles, or credentials.")
+        notes.append(
+            "Public-data models find corroborating skills, roles, or credentials."
+        )
     if not notes:
-        notes.append("Capability tier is driven by the resume's specificity and experience evidence.")
+        notes.append(
+            "Capability tier is driven by the resume's specificity and experience evidence."
+        )
 
     return {
         "score": round(score, 1),
@@ -3363,7 +3924,9 @@ def detect_profile(
             seniority = "Lead / Executive"
         elif any(token in lowered for token in ("senior", "sr.", "sr ", "mid-senior")):
             seniority = "Senior"
-        elif any(token in lowered for token in ("entry", "junior", "new grad", "intern")):
+        elif any(
+            token in lowered for token in ("entry", "junior", "new grad", "intern")
+        ):
             seniority = "Intern / Entry"
         elif "associate" in lowered:
             seniority = "Associate"
@@ -3409,7 +3972,9 @@ def detect_profile(
         seniority_reason = (
             "Capped at Entry — only internship or academic roles were detected."
         )
-    elif title_cap is not None and progression_order.index(title_cap) < progression_order.index(floor_seniority):
+    elif title_cap is not None and progression_order.index(
+        title_cap
+    ) < progression_order.index(floor_seniority):
         seniority = title_cap
         seniority_reason = (
             f"Capped at {title_cap} — titles do not support a higher level."
@@ -3432,18 +3997,22 @@ def detect_profile(
     academic_degree_hits = int(academic["degree_hits"])
     academic_prestige_count = int(academic["prestigious_education_count"])
     academic_floor = None
-    if academic_pub_count >= 10 and academic_prestige_count > 0 and rigorous_role_count > 0:
+    if (
+        academic_pub_count >= 10
+        and academic_prestige_count > 0
+        and rigorous_role_count > 0
+    ):
         academic_floor = "Senior"
     elif academic_pub_count >= 5 and academic_degree_hits > 0:
         academic_floor = "Mid"
     elif academic_prestige_count > 0 and academic_degree_hits > 0:
         academic_floor = "Associate"
 
-    if academic_floor and progression_order.index(academic_floor) > progression_order.index(seniority):
+    if academic_floor and progression_order.index(
+        academic_floor
+    ) > progression_order.index(seniority):
         seniority = academic_floor
-        seniority_reason = (
-            f"Raised to {academic_floor} — publication record and elite academic background support a higher research level."
-        )
+        seniority_reason = f"Raised to {academic_floor} — publication record and elite academic background support a higher research level."
 
     if (
         title_cap == "Lead / Executive"
@@ -3452,9 +4021,7 @@ def detect_profile(
         and prestigious_company_count > 0
     ):
         seniority = "Lead / Executive"
-        seniority_reason = (
-            "Raised to Lead / Executive — senior/staff research title is backed by publications and elite employers."
-        )
+        seniority_reason = "Raised to Lead / Executive — senior/staff research title is backed by publications and elite employers."
 
     structure = structure or {}
     projects = projects or {}
@@ -3637,20 +4204,20 @@ def render_quality_scorecard(quality: dict[str, Any]) -> None:
     overall_html = (
         f'<div class="quality-overall">{overall}'
         f'<span style="font-size:0.9rem;color:var(--muted);font-weight:500;"> / 100</span>'
-        f'</div>'
+        f"</div>"
     )
     headline = (
         '<div class="quality-headline">'
         f'<div><div class="metric-label">Resume quality</div>{overall_html}</div>'
         f'<span class="quality-band-pill quality-band-{band_label_safe}">{band_label_safe}</span>'
-        '</div>'
+        "</div>"
     )
     body = (
         '<div class="quality-card">'
         + headline
         + f'<div class="quality-subscores">{sub_html}</div>'
         + f'<div class="quality-feedback-grid">{strengths_html}{flags_html}</div>'
-        + '</div>'
+        + "</div>"
     )
     st.markdown(body, unsafe_allow_html=True)
 
@@ -3675,7 +4242,14 @@ def render_public_model_card(public_signals: dict[str, Any] | None) -> None:
         + ", ".join(
             f"{label}:{count}"
             for label, count in entities.items()
-            if label in {"Companies worked at", "College Name", "Degree", "Designation", "Skills"}
+            if label
+            in {
+                "Companies worked at",
+                "College Name",
+                "Degree",
+                "Designation",
+                "Skills",
+            }
         ),
     ]
     chips = [chip for chip in chips if not chip.endswith(": ")]
@@ -3687,7 +4261,9 @@ def render_public_model_card(public_signals: dict[str, Any] | None) -> None:
     )
     st.markdown(
         '<div class="chip-cloud">'
-        + "".join(f'<span class="mini-chip">{escape(chip)}</span>' for chip in chips[:5])
+        + "".join(
+            f'<span class="mini-chip">{escape(chip)}</span>' for chip in chips[:5]
+        )
         + "</div>",
         unsafe_allow_html=True,
     )
@@ -3734,20 +4310,20 @@ def main() -> None:
             else ""
         )
         st.markdown(
-            f'''
+            f"""
             <div class="sidebar-info">
                 <div class="info-title">Data source</div>
                 <div class="info-source"><strong>{escape(source_label)}</strong></div>
                 {source_detail}
             </div>
-            ''',
+            """,
             unsafe_allow_html=True,
         )
         st.write("")
         st.caption(linkedin_dataset_note(has_real_data))
 
     st.markdown(
-        '''
+        """
         <div class="hero">
             <div class="eyebrow">Resume market intelligence</div>
             <h1>Understand role fit, salary range, and market position.</h1>
@@ -3758,7 +4334,7 @@ def main() -> None:
                 <span class="pill">Profile guidance</span>
             </div>
         </div>
-        ''',
+        """,
         unsafe_allow_html=True,
     )
 
@@ -3775,9 +4351,7 @@ def main() -> None:
             "from current dataset",
         )
 
-    launchpad_tab, radar_tab = st.tabs(
-        ["Resume Analysis", "Market Overview"]
-    )
+    launchpad_tab, radar_tab = st.tabs(["Resume Analysis", "Market Overview"])
 
     with launchpad_tab:
         left = st.container()
@@ -3786,9 +4360,10 @@ def main() -> None:
         with left:
             st.markdown("## Analyze a candidate profile")
             st.caption("Add candidate information to review market positioning.")
-            
+
             uploader = st.file_uploader(
-                "Drag and drop resume here (PDF or TXT, up to 200MB)", type=["pdf", "txt"]
+                "Drag and drop resume here (PDF or TXT, up to 200MB)",
+                type=["pdf", "txt"],
             )
             if uploader is not None:
                 parsed = extract_uploaded_text(uploader)
@@ -3939,7 +4514,7 @@ def main() -> None:
                 bullet_count_html = escape(str(structure["bullet_count"]))
                 link_count_html = escape(str(structure["link_count"]))
                 st.markdown(
-                    f'''
+                    f"""
                     <div class="metric-card" style="margin-top:0.75rem;">
                         <div class="metric-label">Resume source</div>
                         <div class="signal-copy">
@@ -3947,7 +4522,7 @@ def main() -> None:
                             {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
                         </div>
                     </div>
-                    ''',
+                    """,
                     unsafe_allow_html=True,
                 )
 
@@ -3987,8 +4562,7 @@ def main() -> None:
                 )
                 if structure["missing_sections"]:
                     st.caption(
-                        "Missing sections: "
-                        + ", ".join(structure["missing_sections"])
+                        "Missing sections: " + ", ".join(structure["missing_sections"])
                     )
 
                 st.markdown(
@@ -3996,9 +4570,9 @@ def main() -> None:
                     unsafe_allow_html=True,
                 )
                 st.markdown(
-                    f'''
+                    f"""
                     <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
-                    ''',
+                    """,
                     unsafe_allow_html=True,
                 )
                 st.caption(linkedin_dataset_note(has_real_data))
@@ -4019,7 +4593,9 @@ def main() -> None:
             try:
                 with st.spinner("Reviewing resume content..."):
                     public_models = load_public_assessment_resource()
-                    public_signals = public_resume_signals(public_models, resume_text_now)
+                    public_signals = public_resume_signals(
+                        public_models, resume_text_now
+                    )
                     structure = resume_structure(resume_text_now)
                     structure = enhance_structure_with_public_sections(
                         structure, public_signals
@@ -4081,8 +4657,8 @@ def main() -> None:
                         if wage_table is not None:
                             bls_band = wage_table.lookup(occupation_match.soc_code)
 
-                salary_matches, seniority_salary_note = seniority_filtered_salary_matches(
-                    matches
+                salary_matches, seniority_salary_note = (
+                    seniority_filtered_salary_matches(matches)
                 )
                 band = hybrid_salary_band(
                     salary_matches,
@@ -4290,7 +4866,6 @@ def main() -> None:
                 st.success(f"Loaded real project data from `{data_source}`.")
             else:
                 st.info("Using sample roles until the local job catalog is prepared.")
-
 
 
 if __name__ == "__main__":
