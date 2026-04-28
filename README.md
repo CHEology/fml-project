@@ -111,6 +111,13 @@ The first command creates `data/external/onet_skills.parquet`, which
 creates `data/external/bls_wages.parquet`, which the real-resume validation
 harness can use with O*NET routing to report SOC-level wage bands.
 
+If BLS blocks scripted downloads with HTTP 403, download `oesm24nat.zip` from
+the BLS OEWS tables page in a browser, unzip the national XLSX, then run:
+
+```bash
+uv run python scripts/load_bls_oews.py --input data/external/bls/national_M2024_dl.xlsx
+```
+
 ## Retrieval Evaluation
 
 After building the real index, generate synthetic resume/job pairs and evaluate
@@ -164,9 +171,10 @@ uv run python scripts/validate_on_real_resumes.py \
     --quality-model models/quality_model.pt
 ```
 
-The harness reports rule-based quality (real-resume-safe; uses `ml.quality.score_resume_quality`), the learned MLP score plus its rank correlation with the rule, and a **self-consistency** salary metric: predicted q50 vs. the median salary of the top-k retrieved jobs. Each section degrades gracefully when artifacts are missing; pass `--smoke` to run with deterministic random embeddings.
+The harness reports rule-based quality (real-resume-safe; uses `ml.quality.score_resume_quality`), human-readable strength/gap notes, the learned MLP score plus its rank correlation with the rule, and a **self-consistency** salary metric: predicted q50 vs. the median salary of the top-k retrieved jobs. Each section degrades gracefully when artifacts are missing; pass `--smoke` to run with deterministic random embeddings.
 When O*NET/BLS artifacts are present, it also reports the nearest SOC
-occupation, federal p10-p90 wage band, and per-category quality distribution.
+occupation, federal p10-p90 wage band, per-category quality distribution, and
+retrieval role-family mismatch rate.
 
 > **Calibration caveat.** The learned quality MLP was trained on the synthetic generator's `quality_score` formula and the JD-side salary model has a domain shift on resume embeddings. Treat numbers from these as proxies until real labels exist. The rule-based scorer + self-consistency salary check are what we trust on real input.
 

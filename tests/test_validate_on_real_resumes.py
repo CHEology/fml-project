@@ -41,15 +41,16 @@ def _fixture_resumes() -> pd.DataFrame:
 
 
 class _StubRetriever:
-    def __init__(self, salaries: list[float]):
+    def __init__(self, salaries: list[float], titles: list[str] | None = None):
         self._salaries = salaries
+        self._titles = titles or [f"Job {i}" for i in range(5)]
 
     def search(self, _resume_text: str, k: int) -> list[JobMatch]:
         return [
             JobMatch(
                 row_id=i,
                 job_id=1000 + i,
-                title=f"Job {i}",
+                title=self._titles[i % len(self._titles)],
                 company_name=f"Co{i}",
                 salary_annual=self._salaries[i % len(self._salaries)],
                 location="NY",
@@ -100,6 +101,8 @@ def test_validate_rule_only_returns_summary_and_per_row() -> None:
     assert per_row["rule_score"].iloc[0] > per_row["rule_score"].iloc[2]
     assert per_row["rule_label"].iloc[0] in {"medium", "strong"}
     assert per_row["rule_label"].iloc[2] == "weak"
+    assert per_row["rule_strength_notes"].iloc[0]
+    assert per_row["rule_gap_notes"].iloc[2]
 
 
 def test_validate_with_retriever_and_salary_records_self_consistency() -> None:
@@ -121,6 +124,29 @@ def test_validate_with_retriever_and_salary_records_self_consistency() -> None:
     assert summary["self_consistency_in_band_rate"] == pytest.approx(1.0)
     assert "retrieved_median_salary" in per_row.columns
     assert "pred_q50" in per_row.columns
+
+
+def test_validate_flags_role_fit_mismatch_from_retrieved_titles() -> None:
+    df = pd.DataFrame(
+        {
+            "resume_id": ["r1"],
+            "resume_text": [
+                "Registered nurse with patient care and clinical triage experience."
+            ],
+        }
+    )
+    embeddings = np.zeros((1, 8), dtype=np.float32)
+    retriever = _StubRetriever(
+        salaries=[100_000.0],
+        titles=["Software Engineer", "Backend Developer", "Cloud Engineer"],
+    )
+
+    summary, per_row = validate(df, embeddings, retriever=retriever, k=3)
+
+    assert per_row["resume_role_family"].iloc[0] == "healthcare"
+    assert per_row["retrieved_role_family"].iloc[0] == "software"
+    assert bool(per_row["role_fit_mismatch"].iloc[0]) is True
+    assert summary["role_fit_mismatch_rate"] == pytest.approx(1.0)
 
 
 def test_validate_reports_rule_vs_learned_spearman_when_available() -> None:
