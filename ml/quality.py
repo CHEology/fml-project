@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -304,8 +305,67 @@ _TYPO_REPLACEMENTS = (
     "stakehldr",
 )
 
+_CLICHE_PHRASES = (
+    "hard worker",
+    "team player",
+    "self starter",
+    "self-starter",
+    "go getter",
+    "go-getter",
+    "fast learner",
+    "detail oriented",
+    "detail-oriented",
+    "excellent communication skills",
+    "motivated professional",
+    "responsible for",
+)
 
-def quality_features_from_text(text: str) -> dict[str, float]:
+_VAGUE_PHRASES = (
+    "worked on",
+    "helped with",
+    "assisted with",
+    "various tasks",
+    "improved things",
+    "improved processes",
+    "made improvements",
+    "handled duties",
+    "participated in",
+    "contributed to",
+)
+
+_ACTION_VERBS = (
+    "built",
+    "shipped",
+    "launched",
+    "led",
+    "owned",
+    "designed",
+    "implemented",
+    "automated",
+    "reduced",
+    "increased",
+    "improved",
+    "optimized",
+    "migrated",
+    "trained",
+    "mentored",
+)
+
+_METRIC_RE = re.compile(
+    r"(?:\$\s*)?\b\d+(?:\.\d+)?\s*"
+    r"(?:%|k\b|m\b|ms\b|seconds?\b|minutes?\b|hours?\b|days?\b|"
+    r"users?\b|customers?\b|requests?\b|models?\b|teams?\b|projects?\b|"
+    r"revenue\b|cost\b|latency\b)"
+)
+_WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#./-]*")
+_DATE_RANGE_RE = re.compile(
+    r"\b((?:19|20)\d{2})\b\s*(?:-|to|through|until)\s*"
+    r"\b(present|current|(?:19|20)\d{2})\b",
+    re.IGNORECASE,
+)
+
+
+def _legacy_quality_features_from_text(text: str) -> dict[str, float]:
     """Heuristic per-dimension scores derived from raw resume text.
 
     Each value lives on its own scale; only the *relative* gap to the
@@ -340,7 +400,7 @@ def quality_features_from_text(text: str) -> dict[str, float]:
     }
 
 
-def weakest_dim_from_features(features: dict[str, float]) -> str:
+def _legacy_weakest_dim_from_features(features: dict[str, float]) -> str:
     """Return the dimension with the largest gap-to-target.
 
     Targets approximate the saturation points used in the generator's
@@ -367,10 +427,10 @@ def weakest_dim_from_features(features: dict[str, float]) -> str:
 
 
 _RULE_TARGETS: dict[str, float] = {
-    "skills": 8.0,
-    "experience": 5.0,
-    "projects": 3.0,
-    "metrics": 1.0,
+    "skills": 10.0,
+    "experience": 6.0,
+    "projects": 4.0,
+    "metrics": 3.0,
     "typos": 0.0,
 }
 
@@ -404,17 +464,27 @@ def score_resume_quality(text: str) -> dict[str, object]:
     dim_scores = _dimension_scores(features)
     score = float(sum(dim_scores[d] * _RULE_WEIGHTS[d] for d in QUALITY_DIMENSIONS))
     score = float(np.clip(score, 0.0, 100.0))
+    feedback = _feedback_notes(features, dim_scores)
+    priority_gap = _priority_gap(dim_scores)
     return {
         "score": round(score, 2),
         "label": quality_label_from_score(score),
         "dimension_scores": {d: round(dim_scores[d], 1) for d in QUALITY_DIMENSIONS},
         "weakest_dim": weakest_dim_from_features(features),
+        "priority_gap": priority_gap,
         "strengths": [d for d in QUALITY_DIMENSIONS if dim_scores[d] >= 80.0],
         "gaps": [d for d in QUALITY_DIMENSIONS if dim_scores[d] < 50.0],
+        "feedback": feedback,
+        "strength_notes": feedback["strengths"],
+        "gap_notes": feedback["gaps"],
+        "matched_skills": features.get("matched_skills", []),
+        "career_issues": features.get("career_issues", []),
+        "vague_phrases": features.get("vague_phrases", []),
+        "cliche_phrases": features.get("cliche_phrases", []),
     }
 
 
-def _dimension_scores(features: dict[str, float]) -> dict[str, float]:
+def _legacy_dimension_scores(features: dict[str, float]) -> dict[str, float]:
     targets = _RULE_TARGETS
     return {
         "skills": float(
@@ -431,18 +501,254 @@ def _dimension_scores(features: dict[str, float]) -> dict[str, float]:
     }
 
 
+def quality_features_from_text(text: str) -> dict[str, Any]:
+    """Heuristic signals used by the real-resume-safe quality scorer."""
+    lowered = text.lower()
+    matched_skills = _matched_skills(lowered)
+    metric_matches = _unique_hits(_METRIC_RE.findall(lowered))
+    typo_hits = _matched_phrases(lowered, _TYPO_REPLACEMENTS)
+    cliche_hits = _matched_phrases(lowered, _CLICHE_PHRASES)
+    vague_hits = _matched_phrases(lowered, _VAGUE_PHRASES)
+    years = _max_years_experience(lowered)
+    career = _career_progression(lowered, years)
+
+    return {
+        "skills": float(len(matched_skills)),
+        "experience": float(years),
+        "projects": float(_bullet_count(text)),
+        "metrics": float(len(metric_matches)),
+        "typos": float(len(typo_hits)),
+        "matched_skills": matched_skills[:25],
+        "metric_count": float(len(metric_matches)),
+        "action_verb_count": float(_action_verb_count(lowered)),
+        "word_count": float(len(_WORD_RE.findall(text))),
+        "cliche_phrases": cliche_hits,
+        "vague_phrases": vague_hits,
+        "career_issues": career["issues"],
+        "career_gap_years": career["max_gap_years"],
+        "seniority_level": career["seniority_level"],
+    }
+
+
+def weakest_dim_from_features(features: dict[str, Any]) -> str:
+    """Compatibility helper; use `priority_gap` for true weak areas."""
+    dim_scores = _dimension_scores(features)
+    return min(dim_scores.items(), key=lambda pair: pair[1])[0]
+
+
+def _dimension_scores(features: dict[str, Any]) -> dict[str, float]:
+    targets = _RULE_TARGETS
+    writing_penalty = (
+        float(features.get("typos", 0.0)) * _TYPO_STEP
+        + len(features.get("vague_phrases", [])) * 10.0
+        + len(features.get("cliche_phrases", [])) * 8.0
+        + max(float(features.get("word_count", 0.0)) - 850.0, 0.0) / 25.0
+    )
+    return {
+        "skills": _diminishing_score(
+            float(features.get("skills", 0.0)), targets["skills"]
+        ),
+        "experience": _diminishing_score(
+            float(features.get("experience", 0.0)), targets["experience"]
+        ),
+        "projects": _diminishing_score(
+            float(features.get("projects", 0.0)), targets["projects"]
+        ),
+        "metrics": _diminishing_score(
+            float(features.get("metrics", 0.0)), targets["metrics"]
+        ),
+        "typos": float(max(100.0 - writing_penalty, 0.0)),
+    }
+
+
+def _diminishing_score(value: float, target: float) -> float:
+    if value <= 0.0:
+        return 0.0
+    scale = max(target / 1.6, 1.0)
+    return float(min(100.0 * (1.0 - np.exp(-value / scale)), 100.0))
+
+
+def _priority_gap(dim_scores: dict[str, float]) -> str | None:
+    weak = {dim: score for dim, score in dim_scores.items() if score < 70.0}
+    if not weak:
+        return None
+    return min(weak.items(), key=lambda pair: pair[1])[0]
+
+
+def _feedback_notes(
+    features: dict[str, Any], dim_scores: dict[str, float]
+) -> dict[str, list[str]]:
+    matched_skills = list(features.get("matched_skills", []))
+    metric_count = int(features.get("metric_count", 0.0))
+    project_count = int(features.get("projects", 0.0))
+    years = float(features.get("experience", 0.0))
+    vague = list(features.get("vague_phrases", []))
+    cliches = list(features.get("cliche_phrases", []))
+    career_issues = list(features.get("career_issues", []))
+
+    strengths: list[str] = []
+    gaps: list[str] = []
+    if matched_skills:
+        skills_preview = ", ".join(matched_skills[:6])
+        suffix = (
+            "" if len(matched_skills) <= 6 else f", +{len(matched_skills) - 6} more"
+        )
+        strengths.append(
+            f"Matched {len(matched_skills)} domain skills: {skills_preview}{suffix}."
+        )
+    if years >= 3:
+        strengths.append(f"Shows {years:g} years of experience.")
+    if project_count >= 3:
+        strengths.append(
+            f"Uses {project_count} bullet-level accomplishment statements."
+        )
+    if metric_count >= 2:
+        strengths.append(f"Quantifies impact in {metric_count} places.")
+    elif metric_count == 1:
+        strengths.append("Includes one quantified impact statement.")
+
+    if dim_scores["skills"] < 50.0:
+        gaps.append(
+            "Add more role-specific skills so the resume reads as domain-targeted."
+        )
+    if project_count < 3:
+        gaps.append("Add at least 3 accomplishment bullets tied to concrete work.")
+    if metric_count < 2:
+        gaps.append(
+            "Quantify more outcomes with numbers such as %, dollars, users, time, or volume."
+        )
+    if vague:
+        gaps.append(f"Replace vague phrasing: {', '.join(vague[:4])}.")
+    if cliches:
+        gaps.append(f"Replace generic resume cliches: {', '.join(cliches[:4])}.")
+    gaps.extend(career_issues)
+
+    return {"strengths": strengths[:5], "gaps": gaps[:8]}
+
+
+def _phrase_in_text(phrase: str, lowered_text: str) -> bool:
+    if not phrase:
+        return False
+    if re.search(r"\w", phrase[-1]):
+        return bool(re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", lowered_text))
+    return phrase in lowered_text
+
+
+def _matched_skills(lowered_text: str) -> list[str]:
+    tokens = set(re.findall(r"[a-z0-9+#./-]+", lowered_text))
+    matched: list[str] = []
+    for skill in _quality_skill_lexicon():
+        phrase = skill.lower().strip()
+        if not phrase:
+            continue
+        if re.fullmatch(r"[a-z0-9+#./-]+", phrase):
+            if phrase in tokens:
+                matched.append(skill)
+        elif phrase in lowered_text:
+            matched.append(skill)
+    return matched
+
+
+def _matched_phrases(lowered_text: str, phrases: tuple[str, ...]) -> list[str]:
+    return [phrase for phrase in phrases if _phrase_in_text(phrase, lowered_text)]
+
+
+def _unique_hits(matches: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for match in matches:
+        key = match.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            out.append(match.strip())
+    return out
+
+
+def _max_years_experience(lowered_text: str) -> float:
+    matches = re.findall(r"\b(\d{1,2})\s*(?:\+\s*)?years?\b", lowered_text)
+    if not matches:
+        return 0.0
+    return float(max(int(match) for match in matches))
+
+
+def _bullet_count(text: str) -> int:
+    return sum(1 for line in text.splitlines() if line.strip().startswith(("-", "*")))
+
+
+def _action_verb_count(lowered_text: str) -> int:
+    return sum(1 for verb in _ACTION_VERBS if re.search(rf"\b{verb}\b", lowered_text))
+
+
+def _career_progression(lowered_text: str, years: float) -> dict[str, Any]:
+    seniority = _seniority_level(lowered_text)
+    gaps = _career_gaps(lowered_text)
+    issues: list[str] = []
+    if years >= 7.0 and seniority < 3:
+        issues.append("At 7+ years, add a senior/lead scope signal if accurate.")
+    if gaps:
+        max_gap = max(gaps)
+        if max_gap >= 2:
+            issues.append(f"Explain the largest career gap of about {max_gap:g} years.")
+    return {
+        "issues": issues,
+        "max_gap_years": float(max(gaps) if gaps else 0.0),
+        "seniority_level": float(seniority),
+    }
+
+
+def _seniority_level(lowered_text: str) -> int:
+    if re.search(r"\b(chief|vp|vice president|director|head of)\b", lowered_text):
+        return 5
+    if re.search(r"\b(manager|principal|staff|architect)\b", lowered_text):
+        return 4
+    if re.search(r"\b(senior|sr\.?|lead)\b", lowered_text):
+        return 3
+    if re.search(
+        r"\b(engineer|analyst|specialist|consultant|nurse|accountant)\b", lowered_text
+    ):
+        return 2
+    if re.search(r"\b(junior|jr\.?|intern|associate)\b", lowered_text):
+        return 1
+    return 0
+
+
+def _career_gaps(lowered_text: str) -> list[float]:
+    ranges: list[tuple[int, int]] = []
+    current_year = date.today().year
+    for start_raw, end_raw in _DATE_RANGE_RE.findall(lowered_text):
+        start = int(start_raw)
+        end = (
+            current_year if end_raw.lower() in {"present", "current"} else int(end_raw)
+        )
+        if start <= end:
+            ranges.append((start, end))
+    ranges.sort()
+    gaps: list[float] = []
+    last_end: int | None = None
+    for start, end in ranges:
+        if last_end is not None and start > last_end + 1:
+            gaps.append(float(start - last_end))
+        last_end = max(last_end or end, end)
+    return gaps
+
+
 def _quality_skill_lexicon(external_path: str | Path | None = None) -> list[str]:
+    return list(
+        _quality_skill_lexicon_cached(str(external_path or DEFAULT_ONET_SKILLS_PATH))
+    )
+
+
+@lru_cache(maxsize=4)
+def _quality_skill_lexicon_cached(path: str) -> tuple[str, ...]:
     skills: list[str] = list(MULTI_WORD_SKILLS)
     for profile in ROLE_PROFILES:
         for skill in profile.core_skills + profile.nice_to_have:
             if skill not in skills:
                 skills.append(skill)
-    for skill in _load_external_skill_terms(
-        str(external_path or DEFAULT_ONET_SKILLS_PATH)
-    ):
+    for skill in _load_external_skill_terms(path):
         if skill not in skills:
             skills.append(skill)
-    return skills
+    return tuple(skills)
 
 
 @lru_cache(maxsize=4)

@@ -14,7 +14,7 @@ Usage:
     python scripts/load_onet_skills.py --download
 
     # Or point at a pre-extracted O*NET text directory
-    python scripts/load_onet_skills.py --input data/external/onet_29_0_text
+    python scripts/load_onet_skills.py --input data/external/onet/db_30_2_text
 
 Output:
     data/external/onet_skills.parquet
@@ -37,7 +37,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-DEFAULT_RELEASE = "29_0"
+# O*NET 30.2 is the current database release as of April 2026.
+DEFAULT_RELEASE = "30_2"
 DEFAULT_URL = (
     f"https://www.onetcenter.org/dl_files/database/db_{DEFAULT_RELEASE}_text.zip"
 )
@@ -59,8 +60,13 @@ def download_onet(url: str, dest_dir: Path) -> Path:
         data = response.read()
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         zf.extractall(dest_dir)
-    # The zip extracts into a versioned subdirectory like db_29_0_text/
-    extracted = next(p for p in dest_dir.iterdir() if p.is_dir())
+    # The zip extracts into a versioned subdirectory like db_30_2_text/.
+    expected = dest_dir / f"db_{DEFAULT_RELEASE}_text"
+    extracted = (
+        expected
+        if expected.exists()
+        else next(p for p in dest_dir.iterdir() if p.is_dir())
+    )
     print(f"Extracted to {extracted}")
     return extracted
 

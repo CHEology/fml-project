@@ -108,7 +108,13 @@ def validate(
             "rule_score": rule["score"],
             "rule_label": rule["label"],
             "rule_weakest_dim": rule["weakest_dim"],
+            "rule_priority_gap": rule.get("priority_gap"),
+            "rule_strength_notes": " | ".join(rule.get("strength_notes", [])),
+            "rule_gap_notes": " | ".join(rule.get("gap_notes", [])),
         }
+        resume_role_family = _role_family(resume_text)
+        if resume_role_family is not None:
+            record["resume_role_family"] = resume_role_family
 
         if quality_predictor is not None:
             try:
@@ -156,6 +162,11 @@ def validate(
             record["retrieved_distinct_companies"] = len(
                 {r.company_name for r in results if r.company_name}
             )
+            retrieved_family = _majority_role_family([r.title for r in results])
+            if retrieved_family is not None:
+                record["retrieved_role_family"] = retrieved_family
+                if resume_role_family is not None:
+                    record["role_fit_mismatch"] = retrieved_family != resume_role_family
             record["retrieved_median_salary"] = (
                 float(np.median(retrieved_salaries))
                 if retrieved_salaries
@@ -232,6 +243,10 @@ def _aggregate(per_row: pd.DataFrame) -> dict[str, Any]:
         summary["retrieved_mean_similarity"] = float(
             per_row["retrieved_mean_similarity"].mean()
         )
+        if "role_fit_mismatch" in per_row.columns:
+            valid = per_row["role_fit_mismatch"].dropna()
+            if len(valid):
+                summary["role_fit_mismatch_rate"] = float(valid.mean())
         valid_sal = per_row["retrieved_median_salary"].dropna()
         if len(valid_sal):
             summary["retrieved_median_salary"] = {
@@ -277,6 +292,75 @@ def _spearman(a: np.ndarray, b: np.ndarray) -> float:
     if denom == 0.0:
         return float("nan")
     return float((ra * rb).sum() / denom)
+
+
+def _role_family(text: str) -> str | None:
+    lowered = str(text).lower()
+    families = {
+        "software": (
+            "software",
+            "backend",
+            "frontend",
+            "full stack",
+            "developer",
+            "engineer",
+            "devops",
+            "cloud",
+        ),
+        "data": (
+            "data scientist",
+            "data analyst",
+            "analytics",
+            "machine learning",
+            "ml engineer",
+            "business intelligence",
+            "tableau",
+        ),
+        "healthcare": (
+            "nurse",
+            "patient",
+            "clinical",
+            "healthcare",
+            "medical",
+            "hospital",
+        ),
+        "finance": (
+            "accountant",
+            "financial",
+            "finance",
+            "audit",
+            "tax",
+            "bookkeeping",
+        ),
+        "marketing": (
+            "marketing",
+            "campaign",
+            "brand",
+            "seo",
+            "content",
+            "growth",
+        ),
+        "legal": ("lawyer", "legal", "attorney", "paralegal", "contract"),
+        "design": ("designer", "ux", "ui", "product design", "figma"),
+        "sales": ("sales", "account executive", "business development"),
+    }
+    scores = {
+        family: sum(1 for token in tokens if token in lowered)
+        for family, tokens in families.items()
+    }
+    best, score = max(scores.items(), key=lambda pair: pair[1])
+    return best if score > 0 else None
+
+
+def _majority_role_family(titles: list[str]) -> str | None:
+    counts: dict[str, int] = {}
+    for title in titles:
+        family = _role_family(title)
+        if family is not None:
+            counts[family] = counts.get(family, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda pair: pair[1])[0]
 
 
 # ---------------------------------------------------------------------------
