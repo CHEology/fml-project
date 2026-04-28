@@ -56,6 +56,26 @@ salary_band_from_model = runtime.salary_band_from_model
 salary_artifacts_ready = runtime.salary_artifacts_ready
 apply_public_ats_fit = runtime.apply_public_ats_fit
 
+from app.components.job_results import (  # noqa: E402
+    fmt_money,
+    render_job_card,
+    render_job_results,
+    render_metric_card,
+    render_panel_banner,
+    render_signal_card,
+)
+from app.components.salary_chart import render_salary_band, render_salary_fan_chart  # noqa: E402
+from app.components.cluster_view import (  # noqa: E402
+    render_cluster_browser,
+    render_cluster_position,
+    render_missing_terms,
+)
+from app.components.resume_upload import (  # noqa: E402
+    extract_uploaded_text,
+    fetch_public_webpage_text,
+    resume_input_widget,
+)
+
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "jobs.parquet"
 
 TRACK_KEYWORDS = {
@@ -1826,47 +1846,6 @@ def enhance_structure_with_public_sections(
 
 
 @st.cache_data(show_spinner=False, ttl=1800)
-def fetch_public_webpage_text(url: str) -> tuple[str, str]:
-    parsed = urlparse(url.strip())
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError("Enter a valid public http or https URL.")
-    if "linkedin.com" in parsed.netloc.lower():
-        raise ValueError(
-            "LinkedIn pages are not imported here. Paste profile text directly or use an approved LinkedIn OAuth/API flow."
-        )
-
-    request = Request(
-        url,
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            )
-        },
-    )
-    with urlopen(request, timeout=12) as response:
-        content_type = response.headers.get("Content-Type", "")
-        if "text/html" not in content_type:
-            raise ValueError("That URL did not return an HTML page.")
-        html = response.read(1_500_000).decode("utf-8", errors="ignore")
-
-    html = re.sub(r"(?is)<(script|style|noscript).*?>.*?</\\1>", " ", html)
-    html = re.sub(
-        r"(?i)</?(p|div|section|article|li|h1|h2|h3|h4|h5|h6|br)[^>]*>", "\n", html
-    )
-    html = re.sub(r"(?is)<[^>]+>", " ", html)
-    text = unescape(html)
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n{2,}", "\n\n", text)
-    cleaned = text.strip()
-    if len(cleaned) < 120:
-        raise ValueError(
-            "The page did not expose enough public text to use as a resume input."
-        )
-    return cleaned[:8000], parsed.netloc.lower()
-
-
 def generate_sample_profile(
     track: str,
     seniority: str,
@@ -2111,36 +2090,6 @@ def linkedin_dataset_note(has_real_data: bool) -> str:
     if has_real_data:
         return "Using the local LinkedIn job catalog."
     return "Using sample roles because the local job catalog is not available yet."
-
-
-def extract_uploaded_text(uploaded_file) -> str:
-    suffix = Path(uploaded_file.name).suffix.lower()
-    if suffix == ".txt":
-        return uploaded_file.getvalue().decode("utf-8", errors="ignore")
-
-    if suffix == ".pdf":
-        try:
-            import pdfplumber
-        except ImportError:
-            return ""
-
-        pages: list[str] = []
-        with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text(x_tolerance=1, y_tolerance=3) or ""
-                if not text.strip():
-                    text = page.extract_text() or ""
-                pages.append(text)
-        return clean_extracted_pdf_text("\n".join(pages))
-
-    return ""
-
-
-def clean_extracted_pdf_text(text: str) -> str:
-    text = re.sub(r"\(cid:\d+\)", " ", text)
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
 
 
 PRESTIGIOUS_COMPANY_TOKENS = (
@@ -3653,87 +3602,6 @@ def salary_band(matches: pd.DataFrame, profile: dict[str, Any]) -> dict[str, int
     }
 
 
-def fmt_money(value: float | int | None) -> str:
-    if value is None or pd.isna(value):
-        return "N/A"
-    return f"${int(value):,}"
-
-
-def render_metric_card(label: str, value: str, helper: str) -> None:
-    label_html = escape(str(label))
-    value_html = escape(str(value))
-    helper_html = escape(str(helper))
-    st.markdown(
-        f"""
-        <div class="metric-card">
-            <div class="metric-label">{label_html}</div>
-            <div class="metric-value">{value_html}</div>
-            <div class="mono">{helper_html}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_panel_banner(kicker: str, title: str, body: str) -> None:
-    title_html = escape(str(title))
-    body_html = escape(str(body))
-    st.markdown(
-        f"""
-        <div class="panel-banner">
-            <div class="panel-title">{title_html}</div>
-            <div class="panel-copy">{body_html}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_signal_card(label: str, value: str, copy: str) -> None:
-    label_html = escape(str(label))
-    value_html = escape(str(value))
-    copy_html = escape(str(copy))
-    st.markdown(
-        f"""
-        <div class="signal-card">
-            <div class="signal-label">{label_html}</div>
-            <div class="signal-value">{value_html}</div>
-            <div class="signal-copy">{copy_html}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_job_card(row: pd.Series) -> None:
-    summary = escape(str(row.get("text", ""))[:190])
-    similarity = row.get("similarity", np.nan)
-    score_label = "Strong match"
-    if not pd.isna(similarity):
-        score_label = f"{float(similarity) * 100:.0f}% similarity"
-    public_ats = row.get("public_ats_score", np.nan)
-    if not pd.isna(public_ats):
-        score_label += f" · {float(public_ats):.0f}% public fit"
-    title = escape(str(row.get("title", "Untitled role")))
-    company = escape(str(row.get("company_name", "Unknown company")))
-    location = escape(str(row.get("location", "Unknown location")))
-    work_type = escape(str(row.get("work_type", "Work type TBD")))
-    experience = escape(str(row.get("experience_level", "Experience TBD")))
-    salary = fmt_money(row.get("salary_annual"))
-    st.markdown(
-        f"""
-        <div class="job-card">
-            <div class="score-chip">{score_label}</div>
-            <div class="job-title">{title}</div>
-            <div class="job-meta">{company} · {location} · {work_type}</div>
-            <div><strong>{salary}</strong> · {experience}</div>
-            <div class="mono" style="margin-top:0.6rem;">{summary}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def render_quality_scorecard(quality: dict[str, Any]) -> None:
     overall = int(quality.get("overall", 0))
     band_label = str(quality.get("band_label", "Mixed"))
@@ -3823,88 +3691,6 @@ def render_public_model_card(public_signals: dict[str, Any] | None) -> None:
         + "</div>",
         unsafe_allow_html=True,
     )
-
-
-def render_salary_band(band: dict[str, Any]) -> None:
-    source_labels = {
-        "retrieved_jobs": "Matched roles",
-        "bls": "Occupation wage data",
-        "neural_model": "Model estimate",
-    }
-    evidence = band.get("evidence", {})
-    primary = source_labels.get(str(band.get("primary_source")), "Available evidence")
-    confidence = str(band.get("confidence", "unknown")).title()
-    low = fmt_money(band["q10"])
-    midpoint = fmt_money(band["q50"])
-    high = fmt_money(band["q90"])
-    source_badge = escape(f"{primary} · {confidence}")
-    st.markdown(
-        f"""
-        <div class="section-label">Matched-market salary range</div>
-        <div class="salary-headline">
-            <div>
-                <div class="salary-main">{midpoint}</div>
-                <div class="salary-range">{low} to {high} expected market range</div>
-            </div>
-            <div class="salary-source">{source_badge}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div class="salary-band">
-            <div class="salary-fill" style="width:100%;"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    quantile_labels = {
-        "q10": "Low",
-        "q25": "Lower mid",
-        "q50": "Median",
-        "q75": "Upper mid",
-        "q90": "High",
-    }
-    cells = "".join(
-        '<div class="salary-step">'
-        f'<div class="salary-step-label">{escape(quantile_labels[key])}</div>'
-        f'<div class="salary-step-value">{escape(fmt_money(band[key]))}</div>'
-        "</div>"
-        for key in ("q10", "q25", "q50", "q75", "q90")
-    )
-    st.markdown(f'<div class="salary-strip">{cells}</div>', unsafe_allow_html=True)
-
-    pieces = [
-        f"Source: {primary}",
-        f"Confidence: {confidence}",
-    ]
-    salary_count = evidence.get("salary_count")
-    if salary_count is not None:
-        pieces.append(f"{int(salary_count)} roles with salary data")
-    median_similarity = evidence.get("median_similarity")
-    if median_similarity is not None and not pd.isna(median_similarity):
-        pieces.append(f"{float(median_similarity) * 100:.0f}% median similarity")
-    occupation_title = evidence.get("occupation_title")
-    if occupation_title:
-        pieces.append(str(occupation_title))
-    if evidence.get("model_bls_disagreement"):
-        pieces.append("supporting sources disagree")
-    seniority_filter = evidence.get("seniority_filter")
-    if seniority_filter:
-        pieces.append(str(seniority_filter))
-    evidence_html = escape(" · ".join(pieces))
-    st.markdown(
-        f'<div class="evidence-line">{evidence_html}</div>',
-        unsafe_allow_html=True,
-    )
-    adjustment_notes = band.get("adjustment_notes") or []
-    if adjustment_notes:
-        notes_html = escape(" ".join(str(note) for note in adjustment_notes))
-        st.markdown(
-            f'<div class="evidence-line" style="color: var(--warning);">{notes_html}</div>',
-            unsafe_allow_html=True,
-        )
 
 
 def main() -> None:
@@ -4435,20 +4221,7 @@ def main() -> None:
                 "Missing terms from the strongest matching roles and market segment.",
             )
             with st.container(border=True):
-                if missing_terms:
-                    st.markdown(
-                        '<div class="chip-cloud">'
-                        + "".join(
-                            f'<span class="mini-chip">Add stronger evidence for {escape(str(item))}</span>'
-                            for item in missing_terms
-                        )
-                        + "</div>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        "The strongest matching roles are already well reflected in the resume text."
-                    )
+                render_missing_terms(missing_terms)
 
             st.write("")
             render_panel_banner(
@@ -4461,10 +4234,7 @@ def main() -> None:
                     "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
                 )
             else:
-                card_cols = st.columns(2, gap="medium")
-                for index, (_, row) in enumerate(matches.iterrows()):
-                    with card_cols[index % 2]:
-                        render_job_card(row)
+                render_job_results(matches)
 
     with radar_tab:
         render_panel_banner(
