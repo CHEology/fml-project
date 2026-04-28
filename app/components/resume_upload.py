@@ -156,7 +156,9 @@ def resume_input_widget(key_prefix: str = "") -> None:
         )
         st.session_state.public_profile_url = url_val
     with import_col:
-        import_clicked = st.button("Import page", key=f"{key_prefix}import_btn", width="stretch")
+        import_clicked = st.button(
+            "Import page", key=f"{key_prefix}import_btn", width="stretch"
+        )
 
     if import_clicked:
         try:

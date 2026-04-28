@@ -17,6 +17,7 @@ import streamlit as st
 
 try:
     import plotly.graph_objects as go
+
     _PLOTLY_AVAILABLE = True
 except ImportError:
     _PLOTLY_AVAILABLE = False
@@ -145,40 +146,46 @@ def render_salary_fan_chart(band: dict[str, Any]) -> None:
     fig = go.Figure()
 
     # Shaded range band (q10 to q90)
-    fig.add_trace(go.Scatter(
-        x=quantiles + quantiles[::-1],
-        y=values + [values[0]] * len(values),
-        fill="toself",
-        fillcolor="rgba(23, 92, 211, 0.08)",
-        line=dict(color="rgba(0,0,0,0)"),
-        showlegend=False,
-        hoverinfo="skip",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=quantiles + quantiles[::-1],
+            y=values + [values[0]] * len(values),
+            fill="toself",
+            fillcolor="rgba(23, 92, 211, 0.08)",
+            line=dict(color="rgba(0,0,0,0)"),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
 
     # Main line
-    fig.add_trace(go.Scatter(
-        x=quantiles,
-        y=values,
-        mode="lines+markers",
-        line=dict(color="#175cd3", width=2.5),
-        marker=dict(size=8, color="#175cd3"),
-        text=[fmt_money(v) for v in values],
-        textposition="top center",
-        hovertemplate="%{x}: %{text}<extra></extra>",
-        showlegend=False,
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=quantiles,
+            y=values,
+            mode="lines+markers",
+            line=dict(color="#175cd3", width=2.5),
+            marker=dict(size=8, color="#175cd3"),
+            text=[fmt_money(v) for v in values],
+            textposition="top center",
+            hovertemplate="%{x}: %{text}<extra></extra>",
+            showlegend=False,
+        )
+    )
 
     # Median highlight
-    fig.add_trace(go.Scatter(
-        x=["50th\n(Median)"],
-        y=[band.get("q50", 0)],
-        mode="markers+text",
-        marker=dict(size=14, color="#175cd3", symbol="circle"),
-        text=[fmt_money(band.get("q50", 0))],
-        textposition="top center",
-        hoverinfo="skip",
-        showlegend=False,
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=["50th\n(Median)"],
+            y=[band.get("q50", 0)],
+            mode="markers+text",
+            marker=dict(size=14, color="#175cd3", symbol="circle"),
+            text=[fmt_money(band.get("q50", 0))],
+            textposition="top center",
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
 
     fig.update_layout(
         yaxis=dict(
