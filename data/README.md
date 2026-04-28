@@ -109,3 +109,9 @@ O*NET expands the rule-based quality scorer's skill lexicon beyond the bundled
 tech/business terms. BLS OEWS adds SOC-level federal wage bands for real-resume
 validation. Both loaders also accept `--input` if the source files were
 downloaded manually.
+
+As of April 28, 2026, the loader defaults are O*NET 30.2 and BLS May 2024
+OEWS. The May 2025 OEWS release is scheduled for May 15, 2026. If the BLS
+website rejects command-line downloads with HTTP 403, download the national zip
+from the OEWS tables page in a browser and pass the extracted XLSX via
+`scripts/load_bls_oews.py --input`.

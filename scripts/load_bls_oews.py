@@ -36,6 +36,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# May 2024 is the latest OEWS release until BLS publishes May 2025 on
+# May 15, 2026.
 DEFAULT_YEAR = 2024
 DEFAULT_URL = (
     f"https://www.bls.gov/oes/special-requests/oesm{DEFAULT_YEAR % 100:02d}nat.zip"
@@ -59,7 +61,11 @@ def download_oews(url: str, dest_dir: Path) -> Path:
     """Download and unzip the OEWS national release. Returns the .xlsx path."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     print(f"Downloading BLS OEWS national release: {url}")
-    with urllib.request.urlopen(url) as response:  # noqa: S310 - public, vetted URL
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 resumatch-data-loader"},
+    )
+    with urllib.request.urlopen(request) as response:  # noqa: S310 - public URL
         data = response.read()
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         zf.extractall(dest_dir)

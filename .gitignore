@@ -64,3 +64,4 @@ Thumbs.db
 .tmp_pytest_run/
 pytesttmp/
 manual_tmp_dir/
+.tmp_check/

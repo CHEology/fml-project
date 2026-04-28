@@ -333,6 +333,9 @@ def test_score_resume_quality_returns_full_breakdown() -> None:
     assert out["weakest_dim"] in QUALITY_DIMENSIONS
     assert isinstance(out["strengths"], list)
     assert isinstance(out["gaps"], list)
+    assert out["strength_notes"]
+    assert isinstance(out["gap_notes"], list)
+    assert "feedback" in out
     assert "skills" in out["strengths"] or out["dimension_scores"]["skills"] >= 70.0
 
 
@@ -341,6 +344,38 @@ def test_score_resume_quality_flags_typos() -> None:
     assert out["dimension_scores"]["typos"] < 100.0
     # Either typos themselves or low experience/projects should appear in gaps.
     assert out["gaps"], "expected at least one gap dimension for the noisy resume"
+
+
+def test_score_resume_quality_does_not_saturate_on_short_resume() -> None:
+    short = """\
+Alex Chen
+Senior Engineer with 5 years experience
+Skills: Python, SQL, AWS, Docker, React, PostgreSQL, CI/CD, system design
+- Built internal APIs that reduced latency by 20%.
+- Led migration work.
+- Improved dashboards.
+"""
+    out = score_resume_quality(short)
+    assert out["score"] < 90.0
+    assert out["priority_gap"] is not None
+    assert any("Quantify more outcomes" in note for note in out["gap_notes"])
+
+
+def test_score_resume_quality_flags_vague_phrasing_and_career_gap() -> None:
+    text = """\
+Taylor Rivera
+Engineer with 8 years experience
+2016-2018 Software Engineer
+2021-2024 Engineer
+- Worked on various tasks.
+- Responsible for improvements.
+Skills: Python, SQL
+"""
+    out = score_resume_quality(text)
+    assert "worked on" in out["vague_phrases"]
+    assert "responsible for" in out["cliche_phrases"]
+    assert out["career_issues"]
+    assert any("career gap" in note for note in out["gap_notes"])
 
 
 def test_score_resume_quality_is_deterministic() -> None:
