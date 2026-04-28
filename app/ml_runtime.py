@@ -22,14 +22,32 @@ class ArtifactSpec:
     required_for: str
 
 
+QUANTILE_KEYS = ("q10", "q25", "q50", "q75", "q90")
+MIN_RETRIEVED_SALARIES = 3
+HIGH_CONFIDENCE_SIMILARITY = 0.45
+DISAGREEMENT_RATIO = 0.25
+
+
 ARTIFACT_SPECS = (
     ArtifactSpec("Processed jobs", "data/processed/jobs.parquet", "data"),
     ArtifactSpec("Salary targets", "data/processed/salaries.npy", "training"),
     ArtifactSpec("Job embeddings", "models/job_embeddings.npy", "retrieval"),
     ArtifactSpec("FAISS index", "models/jobs.index", "retrieval"),
     ArtifactSpec("Retrieval metadata", "models/jobs_meta.parquet", "retrieval"),
+    ArtifactSpec(
+        "Resume salary model",
+        "models/resume_salary_model.pt",
+        "salary_optional",
+    ),
+    ArtifactSpec(
+        "Resume salary scaler",
+        "models/resume_salary_model.scaler.json",
+        "salary_optional",
+    ),
     ArtifactSpec("Salary model", "models/salary_model.pt", "salary"),
     ArtifactSpec("Salary scaler", "models/salary_model.scaler.json", "salary"),
+    ArtifactSpec("O*NET skills", "data/external/onet_skills.parquet", "occupation"),
+    ArtifactSpec("BLS wage bands", "data/external/bls_wages.parquet", "wage"),
     ArtifactSpec("KMeans model", "models/kmeans_k8.pkl", "clustering"),
     ArtifactSpec("Cluster centroids", "models/cluster_centroids.npy", "clustering"),
     ArtifactSpec("Cluster assignments", "models/cluster_assignments.npy", "clustering"),
@@ -77,18 +95,58 @@ def load_retriever(project_root: Path = PROJECT_ROOT, encoder: Any | None = None
 
 def load_salary_artifacts(project_root: Path = PROJECT_ROOT):
     root = Path(project_root)
-    embeddings = np.load(root / "models" / "job_embeddings.npy", mmap_mode="r")
+    model_path, scaler_path = _preferred_salary_paths(root)
+    scaler_state = _read_scaler_state(scaler_path)
+    embedding_dim = scaler_state.get("embedding_dim")
+    if embedding_dim is None:
+        embeddings = np.load(root / "models" / "job_embeddings.npy", mmap_mode="r")
+        embedding_dim = int(embeddings.shape[1])
     model = load_model(
-        str(root / "models" / "salary_model.pt"),
-        embedding_dim=int(embeddings.shape[1]),
+        str(model_path),
+        embedding_dim=int(embedding_dim),
     )
-    scaler = load_salary_scaler(root / "models" / "salary_model.scaler.json")
+    scaler = SalaryScaler.from_state_dict(scaler_state)
     return model, scaler
+
+
+def salary_artifacts_ready(project_root: Path = PROJECT_ROOT) -> bool:
+    root = Path(project_root)
+    try:
+        _, scaler_path = _preferred_salary_paths(root)
+    except FileNotFoundError:
+        return False
+    if (root / "models" / "job_embeddings.npy").exists():
+        return True
+    return "embedding_dim" in _read_scaler_state(scaler_path)
 
 
 def load_salary_scaler(path: Path) -> SalaryScaler:
     with Path(path).open() as f:
         return SalaryScaler.from_state_dict(json.load(f))
+
+
+def load_occupation_router(
+    project_root: Path = PROJECT_ROOT,
+    encoder: Any | None = None,
+):
+    root = Path(project_root)
+    skills_path = root / "data" / "external" / "onet_skills.parquet"
+    if not skills_path.exists():
+        return None
+    from ml.occupation_router import OccupationRouter
+
+    encoder = encoder if encoder is not None else Encoder()
+    return OccupationRouter.from_onet_skills(skills_path, encoder)
+
+
+def load_wage_table(project_root: Path = PROJECT_ROOT):
+    root = Path(project_root)
+    wages_path = root / "data" / "external" / "bls_wages.parquet"
+    if not wages_path.exists():
+        return None
+    from ml.wage_bands import WageBandTable
+
+    return WageBandTable.from_parquet(wages_path)
 
 
 def load_cluster_artifacts(project_root: Path = PROJECT_ROOT):
@@ -170,6 +228,62 @@ def salary_band_from_model(
     return {key: int(round(float(value), -3)) for key, value in predictions.items()}
 
 
+def hybrid_salary_band(
+    matches: pd.DataFrame,
+    *,
+    neural_band: dict[str, float | int] | None = None,
+    bls_band: Any | None = None,
+    occupation_match: Any | None = None,
+) -> dict[str, Any] | None:
+    """Combine retrieved, BLS, and neural salary signals into one evidence band."""
+    retrieved = _retrieved_salary_signal(matches)
+    bls = _band_from_bls(bls_band)
+    neural = _normalized_band(neural_band)
+
+    if retrieved is not None and retrieved["salary_count"] >= MIN_RETRIEVED_SALARIES:
+        primary_source = "retrieved_jobs"
+        band = retrieved["band"]
+    elif bls is not None:
+        primary_source = "bls"
+        band = bls
+    elif neural is not None:
+        primary_source = "neural_model"
+        band = neural
+    else:
+        return None
+
+    disagreement = _has_supporting_disagreement(band, neural=neural, bls=bls)
+    salary_count = 0 if retrieved is None else retrieved["salary_count"]
+    median_similarity = None if retrieved is None else retrieved["median_similarity"]
+    evidence: dict[str, Any] = {
+        "salary_count": salary_count,
+        "median_similarity": median_similarity,
+        "model_bls_disagreement": disagreement,
+    }
+    if occupation_match is not None:
+        evidence["soc_code"] = getattr(occupation_match, "soc_code", None)
+        evidence["occupation_title"] = getattr(
+            occupation_match, "occupation_title", None
+        )
+        evidence["soc_similarity"] = getattr(occupation_match, "similarity", None)
+    if bls is not None:
+        evidence["bls_band"] = bls
+    if neural is not None:
+        evidence["neural_band"] = neural
+
+    return {
+        **band,
+        "primary_source": primary_source,
+        "confidence": _salary_confidence(
+            primary_source=primary_source,
+            salary_count=salary_count,
+            median_similarity=median_similarity,
+            disagreement=disagreement,
+        ),
+        "evidence": evidence,
+    }
+
+
 def cluster_position(
     kmeans_model: Any,
     labels: dict[str, Any],
@@ -226,6 +340,113 @@ def feedback_terms(
         if len(missing) >= max_terms:
             break
     return missing
+
+
+def _preferred_salary_paths(root: Path) -> tuple[Path, Path]:
+    resume_model = root / "models" / "resume_salary_model.pt"
+    resume_scaler = root / "models" / "resume_salary_model.scaler.json"
+    if resume_model.exists() and resume_scaler.exists():
+        return resume_model, resume_scaler
+
+    legacy_model = root / "models" / "salary_model.pt"
+    legacy_scaler = root / "models" / "salary_model.scaler.json"
+    if legacy_model.exists() and legacy_scaler.exists():
+        return legacy_model, legacy_scaler
+
+    raise FileNotFoundError("No usable salary model/scaler pair found.")
+
+
+def _read_scaler_state(path: Path) -> dict[str, Any]:
+    with Path(path).open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _retrieved_salary_signal(matches: pd.DataFrame) -> dict[str, Any] | None:
+    if matches.empty or "salary_annual" not in matches.columns:
+        return None
+    salaries = pd.to_numeric(matches["salary_annual"], errors="coerce")
+    valid = salaries[np.isfinite(salaries) & (salaries > 0)]
+    if valid.empty:
+        return None
+    quantiles = np.percentile(valid.to_numpy(dtype=np.float64), [10, 25, 50, 75, 90])
+    if "similarity" in matches.columns:
+        similarities = pd.to_numeric(matches["similarity"], errors="coerce")
+    else:
+        similarities = pd.Series(dtype=float)
+    sim_valid = similarities[np.isfinite(similarities)]
+    return {
+        "band": _quantile_array_to_band(quantiles),
+        "salary_count": int(len(valid)),
+        "median_similarity": float(sim_valid.median()) if len(sim_valid) else None,
+    }
+
+
+def _band_from_bls(bls_band: Any | None) -> dict[str, int] | None:
+    if bls_band is None:
+        return None
+    values = {
+        "q10": getattr(bls_band, "p10", None),
+        "q25": getattr(bls_band, "p25", None),
+        "q50": getattr(bls_band, "p50", None),
+        "q75": getattr(bls_band, "p75", None),
+        "q90": getattr(bls_band, "p90", None),
+    }
+    return _normalized_band(values)
+
+
+def _normalized_band(band: dict[str, float | int] | None) -> dict[str, int] | None:
+    if not band:
+        return None
+    try:
+        values = [float(band[key]) for key in QUANTILE_KEYS]
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not all(np.isfinite(values)):
+        return None
+    return _quantile_array_to_band(np.sort(np.asarray(values, dtype=np.float64)))
+
+
+def _quantile_array_to_band(values: np.ndarray) -> dict[str, int]:
+    return {
+        key: int(round(float(value), -3))
+        for key, value in zip(QUANTILE_KEYS, values, strict=True)
+    }
+
+
+def _has_supporting_disagreement(
+    primary: dict[str, int],
+    *,
+    neural: dict[str, int] | None,
+    bls: dict[str, int] | None,
+) -> bool:
+    primary_q50 = max(float(primary["q50"]), 1.0)
+    for support in (neural, bls):
+        if support is None or support == primary:
+            continue
+        if abs(float(support["q50"]) - primary_q50) / primary_q50 >= DISAGREEMENT_RATIO:
+            return True
+    return False
+
+
+def _salary_confidence(
+    *,
+    primary_source: str,
+    salary_count: int,
+    median_similarity: float | None,
+    disagreement: bool,
+) -> str:
+    if primary_source == "retrieved_jobs":
+        if (
+            salary_count >= 5
+            and median_similarity is not None
+            and median_similarity >= HIGH_CONFIDENCE_SIMILARITY
+            and not disagreement
+        ):
+            return "high"
+        return "medium"
+    if primary_source == "bls":
+        return "medium" if not disagreement else "low"
+    return "low"
 
 
 def _read_faiss_index(path: Path):
