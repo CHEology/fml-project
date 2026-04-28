@@ -195,6 +195,43 @@ def test_enrich_retrieval_matches_penalizes_seniority_mismatch() -> None:
     assert senior_row["match_score"] < enriched.iloc[0]["match_score"]
 
 
+def test_enrich_retrieval_matches_marks_lower_level_jobs_salary_ineligible() -> None:
+    jobs = pd.DataFrame(
+        {
+            "job_id": [1, 2, 3],
+            "title": [
+                "Senior Machine Learning Engineer",
+                "Machine Learning Engineer",
+                "Associate Data Scientist",
+            ],
+            "company_name": ["A", "B", "C"],
+            "salary_annual": [180_000.0, 135_000.0, 100_000.0],
+            "location": ["New York, NY", "New York, NY", "New York, NY"],
+            "state": ["NY", "NY", "NY"],
+            "experience_level": ["Senior", "Mid level", "Associate"],
+            "work_type": ["Hybrid", "Hybrid", "Hybrid"],
+            "text": ["senior ml", "mid ml", "associate data"],
+        }
+    )
+    matches = [
+        JobMatch(1, 2, "Machine Learning Engineer", "B", 135_000.0, "New York, NY", "Mid level", 0.92),
+        JobMatch(0, 1, "Senior Machine Learning Engineer", "A", 180_000.0, "New York, NY", "Senior", 0.84),
+        JobMatch(2, 3, "Associate Data Scientist", "C", 100_000.0, "New York, NY", "Associate", 0.80),
+    ]
+
+    enriched = enrich_retrieval_matches(
+        matches,
+        jobs,
+        target_seniority="Senior",
+        top_k=3,
+    )
+
+    assert enriched.iloc[0]["job_id"] == 1
+    lower_rows = enriched[enriched["job_id"].isin([2, 3])]
+    assert lower_rows["salary_eligible"].tolist() == [False, False]
+    assert lower_rows["seniority_fit"].eq("below-candidate-level").all()
+
+
 class ConstantSalaryModel(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()

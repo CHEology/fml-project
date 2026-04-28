@@ -630,8 +630,14 @@ def _seniority_penalty(target_rank: int | None, job_rank: int | None) -> float:
     if target_rank is None or job_rank is None:
         return 0.0
     gap = job_rank - target_rank
-    if gap <= 0:
-        return 0.0 if gap >= -1 else 3.0
+    if gap == 0:
+        return 0.0
+    if gap < 0:
+        if gap == -1:
+            return 6.0 if target_rank <= 1 else 14.0
+        if gap == -2:
+            return 18.0 if target_rank <= 2 else 28.0
+        return 40.0
     if gap == 1:
         return 7.0
     if gap == 2:
@@ -656,6 +662,16 @@ def _apply_seniority_fit(
     job_ranks = adjusted.apply(_infer_job_seniority, axis=1)
     penalties = job_ranks.map(lambda rank: _seniority_penalty(target_rank, rank))
     adjusted["job_seniority_rank"] = job_ranks
+    adjusted["seniority_gap"] = job_ranks.map(
+        lambda rank: np.nan if rank is None else int(rank) - target_rank
+    )
+    adjusted["seniority_fit"] = adjusted["seniority_gap"].map(_seniority_fit_label)
+    adjusted["salary_eligible"] = adjusted["seniority_gap"].map(
+        lambda gap: _salary_eligible_for_gap(target_rank, gap)
+    )
+    adjusted["salary_eligibility_note"] = adjusted["seniority_gap"].map(
+        lambda gap: _salary_eligibility_note(target_rank, gap)
+    )
     adjusted["seniority_penalty"] = penalties.astype(float)
     adjusted["raw_match_score"] = pd.to_numeric(
         adjusted["match_score"], errors="coerce"
@@ -666,6 +682,49 @@ def _apply_seniority_fit(
     return adjusted.sort_values(
         ["match_score", "similarity"], ascending=[False, False]
     )
+
+
+def _seniority_fit_label(gap: float | int | None) -> str:
+    if gap is None or pd.isna(gap):
+        return "unknown"
+    gap_int = int(gap)
+    if gap_int == 0:
+        return "level-aligned"
+    if gap_int < 0:
+        return "below-candidate-level"
+    if gap_int == 1:
+        return "stretch"
+    return "above-candidate-level"
+
+
+def _salary_eligible_for_gap(target_rank: int, gap: float | int | None) -> bool:
+    if gap is None or pd.isna(gap):
+        return True
+    gap_int = int(gap)
+    if gap_int < 0:
+        return False
+    if gap_int == 0:
+        return True
+    # Early-career candidates often accept one-level stretch roles. For senior
+    # and executive candidates, one-level-up roles overstate market salary.
+    return gap_int == 1 and target_rank <= 2
+
+
+def _salary_eligibility_note(target_rank: int, gap: float | int | None) -> str:
+    if gap is None or pd.isna(gap):
+        return "included: seniority unknown"
+    gap_int = int(gap)
+    if gap_int < 0:
+        return "excluded: role is below candidate level"
+    if gap_int == 0:
+        return "included: same seniority"
+    if gap_int == 1:
+        return (
+            "included: one-level stretch"
+            if target_rank <= 2
+            else "excluded: role is above candidate level"
+        )
+    return "excluded: role is above candidate level"
 
 
 def _top_terms_from_text(texts: pd.Series, max_terms: int = 12) -> list[str]:

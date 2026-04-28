@@ -3185,6 +3185,185 @@ def apply_quality_discount(
     return adjusted
 
 
+def assess_capability_tier(
+    text: str,
+    profile: dict[str, Any],
+    quality: dict[str, Any],
+    work_history: dict[str, Any],
+    projects: dict[str, Any],
+    public_signals: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Estimate within-level capability strength for salary calibration.
+
+    This is intentionally separate from seniority. Seniority answers "what
+    level is supported?" Capability answers "within that level, how strong is
+    the evidence?"
+    """
+    lowered = text.lower()
+    track = str(profile.get("track", ""))
+    track_skills = SAMPLE_FIELD_SKILLS.get(track, TRACK_SKILLS.get(track, []))
+    skill_hits = [
+        skill for skill in track_skills if skill.lower().replace("/", " ") in lowered
+    ]
+    skill_depth = min(100.0, len(skill_hits) / max(4, len(track_skills[:8])) * 100.0)
+
+    academic = academic_cv_signals(text)
+    publication_count = int(academic["publication_count"])
+    award_count = int(academic["award_count"])
+    rigorous_role_count = int(work_history.get("rigorous_role_count", 0))
+    prestigious_company_count = int(work_history.get("prestigious_company_count", 0))
+    prestige_score = min(
+        100.0,
+        rigorous_role_count * 22
+        + prestigious_company_count * 18
+        + publication_count * 4
+        + award_count * 5,
+    )
+
+    public_score = 0.0
+    if public_signals and public_signals.get("ready"):
+        domain_conf = float(public_signals.get("domain", {}).get("confidence", 0.0) or 0.0)
+        entity_counts = public_signals.get("entities", {}).get("counts", {})
+        public_score = min(
+            100.0,
+            domain_conf * 40.0
+            + int(entity_counts.get("Skills", 0)) * 8
+            + int(entity_counts.get("Designation", 0)) * 8
+            + int(entity_counts.get("Companies worked at", 0)) * 6
+            + int(entity_counts.get("Degree", 0)) * 5,
+        )
+
+    project_score = max(
+        0.0,
+        min(
+            100.0,
+            float(projects.get("mean_score", 0)) + 45.0,
+        ),
+    )
+    score = (
+        float(quality.get("impact_score", 0)) * 0.24
+        + float(quality.get("specificity_score", 0)) * 0.18
+        + float(quality.get("experience_score", 0)) * 0.16
+        + skill_depth * 0.16
+        + prestige_score * 0.12
+        + project_score * 0.08
+        + public_score * 0.06
+    )
+    score = max(0.0, min(100.0, score))
+
+    if score >= 78:
+        tier = "Standout"
+        salary_multiplier = 1.10
+        summary = "top-of-level evidence"
+    elif score >= 55:
+        tier = "Competitive"
+        salary_multiplier = 1.00
+        summary = "market-level evidence"
+    else:
+        tier = "Developing"
+        salary_multiplier = 0.93
+        summary = "thin within-level evidence"
+
+    notes: list[str] = []
+    if skill_hits:
+        notes.append("Track-specific skills detected: " + ", ".join(skill_hits[:4]) + ".")
+    if float(quality.get("impact_score", 0)) >= 70:
+        notes.append("Impact evidence is strong for the claimed level.")
+    elif float(quality.get("impact_score", 0)) < 40:
+        notes.append("Impact evidence is light relative to similar-level candidates.")
+    if prestige_score >= 55:
+        notes.append("High-rigor employers, titles, publications, or awards lift the tier.")
+    if public_score >= 35:
+        notes.append("Public-data models find corroborating skills, roles, or credentials.")
+    if not notes:
+        notes.append("Capability tier is driven by the resume's specificity and experience evidence.")
+
+    return {
+        "score": round(score, 1),
+        "tier": tier,
+        "summary": summary,
+        "salary_multiplier": salary_multiplier,
+        "salary_effect_pct": round((salary_multiplier - 1.0) * 100.0, 1),
+        "skill_hits": skill_hits[:6],
+        "notes": notes[:3],
+    }
+
+
+def apply_capability_adjustment(
+    band: dict[str, Any] | None,
+    capability: dict[str, Any],
+) -> dict[str, Any] | None:
+    if band is None:
+        return None
+    multiplier = float(capability.get("salary_multiplier", 1.0))
+    if abs(multiplier - 1.0) < 0.001:
+        adjusted = dict(band)
+    else:
+        adjusted = dict(band)
+        for key in ("q10", "q25", "q50", "q75", "q90"):
+            value = adjusted.get(key)
+            if value is None:
+                continue
+            try:
+                adjusted[key] = int(round(float(value) * multiplier, -3))
+            except (TypeError, ValueError):
+                continue
+
+    effect = float(capability.get("salary_effect_pct", 0.0))
+    if abs(effect) >= 0.1:
+        direction = "+" if effect > 0 else ""
+        note = (
+            f"Capability tier adjustment: {capability.get('tier', 'Competitive')} "
+            f"({direction}{effect:.1f}% within level)."
+        )
+        adjusted["adjustment_notes"] = [
+            *(adjusted.get("adjustment_notes") or []),
+            note,
+        ][:3]
+    adjusted["capability_tier"] = capability
+    return adjusted
+
+
+def seniority_filtered_salary_matches(
+    matches: pd.DataFrame,
+) -> tuple[pd.DataFrame, str | None]:
+    if matches.empty or "salary_eligible" not in matches.columns:
+        return matches, None
+    eligible_mask = matches["salary_eligible"].fillna(True).astype(bool)
+    eligible = matches[eligible_mask].copy()
+    excluded = matches[~eligible_mask]
+    if excluded.empty:
+        return eligible, None
+
+    below = int(
+        excluded["salary_eligibility_note"]
+        .astype(str)
+        .str.contains("below candidate level", case=False, na=False)
+        .sum()
+    )
+    above = int(len(excluded) - below)
+    parts = []
+    if below:
+        parts.append(f"{below} lower-seniority role{'s' if below != 1 else ''}")
+    if above:
+        parts.append(f"{above} over-level role{'s' if above != 1 else ''}")
+    note = "Salary evidence excludes " + " and ".join(parts) + "."
+    return eligible, note
+
+
+def add_salary_evidence_note(
+    band: dict[str, Any] | None,
+    note: str | None,
+) -> dict[str, Any] | None:
+    if band is None or not note:
+        return band
+    updated = dict(band)
+    evidence = dict(updated.get("evidence", {}))
+    evidence["seniority_filter"] = note
+    updated["evidence"] = evidence
+    return updated
+
+
 def detect_profile(
     resume_text: str,
     work_history: dict[str, Any] | None = None,
@@ -3705,6 +3884,9 @@ def render_salary_band(band: dict[str, Any]) -> None:
         pieces.append(str(occupation_title))
     if evidence.get("model_bls_disagreement"):
         pieces.append("supporting sources disagree")
+    seniority_filter = evidence.get("seniority_filter")
+    if seniority_filter:
+        pieces.append(str(seniority_filter))
     evidence_html = escape(" · ".join(pieces))
     st.markdown(
         f'<div class="evidence-line">{evidence_html}</div>',
@@ -3910,6 +4092,7 @@ def main() -> None:
                 profile = assessment["profile"]
                 structure = assessment["structure"]
                 quality = assessment["quality"]
+                capability = assessment.get("capability") or {}
                 public_signals = assessment.get("public_signals")
 
                 render_quality_scorecard(quality)
@@ -3929,14 +4112,22 @@ def main() -> None:
                         profile.get("seniority_reason")
                         or "Derived from parsed employment history and titles.",
                     )
-                col3, col4 = st.columns(2)
+                col3, col4, col5 = st.columns(3)
                 with col3:
+                    effect = float(capability.get("salary_effect_pct", 0.0) or 0.0)
+                    direction = "+" if effect > 0 else ""
+                    render_signal_card(
+                        "Capability tier",
+                        f"{capability.get('tier', 'Competitive')} ({capability.get('score', 0)}/100)",
+                        f"Within-level strength; salary effect {direction}{effect:.1f}%.",
+                    )
+                with col4:
                     render_signal_card(
                         "Sections",
                         f"{len(structure['found_sections'])}/{len(SECTION_ALIASES)}",
                         "Structured resumes score better.",
                     )
-                with col4:
+                with col5:
                     render_signal_card(
                         "Data mode",
                         "Live data" if has_real_data else "Sample data",
@@ -4054,6 +4245,14 @@ def main() -> None:
                         projects,
                         public_signals,
                     )
+                    capability = assess_capability_tier(
+                        resume_text_now,
+                        profile,
+                        quality,
+                        work_history,
+                        projects,
+                        public_signals,
+                    )
 
                 with st.spinner("Matching resume to relevant roles..."):
                     retriever, encoder = load_retriever_resource()
@@ -4090,13 +4289,18 @@ def main() -> None:
                         if wage_table is not None:
                             bls_band = wage_table.lookup(occupation_match.soc_code)
 
+                salary_matches, seniority_salary_note = seniority_filtered_salary_matches(
+                    matches
+                )
                 band = hybrid_salary_band(
-                    matches,
+                    salary_matches,
                     neural_band=neural_band,
                     bls_band=bls_band,
                     occupation_match=occupation_match,
                 )
+                band = add_salary_evidence_note(band, seniority_salary_note)
                 band = apply_quality_discount(band, quality)
+                band = apply_capability_adjustment(band, capability)
 
                 cluster = None
                 if artifacts_ready(status, "clustering"):
@@ -4119,8 +4323,10 @@ def main() -> None:
                 "work_history": work_history,
                 "projects": projects,
                 "quality": quality,
+                "capability": capability,
                 "public_signals": public_signals,
                 "matches": matches,
+                "salary_matches": salary_matches,
                 "band": band,
                 "cluster": cluster,
                 "missing_terms": missing_terms,
