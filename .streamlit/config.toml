@@ -1,0 +1,7 @@
+[server]
+# Streamlit's default "auto" watcher uses watchdog to introspect every
+# imported module's __path__. Doing that to torch's `torch.classes` module
+# triggers a c10.dll re-initialization on Windows that fails with
+# WinError 1114. "poll" still picks up file edits but does not poke
+# torch internals.
+fileWatcherType = "poll"

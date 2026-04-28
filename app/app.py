@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# Eager-load torch on the main thread BEFORE streamlit/numpy/pandas. On Windows,
+# importing torch later from Streamlit's script-runner thread (after MKL/OpenMP
+# have been pulled in by numpy/pandas) fails with WinError 1114 in c10.dll.
+# Loading it here makes the subsequent thread-side import a cached no-op.
+import torch  # noqa: E402, F401, I001
+
 import importlib
 import importlib.util
 import re
