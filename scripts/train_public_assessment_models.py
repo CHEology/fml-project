@@ -232,7 +232,9 @@ def train_regressor(
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-4)
     criterion = nn.SmoothL1Loss()
     loader = DataLoader(
-        TensorDataset(torch.tensor(X_train), torch.tensor(y_train, dtype=torch.float32)),
+        TensorDataset(
+            torch.tensor(X_train), torch.tensor(y_train, dtype=torch.float32)
+        ),
         batch_size=cfg.batch_size,
         shuffle=True,
     )
@@ -259,7 +261,9 @@ def regressor_mae(model: nn.Module, X: np.ndarray, y: np.ndarray) -> float:
     return float(np.mean(np.abs(pred - y))) if len(y) else 0.0
 
 
-def load_domain_data(path: Path, max_rows: int, seed: int) -> tuple[list[str], list[str]]:
+def load_domain_data(
+    path: Path, max_rows: int, seed: int
+) -> tuple[list[str], list[str]]:
     df = pd.read_csv(path, usecols=["Resume_str", "Category"])
     df = df.dropna(subset=["Resume_str", "Category"])
     df = df[df["Resume_str"].astype(str).str.len() > 200]
@@ -268,7 +272,9 @@ def load_domain_data(path: Path, max_rows: int, seed: int) -> tuple[list[str], l
     return df["Resume_str"].astype(str).tolist(), df["Category"].astype(str).tolist()
 
 
-def load_ats_data(train_path: Path, val_path: Path) -> tuple[list[str], np.ndarray, list[str], np.ndarray]:
+def load_ats_data(
+    train_path: Path, val_path: Path
+) -> tuple[list[str], np.ndarray, list[str], np.ndarray]:
     train = pd.read_csv(train_path, usecols=["text", "ats_score"])
     val = pd.read_csv(val_path, usecols=["text", "ats_score"])
     train = train.dropna(subset=["text", "ats_score"])
@@ -281,7 +287,9 @@ def load_ats_data(train_path: Path, val_path: Path) -> tuple[list[str], np.ndarr
     )
 
 
-def load_section_data(path: Path, max_rows: int, seed: int) -> tuple[list[str], list[str]]:
+def load_section_data(
+    path: Path, max_rows: int, seed: int
+) -> tuple[list[str], list[str]]:
     rows: list[tuple[str, str]] = []
     with path.open(encoding="utf-8", errors="ignore") as f:
         reader = csv.reader(f, delimiter="\t")
@@ -355,8 +363,12 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--epochs", type=int, default=TrainConfig.epochs)
     parser.add_argument("--hash-dim", type=int, default=TrainConfig.hash_dim)
-    parser.add_argument("--max-domain-rows", type=int, default=TrainConfig.max_domain_rows)
-    parser.add_argument("--max-section-rows", type=int, default=TrainConfig.max_section_rows)
+    parser.add_argument(
+        "--max-domain-rows", type=int, default=TrainConfig.max_domain_rows
+    )
+    parser.add_argument(
+        "--max-section-rows", type=int, default=TrainConfig.max_section_rows
+    )
     parser.add_argument("--seed", type=int, default=SEED)
     args = parser.parse_args()
 
@@ -475,7 +487,9 @@ def main() -> None:
         **section_metrics,
     }
 
-    with (args.out_dir / "public_assessment_metrics.json").open("w", encoding="utf-8") as f:
+    with (args.out_dir / "public_assessment_metrics.json").open(
+        "w", encoding="utf-8"
+    ) as f:
         json.dump(metrics, f, indent=2)
 
     print(json.dumps(metrics, indent=2))

@@ -90,25 +90,33 @@ def load_public_assessment_models(project_root: Path) -> PublicAssessmentModels:
 
     domain_model = MLPClassifier(hash_dim, hidden_dim, len(domain_labels))
     domain_model.load_state_dict(
-        torch.load(models_dir / MODEL_FILES["domain"], map_location="cpu", weights_only=True)
+        torch.load(
+            models_dir / MODEL_FILES["domain"], map_location="cpu", weights_only=True
+        )
     )
     domain_model.eval()
 
     ats_model = MLPRegressor(hash_dim + 8, hidden_dim)
     ats_model.load_state_dict(
-        torch.load(models_dir / MODEL_FILES["ats_fit"], map_location="cpu", weights_only=True)
+        torch.load(
+            models_dir / MODEL_FILES["ats_fit"], map_location="cpu", weights_only=True
+        )
     )
     ats_model.eval()
 
     entity_model = MLPClassifier(hash_dim, hidden_dim, len(entity_labels))
     entity_model.load_state_dict(
-        torch.load(models_dir / MODEL_FILES["entity"], map_location="cpu", weights_only=True)
+        torch.load(
+            models_dir / MODEL_FILES["entity"], map_location="cpu", weights_only=True
+        )
     )
     entity_model.eval()
 
     section_model = MLPClassifier(hash_dim, hidden_dim, len(section_labels))
     section_model.load_state_dict(
-        torch.load(models_dir / MODEL_FILES["section"], map_location="cpu", weights_only=True)
+        torch.load(
+            models_dir / MODEL_FILES["section"], map_location="cpu", weights_only=True
+        )
     )
     section_model.eval()
 
@@ -148,7 +156,9 @@ def resume_public_signals(
 
 
 def predict_domain(models: PublicAssessmentModels, text: str) -> dict[str, Any]:
-    probs = _classifier_probs(models.domain_model, hashed_features([text], models.hash_dim))[0]
+    probs = _classifier_probs(
+        models.domain_model, hashed_features([text], models.hash_dim)
+    )[0]
     order = np.argsort(probs)[::-1][:3]
     return {
         "label": models.domain_labels[int(order[0])],
@@ -189,7 +199,9 @@ def predict_entities(models: PublicAssessmentModels, text: str) -> dict[str, Any
     preds = np.argmax(probs, axis=1)
     counts: dict[str, int] = {}
     examples: dict[str, list[str]] = {}
-    for (_sample, display), pred_idx, row_probs in zip(candidates, preds, probs, strict=True):
+    for (_sample, display), pred_idx, row_probs in zip(
+        candidates, preds, probs, strict=True
+    ):
         label = models.entity_labels[int(pred_idx)]
         confidence = float(row_probs[int(pred_idx)])
         if label == "UNKNOWN" or confidence < 0.30:
@@ -225,7 +237,9 @@ def score_matches_with_ats_model(
         errors="coerce",
     ).fillna(adjusted["match_score"])
     current = pd.to_numeric(adjusted["match_score"], errors="coerce").fillna(0.0)
-    adjusted["match_score"] = np.round(current * (1.0 - weight) + ats_scores * weight, 2)
+    adjusted["match_score"] = np.round(
+        current * (1.0 - weight) + ats_scores * weight, 2
+    )
     return adjusted.sort_values(
         ["match_score", "similarity"], ascending=[False, False]
     ).reset_index(drop=True)
@@ -297,11 +311,37 @@ def _entity_candidates(text: str) -> list[tuple[str, str]]:
     for idx, line in enumerate(lines):
         lowered = line.lower()
         context = " ".join(lines[max(0, idx - 1) : min(len(lines), idx + 2)])
-        if any(token in lowered for token in ("university", "college", "school", "ph.d", "b.s", "m.s")):
+        if any(
+            token in lowered
+            for token in ("university", "college", "school", "ph.d", "b.s", "m.s")
+        ):
             candidates.append((f"{line} context {context}", line[:120]))
-        if any(token in lowered for token in ("engineer", "scientist", "analyst", "manager", "designer", "teacher", "nurse", "attorney")):
+        if any(
+            token in lowered
+            for token in (
+                "engineer",
+                "scientist",
+                "analyst",
+                "manager",
+                "designer",
+                "teacher",
+                "nurse",
+                "attorney",
+            )
+        ):
             candidates.append((f"{line} context {context}", line[:120]))
-        if any(token in lowered for token in ("python", "sql", "java", "machine learning", "excel", "salesforce", "tableau")):
+        if any(
+            token in lowered
+            for token in (
+                "python",
+                "sql",
+                "java",
+                "machine learning",
+                "excel",
+                "salesforce",
+                "tableau",
+            )
+        ):
             candidates.append((f"{line} context {context}", line[:120]))
         if re.search(r"\b(?:19|20)\d{2}\b", line):
             candidates.append((f"{line} context {context}", line[:120]))

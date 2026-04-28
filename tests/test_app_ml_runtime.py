@@ -177,9 +177,36 @@ def test_enrich_retrieval_matches_penalizes_seniority_mismatch() -> None:
         }
     )
     matches = [
-        JobMatch(1, 2, "Sr. Technical Leadership Engineer", "B", 220_000.0, "New York, NY", "Mid-Senior level", 0.91),
-        JobMatch(0, 1, "Software Engineering Intern", "A", 80_000.0, "New York, NY", "Internship", 0.78),
-        JobMatch(2, 3, "Junior Backend Engineer", "C", 95_000.0, "New York, NY", "Entry level", 0.74),
+        JobMatch(
+            1,
+            2,
+            "Sr. Technical Leadership Engineer",
+            "B",
+            220_000.0,
+            "New York, NY",
+            "Mid-Senior level",
+            0.91,
+        ),
+        JobMatch(
+            0,
+            1,
+            "Software Engineering Intern",
+            "A",
+            80_000.0,
+            "New York, NY",
+            "Internship",
+            0.78,
+        ),
+        JobMatch(
+            2,
+            3,
+            "Junior Backend Engineer",
+            "C",
+            95_000.0,
+            "New York, NY",
+            "Entry level",
+            0.74,
+        ),
     ]
 
     enriched = enrich_retrieval_matches(
@@ -214,9 +241,36 @@ def test_enrich_retrieval_matches_marks_lower_level_jobs_salary_ineligible() -> 
         }
     )
     matches = [
-        JobMatch(1, 2, "Machine Learning Engineer", "B", 135_000.0, "New York, NY", "Mid level", 0.92),
-        JobMatch(0, 1, "Senior Machine Learning Engineer", "A", 180_000.0, "New York, NY", "Senior", 0.84),
-        JobMatch(2, 3, "Associate Data Scientist", "C", 100_000.0, "New York, NY", "Associate", 0.80),
+        JobMatch(
+            1,
+            2,
+            "Machine Learning Engineer",
+            "B",
+            135_000.0,
+            "New York, NY",
+            "Mid level",
+            0.92,
+        ),
+        JobMatch(
+            0,
+            1,
+            "Senior Machine Learning Engineer",
+            "A",
+            180_000.0,
+            "New York, NY",
+            "Senior",
+            0.84,
+        ),
+        JobMatch(
+            2,
+            3,
+            "Associate Data Scientist",
+            "C",
+            100_000.0,
+            "New York, NY",
+            "Associate",
+            0.80,
+        ),
     ]
 
     enriched = enrich_retrieval_matches(
