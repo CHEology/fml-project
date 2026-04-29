@@ -11,9 +11,12 @@ from app.ml_runtime import (
     cluster_position,
     enrich_retrieval_matches,
     hybrid_salary_band,
+    learned_quality_signal,
+    load_quality_artifacts,
     salary_artifacts_ready,
     salary_band_from_model,
 )
+from ml.quality import ResumeQualityModel
 from ml.retrieval import JobMatch
 from ml.salary_model import SalaryScaler
 
@@ -26,6 +29,8 @@ def test_artifact_status_tracks_salary_and_cluster_outputs(tmp_path: Path) -> No
     assert "models/salary_model.features.json" in status_by_path
     assert "models/resume_salary_model.pt" in status_by_path
     assert "models/resume_salary_model.features.json" in status_by_path
+    assert "models/quality_model.pt" in status_by_path
+    assert "models/quality_model.scaler.json" in status_by_path
     assert "data/external/onet_skills.parquet" in status_by_path
     assert "data/external/bls_wages.parquet" in status_by_path
     assert "models/kmeans_k8.pkl" in status_by_path
@@ -82,6 +87,24 @@ def test_load_salary_artifacts_prefers_resume_side_model(
     assert scaler.std == 3
     assert feature_metadata is not None
     assert feature_metadata["n_features"] == 1
+
+
+def test_load_quality_artifacts_and_predict_signal(tmp_path: Path) -> None:
+    models = tmp_path / "models"
+    models.mkdir()
+    checkpoint = models / "quality_model.pt"
+    torch.save(ResumeQualityModel(embedding_dim=4).state_dict(), checkpoint)
+    (models / "quality_model.scaler.json").write_text(
+        '{"mean": 55, "std": 10, "embedding_dim": 4}',
+        encoding="utf-8",
+    )
+
+    model, scaler = load_quality_artifacts(tmp_path)
+    signal = learned_quality_signal(model, np.ones(4, dtype=np.float32), scaler)
+
+    assert 0.0 <= signal["score"] <= 100.0
+    assert signal["label"] in {"weak", "medium", "strong"}
+    assert signal["source"] == "quality_model"
 
 
 def test_enrich_retrieval_matches_preserves_faiss_order_and_similarity() -> None:

@@ -69,6 +69,8 @@ ARTIFACT_SPECS = (
         "models/resume_salary_model.features.json",
         "salary_optional",
     ),
+    ArtifactSpec("Quality model", "models/quality_model.pt", "quality"),
+    ArtifactSpec("Quality scaler", "models/quality_model.scaler.json", "quality"),
     ArtifactSpec("Salary model", "models/salary_model.pt", "salary"),
     ArtifactSpec("Salary scaler", "models/salary_model.scaler.json", "salary"),
     ArtifactSpec("Salary features", "models/salary_model.features.json", "salary"),
@@ -178,6 +180,32 @@ def load_salary_scaler(path: Path) -> Any:
 
     with Path(path).open() as f:
         return SalaryScaler.from_state_dict(json.load(f))
+
+
+def load_quality_artifacts(project_root: Path = PROJECT_ROOT):
+    from ml.quality import QualityScaler
+    from ml.quality import load_model as load_quality_model
+
+    root = Path(project_root)
+    scaler_state = _read_scaler_state(root / "models" / "quality_model.scaler.json")
+    embedding_dim = int(scaler_state.get("embedding_dim", 384))
+    model = load_quality_model(
+        str(root / "models" / "quality_model.pt"),
+        embedding_dim=embedding_dim,
+    )
+    scaler = QualityScaler.from_state_dict(scaler_state)
+    return model, scaler
+
+
+def learned_quality_signal(
+    model: Any,
+    resume_embedding: np.ndarray,
+    scaler: Any | None,
+) -> dict[str, Any]:
+    from ml.quality import predict_quality
+
+    signal = predict_quality(model, np.asarray(resume_embedding).reshape(-1), scaler)
+    return {**signal, "source": "quality_model"}
 
 
 def load_occupation_router(

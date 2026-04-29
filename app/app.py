@@ -45,9 +45,11 @@ load_cluster_artifacts = runtime.load_cluster_artifacts
 load_real_jobs = runtime.load_jobs
 load_occupation_router = runtime.load_occupation_router
 load_public_assessment_artifacts = runtime.load_public_assessment_artifacts
+load_quality_artifacts = runtime.load_quality_artifacts
 load_retriever = runtime.load_retriever
 load_salary_artifacts = runtime.load_salary_artifacts
 load_wage_table = runtime.load_wage_table
+learned_quality_signal = runtime.learned_quality_signal
 public_resume_signals = runtime.public_resume_signals
 retrieve_matches = runtime.retrieve_matches
 salary_band_from_model = runtime.salary_band_from_model
@@ -2025,6 +2027,15 @@ def inject_styles(theme_name: str = "Lavender") -> None:
             border-radius: 999px;
         }
 
+        .quality-learned-check {
+            border-top: 1px solid var(--line);
+            padding-top: 0.7rem;
+            margin-top: 0.7rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
         .quality-section-label {
             font-size: 0.78rem;
             text-transform: uppercase;
@@ -2185,6 +2196,11 @@ def load_retriever_resource():
 @st.cache_resource(show_spinner=False)
 def load_salary_resource():
     return load_salary_artifacts(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_quality_resource():
+    return load_quality_artifacts(PROJECT_ROOT)
 
 
 @st.cache_resource(show_spinner=False)
@@ -4275,7 +4291,10 @@ def salary_band(matches: pd.DataFrame, profile: dict[str, Any]) -> dict[str, int
     }
 
 
-def render_quality_scorecard(quality: dict[str, Any]) -> None:
+def render_quality_scorecard(
+    quality: dict[str, Any],
+    learned_quality: dict[str, Any] | None = None,
+) -> None:
     overall = int(quality.get("overall", 0))
     band_label = str(quality.get("band_label", "Mixed"))
     sub_pairs = [
@@ -4318,10 +4337,30 @@ def render_quality_scorecard(quality: dict[str, Any]) -> None:
         f'<span class="quality-band-pill quality-band-{band_label_safe}">{band_label_safe}</span>'
         "</div>"
     )
+    learned_html = ""
+    if learned_quality:
+        learned_score = float(learned_quality.get("score", 0.0) or 0.0)
+        learned_label = str(learned_quality.get("label", "unknown")).title()
+        delta = learned_score - float(overall)
+        if abs(delta) <= 10:
+            agreement = "Close to the rule-based score"
+        elif delta > 10:
+            agreement = "More favorable than the rule-based score"
+        else:
+            agreement = "More conservative than the rule-based score"
+        learned_html = (
+            '<div class="quality-learned-check">'
+            '<div class="metric-label">Learned MLP cross-check</div>'
+            f'<div class="signal-copy"><strong>{learned_score:.0f}/100</strong>'
+            f" · {escape(learned_label)} · {escape(agreement)}. "
+            "Advisory only; strengths, gaps, and salary adjustments still use the explainable rule score."
+            "</div></div>"
+        )
     body = (
         '<div class="quality-card">'
         + headline
         + f'<div class="quality-subscores">{sub_html}</div>'
+        + learned_html
         + f'<div class="quality-feedback-grid">{strengths_html}{flags_html}</div>'
         + "</div>"
     )
@@ -4575,8 +4614,9 @@ def main() -> None:
                 quality = assessment["quality"]
                 capability = assessment.get("capability") or {}
                 public_signals = assessment.get("public_signals")
+                learned_quality = assessment.get("learned_quality")
 
-                render_quality_scorecard(quality)
+                render_quality_scorecard(quality, learned_quality)
                 render_public_model_card(public_signals)
 
                 col1, col2 = st.columns(2)
@@ -4762,6 +4802,16 @@ def main() -> None:
                         matches,
                     )
 
+                learned_quality = None
+                if artifacts_ready(status, "quality"):
+                    with st.spinner("Running learned quality cross-check..."):
+                        quality_model, quality_scaler = load_quality_resource()
+                        learned_quality = learned_quality_signal(
+                            quality_model,
+                            resume_embedding,
+                            quality_scaler,
+                        )
+
                 neural_band = None
                 if salary_artifacts_ready(PROJECT_ROOT):
                     with st.spinner("Calculating salary reference..."):
@@ -4828,6 +4878,7 @@ def main() -> None:
                 "work_history": work_history,
                 "projects": projects,
                 "quality": quality,
+                "learned_quality": learned_quality,
                 "capability": capability,
                 "public_signals": public_signals,
                 "matches": matches,
