@@ -665,10 +665,36 @@ def _unique_hits(matches: list[str]) -> list[str]:
 
 
 def _max_years_experience(lowered_text: str) -> float:
-    matches = re.findall(r"\b(\d{1,2})\s*(?:\+\s*)?years?\b", lowered_text)
-    if not matches:
-        return 0.0
-    return float(max(int(match) for match in matches))
+    """Detect years of experience from explicit mentions and date ranges."""
+    # 1. Explicit mentions (e.g. "8 years experience")
+    explicit_matches = re.findall(r"\b(\d{1,2})\s*(?:\+\s*)?years?\b", lowered_text)
+    explicit_max = float(max(int(m) for m in explicit_matches)) if explicit_matches else 0.0
+
+    # 2. Date range duration (e.g. "2019 - 2024")
+    current_year = date.today().year
+    date_matches = _DATE_RANGE_RE.findall(lowered_text)
+    if date_matches:
+        starts = [int(m[0]) for m in date_matches]
+        ends = [
+            current_year if m[1].lower() in {"present", "current"} else int(m[1])
+            for m in date_matches
+        ]
+        # Total span from first start to last end (rough approximation)
+        span = float(max(ends) - min(starts))
+        # Or sum of individual durations (clamped to avoid overlaps)
+        # For simplicity in heuristics, we'll take the max span or a floor of 1.0 per range
+        duration = max(span, float(len(date_matches)))
+    else:
+        duration = 0.0
+
+    # 3. Educational proxies (PhD usually implies 4-6 years of research)
+    education_bonus = 0.0
+    if "phd" in lowered_text or "doctorate" in lowered_text:
+        education_bonus = 4.0
+    elif "m.s." in lowered_text or "master" in lowered_text:
+        education_bonus = 1.5
+
+    return float(max(explicit_max, duration, education_bonus))
 
 
 def _bullet_count(text: str) -> int:

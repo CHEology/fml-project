@@ -66,8 +66,8 @@ ROLE_PROFILES = (
         title="Machine Learning Engineer",
         family="ml",
         aliases=("ML Systems Engineer", "Model Platform Engineer"),
-        core_skills=("Python", "PyTorch", "model serving", "Docker", "MLOps"),
-        nice_to_have=("Kubernetes", "feature stores", "AWS", "CI/CD", "monitoring"),
+        core_skills=("Python", "PyTorch", "JAX", "CUDA", "model serving", "Docker", "MLOps"),
+        nice_to_have=("Kubernetes", "feature stores", "AWS", "CI/CD", "monitoring", "NLP"),
         project_templates=(
             "shipped recommendation services with p95 latency below {metric} ms",
             "rebuilt training workflows and reduced retraining time by {metric}%",
@@ -169,6 +169,12 @@ MULTI_WORD_SKILLS = (
     "a/b testing",
     "rest apis",
     "ci/cd",
+    "transformer architecture",
+    "attention mechanism",
+    "distributed training",
+    "model quantization",
+    "feature engineering",
+    "vector database",
 )
 
 STYLES = (
