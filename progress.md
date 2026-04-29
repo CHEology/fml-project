@@ -76,21 +76,11 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-<<<<<<< HEAD
-| 5.1 | Gap analysis (direction vector) | — | 🟡 | `cluster_position()` computes distance to current and next-best cluster centroids, but does not compute or expose the direction vector itself. |
-| 5.2 | Keyword extraction (missing skills) | — | ✅ | `feedback_terms()` in `app/ml_runtime.py` identifies cluster/match terms missing from the resume. |
-| 5.3 | Phrase-level highlighting (strengths vs gaps) | — | 🟡 | `render_missing_terms()` shows missing keywords; `ml/quality.py` has rule-based strength/gap notes. No side-by-side highlighted resume view yet. |
-| 5.4 | Cluster migration advice | — | ⬜ | Not implemented. No advice for moving from current cluster to a target cluster. |
-
-**Phase status:** 🟡 Keyword extraction works; gap analysis and cluster migration advice still incomplete.
-=======
 | 5.1 | Gap analysis (direction vector) | — | ✅ | `compute_gap_analysis()` implemented in `ml/feedback.py` and exposed via `cluster_position()`. |
 | 5.2 | Keyword extraction (missing skills) | — | ✅ | `feedback_terms()` in `app/ml_runtime.py` identifies cluster/match terms missing from the resume. |
-| 5.3 | Phrase-level highlighting (strengths vs gaps) | — | 🟡 | `render_missing_terms()` shows missing keywords; `ml/quality.py` has rule-based strength/gap notes. No side-by-side highlighted resume view yet. |
-| 5.4 | Cluster migration advice | — | ✅ | `cluster_migration_advice()` implemented in `app/ml_runtime.py`. |
+| 5.3 | Cluster migration advice | — | ✅ | `cluster_migration_advice()` implemented in `app/ml_runtime.py`. |
 
 **Phase status:** ✅ Complete — all feedback and gap analysis logic implemented.
->>>>>>> Alan
 
 ---
 
@@ -132,27 +122,19 @@
 ## ⚠️ Areas Still Needing Work
 
 ### High Priority (core requirements)
+### High Priority (core requirements)
 
-<<<<<<< HEAD
-1. **Phase 5 — Cluster migration advice (Task 5.4):** No implementation exists. Users should be able to select a target cluster and see the skill/experience gap to get there. Needs a `ml/feedback.py` module.
+1. **Silhouette score (Task 3.2):** K was chosen via the elbow method, but the plan also requires silhouette score ≥ 0.15. This metric has not been computed or reported.
 
-2. **Phase 5 — Direction vector gap analysis (Task 5.1):** `cluster_position()` computes distances but doesn't expose the `(target_centroid − resume_embedding)` vector or project it back to interpretable terms.
-
-=======
->>>>>>> Alan
-3. **Phase 5 — Phrase-level resume highlighting (Task 5.3):** Missing keywords are listed, but there's no visual side-by-side view highlighting strengths (green) vs. gaps (red) on the actual resume text.
-
-4. **Silhouette score (Task 3.2):** K was chosen via the elbow method, but the plan also requires silhouette score ≥ 0.15. This metric has not been computed or reported.
-
-5. **Final report / presentation:** Not started.
+2. **Final report / presentation:** Not started.
 
 ### Medium Priority (quality & completeness)
 
-6. **Random seeds in all scripts:** `preprocess_data.py` and `generate_synthetic_resumes.py` do not set `np.random.seed()` / `torch.manual_seed()`. Required by grading constraints for reproducibility.
+3. **Random seeds in all scripts:** `preprocess_data.py` and `generate_synthetic_resumes.py` do not set `np.random.seed()` / `torch.manual_seed()`. Required by grading constraints for reproducibility.
 
-7. **External data files (O*NET / BLS):** Code exists in `ml/occupation_router.py` and `ml/wage_bands.py`, but `data/external/onet_skills.parquet` and `data/external/bls_wages.parquet` are not present. These are optional enrichments but enhance salary confidence and occupation routing.
+4. **External data files (O*NET / BLS):** Code exists in `ml/occupation_router.py` and `ml/wage_bands.py`, but `data/external/onet_skills.parquet` and `data/external/bls_wages.parquet` are not present. These are optional enrichments but enhance salary confidence and occupation routing.
 
-8. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. May need further tuning.
+5. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. May need further tuning.
 
 9. **Stale files in repo root:** `replace_main.py` (27 KB) and `fix_app.py` (2 KB) appear to be one-off scripts that should be cleaned up or moved.
 
@@ -171,23 +153,13 @@ Phase 1  [██████████] 100%  ← raw data downloaded, preproc
 Phase 2  [██████████] 100%  ← embeddings, retrieval, and experiment notebook ready
 Phase 3  [█████████░]  90%  ← KMeans done, clusters labeled; silhouette score missing
 Phase 4  [██████████] 100%  ← quantile regression model, training, inference, and evaluation complete
-<<<<<<< HEAD
-Phase 5  [████░░░░░░]  40%  ← keyword extraction done; gap analysis & migration advice missing
-Phase 6  [████████░░]  85%  ← app functional; feedback depth limited by Phase 5
-─────────────────────────
-Total    [████████░░]  82%
-```
-
-**Current state:** The core ML pipeline is fully operational end-to-end: raw Kaggle data → preprocessing → embeddings → FAISS retrieval → K-Means clustering → salary quantile regression → Streamlit app. Users can upload a resume and get job matches, salary predictions, cluster assignment, and basic keyword feedback. The main gaps are in **Phase 5** (resume feedback engine: direction vector analysis, phrase-level highlighting, cluster migration advice), **silhouette score reporting**, **random seed consistency**, and the **final report**.
-=======
 Phase 5  [██████████] 100%  ← gap analysis, keyword extraction, and migration advice complete
 Phase 6  [█████████░]  90%  ← app functional; Phase 5 logic integrated into runtime
 ─────────────────────────
 Total    [█████████░]  92%
 ```
 
-**Current state:** The core ML pipeline is fully operational end-to-end: raw Kaggle data → preprocessing → embeddings → FAISS retrieval → K-Means clustering → salary quantile regression → Streamlit app. Users can upload a resume and get job matches, salary predictions, cluster assignment, and detailed gap analysis with migration advice. The main remaining gaps are **silhouette score reporting**, **random seed consistency**, **phrase-level resume highlighting**, and the **final report**.
->>>>>>> Alan
+**Current state:** The core ML pipeline is fully operational end-to-end: raw Kaggle data → preprocessing → embeddings → FAISS retrieval → K-Means clustering → salary quantile regression → Streamlit app. Users can upload a resume and get job matches, salary predictions, cluster assignment, and detailed gap analysis with migration advice. The main remaining gaps are **silhouette score reporting**, **random seed consistency**, and the **final report**.
 
 ---
 

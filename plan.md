@@ -95,8 +95,7 @@ All ML logic lives in `ml/`, offline pipelines live in `scripts/`, and the Strea
 |---|------|---------|---------|
 | 5.1 | Gap analysis | `ml/retrieval.py` (or new `ml/feedback.py`) | Compare the user's resume embedding vs. the centroid of a target cluster (or top-matching job embedding). Identify the **direction vector** (target − resume). |
 | 5.2 | Keyword extraction | `ml/feedback.py` | Project the direction vector back into token space (using the embedding model's vocabulary or TF-IDF terms from the target cluster). Return top-N missing skills / keywords. |
-| 5.3 | Phrase-level highlighting | `ml/feedback.py` | Given the resume text and matched job descriptions, use set-difference on extracted skill n-grams to find **present strengths** and **missing keywords**. |
-| 5.4 | Cluster migration advice | `ml/feedback.py` | If the user selects a desired cluster different from their current one, show the skill/experience gap between the two cluster centroids. |
+| 5.3 | Cluster migration advice | `ml/feedback.py` | If the user selects a desired cluster different from their current one, show the skill/experience gap between the two cluster centroids. |
 
 **Acceptance criteria:** For a data-science resume matched against an SWE cluster, suggestions include plausible items (e.g., "Add: REST APIs, CI/CD, system design").
 
@@ -113,7 +112,7 @@ All ML logic lives in `ml/`, offline pipelines live in `scripts/`, and the Strea
 | 6.3 | Job matching page | `app/pages/02_matches.py` | Show top-10 matching jobs in an expandable card layout. Display similarity score, title, company, salary, skills. Filters for experience level and location. |
 | 6.4 | Salary prediction page | `app/pages/03_salary.py` | Fan chart (Plotly) showing predicted salary quantiles. Compare against actual distribution for the user's cluster. |
 | 6.5 | Market position page | `app/pages/04_market.py` | 2D t-SNE/UMAP scatter (Plotly) of job clusters with the user's resume plotted as a highlighted point. Cluster labels as hover text. |
-| 6.6 | Resume feedback page | `app/pages/05_feedback.py` | Display missing keywords, highlighted resume text (green = strength, red = gap), and cluster-migration advice. |
+| 6.6 | Resume feedback page | `app/pages/05_feedback.py` | Display missing keywords and cluster-migration advice. |
 | 6.7 | Reusable components | `app/components/` | Shared widgets: resume text preview, job card, salary chart, cluster legend. |
 
 **Acceptance criteria:** Full end-to-end flow works: upload resume → view matches → see salary → see market position → get feedback. No crashes on edge cases (empty resume, missing data).
