@@ -6,13 +6,13 @@ Verifies K-means cluster assignment, centroid shape, and convergence.
 
 Run with: pytest tests/test_clustering.py
 
+Owner: @trp8625
 """
 
+import pytest
+import numpy as np
 import sys
 from pathlib import Path
-
-import numpy as np
-import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
