@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from ml.clustering import KMeans
 from ml.embeddings import Encoder
+from ml.feedback import compute_gap_analysis
 from ml.retrieval import JobMatch, Retriever
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -361,12 +362,16 @@ def cluster_position(
     if isinstance(label_info, str):
         label_info = {"label": label_info, "top_terms": []}
 
+    # Task 5.1: Compute direction vector to centroid
+    gap = compute_gap_analysis(vector, centroids[predicted])
+
     return {
         "cluster_id": predicted,
         "label": label_info.get("label", f"Cluster {predicted}"),
         "top_terms": list(label_info.get("top_terms", [])),
         "size": label_info.get("size"),
         "distance": float(distances[predicted]),
+        "direction_vector": gap["direction_vector"],
         "next_best_cluster_id": int(next_best),
         "next_best_distance": float(distances[next_best]),
     }
@@ -400,6 +405,67 @@ def feedback_terms(
         if len(missing) >= max_terms:
             break
     return missing
+
+
+def gap_advice(
+    encoder: Encoder,
+    direction_vector: np.ndarray,
+    candidate_terms: list[str],
+    top_n: int = 5,
+) -> list[tuple[str, float]]:
+    """
+    Translates a direction vector into specific skill/term suggestions.
+
+    Args:
+        encoder: The embedding model to use for candidate terms
+        direction_vector: The (target - resume) vector
+        candidate_terms: List of strings to check for alignment
+        top_n: Number of suggestions
+
+    Returns:
+        List of (term, score) sorted by alignment
+    """
+    from ml.feedback import project_vector_to_terms
+
+    # Embed candidate terms to find which ones align with the gap
+    term_embeddings = np.asarray(encoder.encode(candidate_terms), dtype=np.float32)
+    return project_vector_to_terms(
+        direction_vector, term_embeddings, candidate_terms, top_n
+    )
+
+
+def cluster_migration_advice(
+    kmeans_model: Any,
+    encoder: Encoder,
+    resume_embedding: np.ndarray,
+    target_cluster_id: int,
+    candidate_terms: list[str],
+) -> dict[str, Any]:
+    """
+    Provides advice on how to move from current position to a target cluster.
+
+    Args:
+        kmeans_model: The fitted KMeans model
+        encoder: The embedding model
+        resume_embedding: User's resume embedding
+        target_cluster_id: The ID of the cluster to move towards
+        candidate_terms: List of terms to suggest
+
+    Returns:
+        Dictionary with gap magnitude and suggested terms
+    """
+    from ml.feedback import compute_gap_analysis
+
+    centroids = np.asarray(kmeans_model.centroids, dtype=np.float32)
+    target_centroid = centroids[target_cluster_id]
+
+    gap = compute_gap_analysis(resume_embedding, target_centroid)
+    advice = gap_advice(encoder, gap["direction_vector"], candidate_terms)
+
+    return {
+        "gap_magnitude": gap["gap_magnitude"],
+        "suggestions": advice,
+    }
 
 
 def _preferred_salary_paths(root: Path) -> tuple[Path, Path]:
