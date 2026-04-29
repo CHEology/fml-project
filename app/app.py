@@ -399,21 +399,21 @@ SENIORITY_MULTIPLIER = {
 
 THEMES = {
     "Dark": {
-        "bg_start": "#0e0e0e",
-        "bg_end": "#0e0e0e",
+        "bg_start": "#0a0a0a",
+        "bg_end": "#0a0a0a",
         "flare_a": "transparent",
         "flare_b": "transparent",
-        "panel": "#1a1a1a",
-        "ink": "#f0f0f0",
-        "muted": "#888888",
-        "line": "rgba(255,255,255,0.08)",
-        "pill_bg": "rgba(124,111,255,0.18)",
-        "pill_ink": "#a89aff",
-        "hero_a": "rgba(124,111,255,0.10)",
-        "hero_b": "rgba(78,205,196,0.08)",
-        "shadow": "rgba(0, 0, 0, 0.40)",
-        "score_bg": "rgba(78,205,196,0.18)",
-        "score_ink": "#6ee8e0",
+        "panel": "#111111",
+        "ink": "#f0ede8",
+        "muted": "#6b6560",
+        "line": "rgba(255,255,255,0.06)",
+        "pill_bg": "rgba(232,160,69,0.15)",
+        "pill_ink": "#ffd6a0",
+        "hero_a": "#1a0e06",
+        "hero_b": "#e8a045",
+        "shadow": "rgba(0, 0, 0, 0.50)",
+        "score_bg": "rgba(232,160,69,0.18)",
+        "score_ink": "#ffd6a0",
     },
 }
 
@@ -1426,13 +1426,13 @@ def inject_styles(theme_name: str = "Dark") -> None:
             --ink: __INK__;
             --muted: __MUTED__;
             --line: __LINE__;
-            --accent: #7c6fff;
+            --accent: #e8a045;
             --accent-soft: __PILL_BG__;
-            --accent-teal: #4ecdc4;
-            --accent-yellow: #ffd93d;
-            --accent-coral: #ff6b6b;
-            --success: #4ecdc4;
-            --warning: #ffd93d;
+            --accent-teal: #c4622d;
+            --accent-yellow: #ffd6a0;
+            --accent-coral: #e8a045;
+            --success: #e8a045;
+            --warning: #ffd6a0;
         }
 
         .stApp {
@@ -1450,7 +1450,8 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         html, body, [class*="css"] {
-            font-family: "Inter", "Avenir Next", sans-serif;
+            font-family: "Georgia", "Times New Roman", serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         .mono {
@@ -1466,8 +1467,8 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         .hero {
-            background: linear-gradient(135deg, __HERO_A__ 0%, __HERO_B__ 100%);
-            border: 1px solid rgba(124,111,255,0.2);
+            background: linear-gradient(135deg, __HERO_A__ 0%, #2d1505 30%, #c4622d 70%, __HERO_B__ 100%);
+            border: 1px solid rgba(232,160,69,0.2);
             border-radius: 12px;
             padding: 1rem 1.2rem 0.95rem 1.2rem;
             box-shadow: 0 8px 20px __SHADOW__;
@@ -1514,15 +1515,15 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         .pill-teal {
-            background: rgba(78,205,196,0.18);
-            color: #6ee8e0;
-            border-color: rgba(78,205,196,0.25);
+            background: rgba(196,98,45,0.2);
+            color: #ffd6a0;
+            border-color: rgba(196,98,45,0.3);
         }
 
         .pill-yellow {
-            background: rgba(255,217,61,0.18);
-            color: #ffe066;
-            border-color: rgba(255,217,61,0.25);
+            background: rgba(232,160,69,0.2);
+            color: #ffe0a0;
+            border-color: rgba(232,160,69,0.25);
         }
 
         .metric-card, .info-card, .job-card {
@@ -2026,6 +2027,23 @@ def inject_styles(theme_name: str = "Dark") -> None:
             .salary-step:first-child {
                 border-top: 0;
             }
+        }
+
+        /* Amber editorial overrides */
+        .stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, #c4622d 0%, #e8a045 100%) !important;
+            border: none !important;
+            color: #fff !important;
+            font-family: "Georgia", serif !important;
+            font-style: italic !important;
+            font-weight: 700 !important;
+        }
+        .stButton > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #d4722d 0%, #f0b055 100%) !important;
+        }
+        h1, h2, h3, .panel-title, .metric-value, .salary-main, .signal-value, .hero-title {
+            font-family: "Georgia", "Times New Roman", serif !important;
+            font-style: italic !important;
         }
         </style>
     """
