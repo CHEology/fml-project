@@ -40,6 +40,10 @@ models/*
 *.index
 *.bin
 *.ckpt
+*.pkl
+*.npy
+*.scaler.json
+*.features.json
 
 # Test fixtures — small synthetic artifacts that ARE checked in
 !tests/fixtures/
