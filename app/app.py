@@ -5001,7 +5001,7 @@ def main() -> None:
             | @ohortig | `ml/embeddings.py`, `notebooks/01`, `notebooks/02` |
             | @trp8625 | `ml/clustering.py`, `app/components/`, tests |
             | @CHEology | `ml/retrieval.py`, `scripts/build_index.py`, `app/app.py` |
-            | @alanhe1219-web | `ml/salary_model.py`, `scripts/train_salary_model.py`, `notebooks/03` |
+            | ZQH003 | `ml/salary_model.py`, `scripts/train_salary_model.py`, `notebooks/03` |
             | @Eliguli712 | `scripts/preprocess_data.py`, app integration |
             """
         )
