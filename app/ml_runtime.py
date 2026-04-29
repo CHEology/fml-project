@@ -15,16 +15,24 @@ from ml.retrieval import JobMatch, Retriever
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def load_model(path: str, *, embedding_dim: int) -> Any:
+def load_model(path: str, *, embedding_dim: int, n_extra_features: int = 0) -> Any:
     from ml.salary_model import load_model as _load_model
 
-    return _load_model(path, embedding_dim=embedding_dim)
+    return _load_model(
+        path, embedding_dim=embedding_dim, n_extra_features=n_extra_features
+    )
 
 
-def predict_salary(model: Any, embedding: np.ndarray, *, scaler: Any | None) -> Any:
+def predict_salary(
+    model: Any,
+    embedding: np.ndarray,
+    *,
+    extra_features: np.ndarray | None = None,
+    scaler: Any | None,
+) -> Any:
     from ml.salary_model import predict_salary as _predict_salary
 
-    return _predict_salary(model, embedding, scaler=scaler)
+    return _predict_salary(model, embedding, extra_features, scaler=scaler)
 
 
 @dataclass(frozen=True)
@@ -56,8 +64,14 @@ ARTIFACT_SPECS = (
         "models/resume_salary_model.scaler.json",
         "salary_optional",
     ),
+    ArtifactSpec(
+        "Resume salary features",
+        "models/resume_salary_model.features.json",
+        "salary_optional",
+    ),
     ArtifactSpec("Salary model", "models/salary_model.pt", "salary"),
     ArtifactSpec("Salary scaler", "models/salary_model.scaler.json", "salary"),
+    ArtifactSpec("Salary features", "models/salary_model.features.json", "salary"),
     ArtifactSpec("O*NET skills", "data/external/onet_skills.parquet", "occupation"),
     ArtifactSpec("BLS wage bands", "data/external/bls_wages.parquet", "wage"),
     ArtifactSpec("KMeans model", "models/kmeans_k8.pkl", "clustering"),
@@ -123,21 +137,29 @@ def load_retriever(project_root: Path = PROJECT_ROOT, encoder: Any | None = None
 
 
 def load_salary_artifacts(project_root: Path = PROJECT_ROOT):
+    from ml.salary_features import load_salary_feature_metadata
     from ml.salary_model import SalaryScaler
 
     root = Path(project_root)
     model_path, scaler_path = _preferred_salary_paths(root)
+    features_path = _preferred_salary_feature_path(root, model_path)
     scaler_state = _read_scaler_state(scaler_path)
     embedding_dim = scaler_state.get("embedding_dim")
     if embedding_dim is None:
         embeddings = np.load(root / "models" / "job_embeddings.npy", mmap_mode="r")
         embedding_dim = int(embeddings.shape[1])
+    feature_metadata = None
+    n_extra_features = 0
+    if features_path is not None and features_path.exists():
+        feature_metadata = load_salary_feature_metadata(features_path)
+        n_extra_features = int(feature_metadata.get("n_features", 0))
     model = load_model(
         str(model_path),
         embedding_dim=int(embedding_dim),
+        n_extra_features=n_extra_features,
     )
     scaler = SalaryScaler.from_state_dict(scaler_state)
-    return model, scaler
+    return model, scaler, feature_metadata
 
 
 def salary_artifacts_ready(project_root: Path = PROJECT_ROOT) -> bool:
@@ -282,9 +304,22 @@ def salary_band_from_model(
     model: Any,
     resume_embedding: np.ndarray,
     scaler: Any | None,
+    feature_metadata: dict[str, Any] | None = None,
+    resume_features: dict[str, Any] | None = None,
 ) -> dict[str, int]:
+    extra_features = None
+    if feature_metadata is not None:
+        feature_frame = _salary_feature_frame(resume_features or {})
+        from ml.salary_features import build_resume_salary_features
+
+        extra_features = build_resume_salary_features(feature_frame, feature_metadata)[
+            0
+        ]
     predictions = predict_salary(
-        model, np.asarray(resume_embedding).reshape(-1), scaler=scaler
+        model,
+        np.asarray(resume_embedding).reshape(-1),
+        extra_features=extra_features,
+        scaler=scaler,
     )
     return {key: int(round(float(value), -3)) for key, value in predictions.items()}
 
@@ -482,9 +517,34 @@ def _preferred_salary_paths(root: Path) -> tuple[Path, Path]:
     raise FileNotFoundError("No usable salary model/scaler pair found.")
 
 
+def _preferred_salary_feature_path(root: Path, model_path: Path) -> Path | None:
+    if model_path.name == "resume_salary_model.pt":
+        resume_features = root / "models" / "resume_salary_model.features.json"
+        if resume_features.exists():
+            return resume_features
+    legacy_features = root / "models" / "salary_model.features.json"
+    if legacy_features.exists():
+        return legacy_features
+    return None
+
+
 def _read_scaler_state(path: Path) -> dict[str, Any]:
     with Path(path).open(encoding="utf-8") as f:
         return json.load(f)
+
+
+def _salary_feature_frame(values: dict[str, Any]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "experience_level_ordinal": values.get("experience_level_ordinal", 0.0),
+                "work_type_remote": values.get("work_type_remote", 0.0),
+                "work_type_hybrid": values.get("work_type_hybrid", 0.0),
+                "work_type_onsite": values.get("work_type_onsite", 0.0),
+                "state": values.get("state", ""),
+            }
+        ]
+    )
 
 
 def _retrieved_salary_signal(matches: pd.DataFrame) -> dict[str, Any] | None:

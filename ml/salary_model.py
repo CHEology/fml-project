@@ -193,6 +193,7 @@ def split_data(
     embeddings: np.ndarray,
     salaries: np.ndarray,
     extra_features: np.ndarray | None = None,
+    stratify_labels: np.ndarray | None = None,
     train_frac: float = 0.8,
     val_frac: float = 0.1,
     seed: int = SEED,
@@ -209,14 +210,41 @@ def split_data(
     """
     rng = np.random.default_rng(seed)
     n = len(salaries)
-    indices = rng.permutation(n)
+    if stratify_labels is None:
+        indices = rng.permutation(n)
+        n_train = int(n * train_frac)
+        n_val = int(n * val_frac)
+        train_idx = indices[:n_train]
+        val_idx = indices[n_train : n_train + n_val]
+        test_idx = indices[n_train + n_val :]
+    else:
+        labels = np.asarray(stratify_labels)
+        if len(labels) != n:
+            raise ValueError(
+                f"stratify_labels length ({len(labels)}) must match salaries ({n})"
+            )
+        train_parts: list[np.ndarray] = []
+        val_parts: list[np.ndarray] = []
+        test_parts: list[np.ndarray] = []
+        for label in np.unique(labels):
+            label_idx = np.flatnonzero(labels == label)
+            shuffled = rng.permutation(label_idx)
+            label_n = len(shuffled)
+            label_train = int(label_n * train_frac)
+            label_val = int(label_n * val_frac)
 
-    n_train = int(n * train_frac)
-    n_val = int(n * val_frac)
+            if label_n > 0 and label_train == 0:
+                label_train = 1
+            if label_train + label_val > label_n:
+                label_val = max(0, label_n - label_train)
 
-    train_idx = indices[:n_train]
-    val_idx = indices[n_train : n_train + n_val]
-    test_idx = indices[n_train + n_val :]
+            train_parts.append(shuffled[:label_train])
+            val_parts.append(shuffled[label_train : label_train + label_val])
+            test_parts.append(shuffled[label_train + label_val :])
+
+        train_idx = _shuffle_indices(train_parts, rng)
+        val_idx = _shuffle_indices(val_parts, rng)
+        test_idx = _shuffle_indices(test_parts, rng)
 
     scaler = SalaryScaler()
     if scale:
@@ -230,6 +258,14 @@ def split_data(
         return SalaryDataset(embeddings[idx], sal[idx], ef)
 
     return _make(train_idx), _make(val_idx), _make(test_idx), scaler
+
+
+def _shuffle_indices(parts: list[np.ndarray], rng: np.random.Generator) -> np.ndarray:
+    non_empty = [part.astype(np.int64, copy=False) for part in parts if len(part) > 0]
+    if not non_empty:
+        return np.array([], dtype=np.int64)
+    merged = np.concatenate(non_empty)
+    return rng.permutation(merged)
 
 
 # ---------------------------------------------------------------------------

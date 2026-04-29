@@ -13,8 +13,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ml.quality import score_resume_quality  # noqa: E402
@@ -155,6 +153,7 @@ Education: MBA, Kellogg School of Management; B.S. Industrial Engineering, Purdu
 # Basic contract tests — output shape and type
 # ---------------------------------------------------------------------------
 
+
 def test_score_returns_dict_with_required_keys():
     """score_resume_quality() must return a dict with score and label at minimum."""
     result = score_resume_quality(JUNIOR_ML)
@@ -184,6 +183,7 @@ def test_label_is_valid_category():
 # ---------------------------------------------------------------------------
 # Ordering tests — stronger resumes should score higher
 # ---------------------------------------------------------------------------
+
 
 def test_senior_scores_higher_than_junior():
     """A senior engineer resume should score higher than a junior one."""
@@ -223,6 +223,7 @@ def test_minimal_resume_scores_weak():
 # Domain diversity tests — non-tech resumes should still be handled
 # ---------------------------------------------------------------------------
 
+
 def test_healthcare_resume_does_not_crash():
     """A nursing resume should return a valid score without errors."""
     result = score_resume_quality(HEALTHCARE)
@@ -256,6 +257,7 @@ def test_data_analyst_scores_medium_or_above():
 # Edge case tests
 # ---------------------------------------------------------------------------
 
+
 def test_typo_heavy_resume_scores_lower_than_clean_equivalent():
     """A typo-heavy resume should score lower than an otherwise similar clean one."""
     typo_score = score_resume_quality(TYPO_HEAVY)["score"]
@@ -288,8 +290,15 @@ def test_very_long_resume_does_not_crash():
 def test_all_fixture_resumes_return_consistent_types():
     """All sample fixtures should return the same dict shape."""
     fixtures = [
-        SENIOR_ENGINEER, JUNIOR_ML, DATA_ANALYST, CAREER_CHANGER,
-        HEALTHCARE, MINIMAL_WEAK, TYPO_HEAVY, STRONG_RESEARCH, PRODUCT_MANAGER,
+        SENIOR_ENGINEER,
+        JUNIOR_ML,
+        DATA_ANALYST,
+        CAREER_CHANGER,
+        HEALTHCARE,
+        MINIMAL_WEAK,
+        TYPO_HEAVY,
+        STRONG_RESEARCH,
+        PRODUCT_MANAGER,
     ]
     for resume in fixtures:
         result = score_resume_quality(resume)

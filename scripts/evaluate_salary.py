@@ -39,11 +39,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ml.salary_features import (  # noqa: E402
+    build_resume_salary_features,
+    load_salary_feature_metadata,
+)
 from ml.salary_model import QUANTILES  # noqa: E402
 
 DEFAULT_RESUMES = PROJECT_ROOT / "data" / "eval" / "synthetic_resumes.parquet"
-DEFAULT_MODEL = PROJECT_ROOT / "models" / "salary_model.pt"
-DEFAULT_SCALER = PROJECT_ROOT / "models" / "salary_model.scaler.json"
+DEFAULT_MODEL = PROJECT_ROOT / "models" / "resume_salary_model.pt"
+DEFAULT_SCALER = PROJECT_ROOT / "models" / "resume_salary_model.scaler.json"
+DEFAULT_FEATURES = PROJECT_ROOT / "models" / "resume_salary_model.features.json"
 DEFAULT_METRICS_OUT = PROJECT_ROOT / "data" / "eval" / "salary_metrics.json"
 DEFAULT_ERRORS_OUT = PROJECT_ROOT / "data" / "eval" / "salary_errors.csv"
 DEFAULT_ENCODER = "all-MiniLM-L6-v2"
@@ -52,7 +57,9 @@ QUANTILE_KEYS = tuple(f"q{int(q * 100)}" for q in QUANTILES)
 
 
 class SalaryPredictor(Protocol):
-    def __call__(self, embedding: np.ndarray) -> dict[str, float]:
+    def __call__(
+        self, embedding: np.ndarray, extra_features: np.ndarray | None = None
+    ) -> dict[str, float]:
         """Map a single embedding to a quantile dict."""
 
 
@@ -60,6 +67,7 @@ def evaluate_salary(
     eval_df: pd.DataFrame,
     embeddings: np.ndarray,
     predictor: SalaryPredictor,
+    extra_features: np.ndarray | None = None,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     """Compute calibration / accuracy metrics for `predictor` on a paired set.
 
@@ -75,6 +83,11 @@ def evaluate_salary(
         raise ValueError(
             f"eval_df rows ({len(eval_df)}) must match embeddings ({len(embeddings)})"
         )
+    if extra_features is not None and len(extra_features) != len(eval_df):
+        raise ValueError(
+            "extra_features rows must match eval_df rows: "
+            f"{len(extra_features)} != {len(eval_df)}"
+        )
 
     df = eval_df.reset_index(drop=True).copy()
     targets = df["source_salary_annual"].astype(float)
@@ -87,7 +100,12 @@ def evaluate_salary(
         target = row["source_salary_annual"]
         if pd.isna(target) or target <= 0:
             continue
-        prediction = predictor(np.asarray(embeddings[idx], dtype=np.float32))
+        feature_row = None
+        if extra_features is not None:
+            feature_row = np.asarray(extra_features[idx], dtype=np.float32)
+        prediction = predictor(
+            np.asarray(embeddings[idx], dtype=np.float32), feature_row
+        )
         sorted_quants = np.sort(np.array([prediction[k] for k in QUANTILE_KEYS]))
         rows.append(
             {
@@ -201,9 +219,11 @@ def _load_predictor(
         with open(scaler_path, encoding="utf-8") as f:
             scaler = SalaryScaler.from_state_dict(json.load(f))
 
-    def predictor(embedding: np.ndarray) -> dict[str, float]:
+    def predictor(
+        embedding: np.ndarray, extra_features: np.ndarray | None = None
+    ) -> dict[str, float]:
         # `predict_salary` enforces monotonicity and inverse-scales for us.
-        return predict_salary(model, embedding, scaler=scaler)
+        return predict_salary(model, embedding, extra_features, scaler=scaler)
 
     # Reference torch only to satisfy the typing import — the real torch use
     # happens inside `load_model`.
@@ -248,6 +268,7 @@ def main() -> None:
     parser.add_argument("--encoder", type=str, default=DEFAULT_ENCODER)
     parser.add_argument("--embedding-dim", type=int, default=384)
     parser.add_argument("--n-extra-features", type=int, default=0)
+    parser.add_argument("--features-metadata", type=Path, default=DEFAULT_FEATURES)
     parser.add_argument("--metrics-out", type=Path, default=DEFAULT_METRICS_OUT)
     parser.add_argument("--errors-out", type=Path, default=DEFAULT_ERRORS_OUT)
     parser.add_argument(
@@ -272,11 +293,22 @@ def main() -> None:
         embedding_dim=args.embedding_dim,
         seed=args.seed,
     )
+    extra_features = None
+    n_extra_features = args.n_extra_features
+    if args.features_metadata.exists():
+        metadata = load_salary_feature_metadata(args.features_metadata)
+        extra_features = build_resume_salary_features(df, metadata)
+        n_extra_features = int(extra_features.shape[1])
+    elif args.n_extra_features > 0:
+        print(
+            f"Warning: feature metadata not found at {args.features_metadata}; "
+            "falling back to embeddings-only inference."
+        )
     predictor = _load_predictor(
-        args.model, args.scaler, args.embedding_dim, args.n_extra_features
+        args.model, args.scaler, args.embedding_dim, n_extra_features
     )
 
-    metrics, per_row = evaluate_salary(df, embeddings, predictor)
+    metrics, per_row = evaluate_salary(df, embeddings, predictor, extra_features)
     write_outputs(metrics, per_row, args.metrics_out, args.errors_out)
     print(
         json.dumps({k: v for k, v in metrics.items() if k != "per_persona"}, indent=2)

@@ -23,7 +23,9 @@ def test_artifact_status_tracks_salary_and_cluster_outputs(tmp_path: Path) -> No
 
     assert "models/salary_model.pt" in status_by_path
     assert "models/salary_model.scaler.json" in status_by_path
+    assert "models/salary_model.features.json" in status_by_path
     assert "models/resume_salary_model.pt" in status_by_path
+    assert "models/resume_salary_model.features.json" in status_by_path
     assert "data/external/onet_skills.parquet" in status_by_path
     assert "data/external/bls_wages.parquet" in status_by_path
     assert "models/kmeans_k8.pkl" in status_by_path
@@ -61,19 +63,25 @@ def test_load_salary_artifacts_prefers_resume_side_model(
         '{"mean": 2, "std": 3, "embedding_dim": 4}',
         encoding="utf-8",
     )
-    calls: list[tuple[str, int]] = []
+    (models / "resume_salary_model.features.json").write_text(
+        '{"version":1,"feature_names":["experience_level_ordinal"],"top_states":[],"n_features":1}',
+        encoding="utf-8",
+    )
+    calls: list[tuple[str, int, int]] = []
 
-    def fake_load_model(path: str, embedding_dim: int):
-        calls.append((path, embedding_dim))
+    def fake_load_model(path: str, *, embedding_dim: int, n_extra_features: int = 0):
+        calls.append((path, embedding_dim, n_extra_features))
         return ConstantSalaryModel()
 
     monkeypatch.setattr(runtime, "load_model", fake_load_model)
 
-    _, scaler = runtime.load_salary_artifacts(tmp_path)
+    _, scaler, feature_metadata = runtime.load_salary_artifacts(tmp_path)
 
-    assert calls == [(str(models / "resume_salary_model.pt"), 4)]
+    assert calls == [(str(models / "resume_salary_model.pt"), 4, 1)]
     assert scaler.mean == 2
     assert scaler.std == 3
+    assert feature_metadata is not None
+    assert feature_metadata["n_features"] == 1
 
 
 def test_enrich_retrieval_matches_preserves_faiss_order_and_similarity() -> None:
@@ -309,6 +317,23 @@ def test_salary_band_from_model_uses_quantile_model_and_scaler() -> None:
         "q75": 140_000,
         "q90": 150_000,
     }
+
+
+def test_salary_band_from_model_supports_feature_metadata() -> None:
+    metadata = {
+        "version": 1,
+        "feature_names": ["experience_level_ordinal", "state_other"],
+        "top_states": [],
+        "n_features": 2,
+    }
+    band = salary_band_from_model(
+        ConstantSalaryModel(),
+        np.ones(4, dtype=np.float32),
+        SalaryScaler(mean=100_000.0, std=10_000.0),
+        metadata,
+    )
+
+    assert band["q50"] == 130_000
 
 
 def test_hybrid_salary_band_prefers_retrieved_salary_evidence() -> None:

@@ -12,10 +12,12 @@ applies early stopping on validation loss, and saves the best checkpoint.
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
@@ -24,6 +26,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ml.salary_features import (  # noqa: E402
+    build_job_salary_features,
+    save_salary_feature_metadata,
+)
 from ml.salary_model import (  # noqa: E402
     SEED,
     PinballLoss,
@@ -160,6 +166,12 @@ def main():
         default=str(PROJECT_ROOT / "models" / "salary_model.pt"),
         help="Where to save the best checkpoint",
     )
+    parser.add_argument(
+        "--jobs-parquet",
+        type=str,
+        default=None,
+        help="Optional parquet used to build structured salary features.",
+    )
     parser.add_argument("--embedding-dim", type=int, default=DEFAULTS["embedding_dim"])
     parser.add_argument("--batch-size", type=int, default=DEFAULTS["batch_size"])
     parser.add_argument("--lr", type=float, default=DEFAULTS["lr"])
@@ -182,10 +194,26 @@ def main():
 
     extra = None
     n_extra = 0
+    stratify_labels = None
+    feature_metadata = None
     if args.extra_features:
         print(f"Loading extra features from {args.extra_features}")
         extra = np.load(args.extra_features)
         n_extra = extra.shape[1]
+    elif args.jobs_parquet:
+        print(f"Loading structured feature source from {args.jobs_parquet}")
+        jobs_df = pd.read_parquet(args.jobs_parquet)
+        extra, feature_metadata = build_job_salary_features(jobs_df)
+        if len(extra) != len(salaries):
+            raise ValueError(
+                "Structured features rows must match salaries/embeddings rows: "
+                f"{len(extra)} != {len(salaries)}"
+            )
+        n_extra = extra.shape[1]
+        stratify_labels = pd.to_numeric(
+            jobs_df.get("experience_level_ordinal", 0), errors="coerce"
+        ).fillna(0.0)
+        stratify_labels = stratify_labels.astype(int).to_numpy()
 
     print(
         f"Dataset: {len(salaries)} samples, "
@@ -194,7 +222,11 @@ def main():
 
     # ---- split ----
     train_ds, val_ds, test_ds, scaler = split_data(
-        embeddings, salaries, extra, seed=args.seed
+        embeddings,
+        salaries,
+        extra,
+        stratify_labels=stratify_labels,
+        seed=args.seed,
     )
     print(f"Split: train={len(train_ds)}, val={len(val_ds)}, test={len(test_ds)}")
     print(f"Salary scaler: mean=${scaler.mean:,.0f}, std=${scaler.std:,.0f}")
@@ -274,12 +306,14 @@ def main():
     print(f"  Median prediction MAE: ${mae:,.0f}")
 
     # Save scaler alongside model
-    import json
-
     scaler_path = str(Path(args.output).with_suffix(".scaler.json"))
     with open(scaler_path, "w") as f:
         json.dump(scaler.state_dict(), f)
     print(f"  Scaler saved to: {scaler_path}")
+    if feature_metadata is not None:
+        features_path = Path(args.output).with_suffix(".features.json")
+        save_salary_feature_metadata(features_path, feature_metadata)
+        print(f"  Feature metadata saved to: {features_path}")
 
 
 if __name__ == "__main__":

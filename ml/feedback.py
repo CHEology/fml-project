@@ -70,10 +70,14 @@ def project_vector_to_terms(
         return []
     v_unit = v / v_norm
 
-    # term_embeddings should ideally be (N, D)
+    # Ensure term_embeddings are L2-normalized for pure cosine alignment
+    # (N, D)
+    term_norms = np.linalg.norm(term_embeddings, axis=1, keepdims=True)
+    term_norms[term_norms < 1e-9] = 1.0
+    term_units = term_embeddings / term_norms
+
     # Compute dot products (alignment)
-    # If term_embeddings are already unit vectors, this is cosine similarity
-    scores = np.dot(term_embeddings, v_unit)
+    scores = np.dot(term_units, v_unit)
 
     top_indices = np.argsort(scores)[::-1][:top_n]
     return [(terms[i], float(scores[i])) for i in top_indices]

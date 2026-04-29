@@ -45,6 +45,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ml.salary_features import (  # noqa: E402
+    build_job_salary_features,
+    build_resume_salary_features,
+    save_salary_feature_metadata,
+)
 from ml.salary_model import (  # noqa: E402
     QUANTILES,
     SEED,
@@ -202,6 +207,23 @@ def main() -> None:
 
     texts = df["resume_text"].astype(str).tolist()
     salaries = df["source_salary_annual"].to_numpy(dtype=np.float32)
+    stratify_labels = (
+        pd.to_numeric(df.get("experience_level_ordinal", 0), errors="coerce")
+        .fillna(0.0)
+        .astype(int)
+        .to_numpy()
+    )
+    feature_source = pd.DataFrame(
+        {
+            "experience_level_ordinal": df.get("experience_level_ordinal", 0),
+            "work_type_remote": 0.0,
+            "work_type_hybrid": 0.0,
+            "work_type_onsite": 0.0,
+            "state": df.get("state", ""),
+        }
+    )
+    _, feature_metadata = build_job_salary_features(feature_source)
+    extra_features = build_resume_salary_features(feature_source, feature_metadata)
 
     if args.smoke:
         print(f"Smoke mode: generating {len(texts)} random embeddings.")
@@ -216,7 +238,13 @@ def main() -> None:
             )
             args.embedding_dim = int(embeddings.shape[1])
 
-    train_ds, val_ds, test_ds, scaler = split_data(embeddings, salaries, seed=args.seed)
+    train_ds, val_ds, test_ds, scaler = split_data(
+        embeddings,
+        salaries,
+        extra_features,
+        stratify_labels=stratify_labels,
+        seed=args.seed,
+    )
     print(
         f"Split: train={len(train_ds)} val={len(val_ds)} test={len(test_ds)} "
         f"scaler(mean=${scaler.mean:,.0f}, std=${scaler.std:,.0f})"
@@ -273,6 +301,9 @@ def main() -> None:
     with open(scaler_path, "w", encoding="utf-8") as f:
         json.dump({**scaler.state_dict(), "embedding_dim": int(args.embedding_dim)}, f)
     print(f"Scaler saved to {scaler_path}")
+    features_path = args.out.with_suffix(".features.json")
+    save_salary_feature_metadata(features_path, feature_metadata)
+    print(f"Feature metadata saved to {features_path}")
 
 
 if __name__ == "__main__":

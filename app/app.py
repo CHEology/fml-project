@@ -415,6 +415,23 @@ THEMES = {
         "score_bg": "rgba(232,160,69,0.18)",
         "score_ink": "#ffd6a0",
     },
+    "Lavender": {
+        "bg_start": "#FFFFFF",
+        "bg_end": "#FAF9FF",
+        "flare_a": "transparent",
+        "flare_b": "transparent",
+        "panel": "#FFFFFF",
+        "ink": "#111827",
+        "muted": "#6B7280",
+        "line": "#F3F4F6",
+        "pill_bg": "#F5F3FF",
+        "pill_ink": "#7C3AED",
+        "hero_a": "#F5F3FF",
+        "hero_b": "#DDD6FE",
+        "shadow": "rgba(124, 58, 237, 0.1)",
+        "score_bg": "#EDE9FE",
+        "score_ink": "#7C3AED",
+    },
 }
 
 FAKE_NAMES = [
@@ -1415,8 +1432,8 @@ st.set_page_config(
 )
 
 
-def inject_styles(theme_name: str = "Dark") -> None:
-    theme = THEMES["Dark"]
+def inject_styles(theme_name: str = "Lavender") -> None:
+    theme = THEMES.get(theme_name, THEMES["Lavender"])
     css = """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -1426,13 +1443,13 @@ def inject_styles(theme_name: str = "Dark") -> None:
             --ink: __INK__;
             --muted: __MUTED__;
             --line: __LINE__;
-            --accent: #e8a045;
+            --accent: #7C3AED;
             --accent-soft: __PILL_BG__;
-            --accent-teal: #c4622d;
-            --accent-yellow: #ffd6a0;
-            --accent-coral: #e8a045;
-            --success: #e8a045;
-            --warning: #ffd6a0;
+            --accent-teal: #9F7AEA;
+            --accent-yellow: #FAF5FF;
+            --accent-coral: #7C3AED;
+            --success: #10B981;
+            --warning: #6366F1;
         }
 
         .stApp {
@@ -1441,8 +1458,9 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         [data-testid="stSidebar"] {
-            background: __PANEL__;
-            border-right: 1px solid __LINE__;
+            background: rgba(255, 255, 255, 0.7) !important;
+            backdrop-filter: blur(20px) saturate(180%);
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .stMarkdown, .stText, .stCaption, label, .stSelectbox, .stRadio {
@@ -1450,7 +1468,7 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         html, body, [class*="css"] {
-            font-family: "Georgia", "Times New Roman", serif;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
 
@@ -1467,12 +1485,42 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         .hero {
-            background: linear-gradient(135deg, __HERO_A__ 0%, #2d1505 30%, #c4622d 70%, __HERO_B__ 100%);
-            border: 1px solid rgba(232,160,69,0.2);
-            border-radius: 12px;
-            padding: 1rem 1.2rem 0.95rem 1.2rem;
-            box-shadow: 0 8px 20px __SHADOW__;
-            margin-bottom: 1rem;
+            background: linear-gradient(135deg, __HERO_A__ 0%, #FFFFFF 50%, __HERO_B__ 100%);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 2.5rem 3rem;
+            box-shadow: 0 10px 30px __SHADOW__;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .hero-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+        }
+        
+        .hero-text {
+            flex: 1;
+        }
+        
+        .hero-image {
+            flex: 0 0 320px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        @media (max-width: 768px) {
+            .hero-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .hero-image {
+                flex: 0 0 auto;
+                width: 100%;
+                max-width: 250px;
+            }
         }
 
         .eyebrow {
@@ -1485,9 +1533,13 @@ def inject_styles(theme_name: str = "Dark") -> None:
 
         .hero h1 {
             margin: 0.25rem 0 0.5rem 0;
-            font-size: 1.7rem;
-            line-height: 1.15;
-            letter-spacing: 0;
+            font-size: 2.5rem;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #7C3AED 0%, #4F46E5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
         }
 
         .hero p {
@@ -1515,24 +1567,32 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         .pill-teal {
-            background: rgba(196,98,45,0.2);
-            color: #ffd6a0;
-            border-color: rgba(196,98,45,0.3);
+            background: #F5F3FF;
+            color: #7C3AED;
+            border-color: #DDD6FE;
         }
 
         .pill-yellow {
-            background: rgba(232,160,69,0.2);
-            color: #ffe0a0;
-            border-color: rgba(232,160,69,0.25);
+            background: #E0F2FE;
+            color: #0369A1;
+            border-color: #BAE6FD;
         }
 
         .metric-card, .info-card, .job-card {
             background: var(--panel);
             border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 1rem 1.1rem;
-            box-shadow: 0 4px 12px __SHADOW__;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px __SHADOW__;
             height: 100%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .metric-card:hover, .info-card:hover, .job-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(124, 58, 237, 0.15);
+            border-color: rgba(124, 58, 237, 0.3);
         }
 
         .metric-label {
@@ -1675,8 +1735,30 @@ def inject_styles(theme_name: str = "Dark") -> None:
         }
 
         .stTextArea textarea, .stTextInput input {
-            background: rgba(255,255,255,0.04);
+            background: #FFFFFF;
             color: var(--ink);
+            border-radius: 12px;
+            border: 1px solid var(--line);
+        }
+
+        /* Streamlit Button Styling */
+        div.stButton > button {
+            background-color: #7C3AED !important;
+            color: white !important;
+            border-radius: 999px !important;
+            border: none !important;
+            padding: 0.5rem 2rem !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+        }
+        div.stButton > button:hover {
+            background-color: #6D28D9 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
+        }
+        div.stButton > button:active {
+            transform: translateY(0);
         }
 
         .panel-banner {
@@ -2029,21 +2111,28 @@ def inject_styles(theme_name: str = "Dark") -> None:
             }
         }
 
-        /* Amber editorial overrides */
+        /* Deep Indigo primary button overrides */
         .stButton > button[kind="primary"] {
-            background: linear-gradient(135deg, #c4622d 0%, #e8a045 100%) !important;
+            background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
             border: none !important;
             color: #fff !important;
-            font-family: "Georgia", serif !important;
-            font-style: italic !important;
-            font-weight: 700 !important;
+            font-family: "Inter", sans-serif !important;
+            font-style: normal !important;
+            font-weight: 600 !important;
+            border-radius: 999px !important;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3) !important;
+            text-transform: none !important;
+            letter-spacing: normal !important;
         }
         .stButton > button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #d4722d 0%, #f0b055 100%) !important;
+            background: linear-gradient(135deg, #4338CA 0%, #312E81 100%) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
         }
         h1, h2, h3, .panel-title, .metric-value, .salary-main, .signal-value, .hero-title {
-            font-family: "Georgia", "Times New Roman", serif !important;
-            font-style: italic !important;
+            font-family: "Inter", sans-serif !important;
+            font-style: normal !important;
+            font-weight: 700 !important;
         }
         </style>
     """
@@ -4293,13 +4382,13 @@ def main() -> None:
     if "public_profile_url" not in st.session_state:
         st.session_state.public_profile_url = ""
     if "theme_name" not in st.session_state:
-        st.session_state.theme_name = "Dark"
+        st.session_state.theme_name = "Lavender"
     if "assessment" not in st.session_state:
         st.session_state.assessment = None
     if "sample_resume_index" not in st.session_state:
         st.session_state.sample_resume_index = None
 
-    inject_styles("Dark")
+    inject_styles("Lavender")
     jobs, data_source, has_real_data = load_jobs()
     status = artifact_status()
 
@@ -4328,16 +4417,32 @@ def main() -> None:
         st.write("")
         st.caption(linkedin_dataset_note(has_real_data))
 
+    import base64
+
+    img_path = "/Users/hezongqian/.gemini/antigravity/brain/a9ecbe79-4552-42b8-92e9-66554ff70e88/resumatch_hero_illustration_1777494210751.png"
+    try:
+        with open(img_path, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+    except Exception:
+        img_b64 = ""
+
     st.markdown(
-        """
+        f"""
         <div class="hero">
-            <div class="eyebrow">Resume market intelligence</div>
-            <h1>Understand role fit, salary range, and market position.</h1>
-            <p>Compare a resume with salary-bearing LinkedIn roles and identify ways to strengthen the profile.</p>
-            <div class="pill-row">
-                <span class="pill">Role matching</span>
-                <span class="pill pill-teal">Salary range</span>
-                <span class="pill pill-yellow">Profile guidance</span>
+            <div class="hero-content">
+                <div class="hero-text">
+                    <div class="eyebrow">Resume market intelligence</div>
+                    <h1>Understand role fit, salary range, and market position.</h1>
+                    <p>Compare a resume with salary-bearing LinkedIn roles and identify ways to strengthen the profile.</p>
+                    <div class="pill-row">
+                        <span class="pill">Role matching</span>
+                        <span class="pill pill-teal">Salary range</span>
+                        <span class="pill pill-yellow">Profile guidance</span>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="data:image/png;base64,{img_b64}" style="width: 100%; max-width: 400px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.05));">
+                </div>
             </div>
         </div>
         """,
@@ -4649,9 +4754,22 @@ def main() -> None:
                 neural_band = None
                 if salary_artifacts_ready(PROJECT_ROOT):
                     with st.spinner("Calculating salary reference..."):
-                        salary_model, salary_scaler = load_salary_resource()
+                        salary_model, salary_scaler, salary_feature_metadata = (
+                            load_salary_resource()
+                        )
                         neural_band = salary_band_from_model(
-                            salary_model, resume_embedding, salary_scaler
+                            salary_model,
+                            resume_embedding,
+                            salary_scaler,
+                            salary_feature_metadata,
+                            resume_features={
+                                "experience_level_ordinal": float(
+                                    runtime.SENIORITY_RANKS.get(profile["seniority"], 2)
+                                ),
+                                "work_type_remote": (
+                                    1.0 if "remote" in resume_text_now.lower() else 0.0
+                                ),
+                            },
                         )
 
                 occupation_match = None
@@ -5019,7 +5137,7 @@ def main() -> None:
             | @ohortig | `ml/embeddings.py`, `notebooks/01`, `notebooks/02` |
             | @trp8625 | `ml/clustering.py`, `app/components/`, tests |
             | @CHEology | `ml/retrieval.py`, `scripts/build_index.py`, `app/app.py` |
-            | ZQH003 | `ml/salary_model.py`, `scripts/train_salary_model.py`, `notebooks/03` |
+            | @ZQH003 | `ml/salary_model.py`, `scripts/train_salary_model.py`, `notebooks/03` |
             | @Eliguli712 | `scripts/preprocess_data.py`, app integration |
             """
         )

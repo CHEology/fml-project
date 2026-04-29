@@ -61,7 +61,9 @@ class _StubRetriever:
         ]
 
 
-def _stub_salary_predictor(_embedding: np.ndarray) -> dict[str, float]:
+def _stub_salary_predictor(
+    _embedding: np.ndarray, _extra_features: np.ndarray | None = None
+) -> dict[str, float]:
     return {
         "q10": 80_000.0,
         "q25": 95_000.0,
@@ -204,6 +206,22 @@ def test_validate_rejects_misaligned_inputs() -> None:
 
     with pytest.raises(ValueError, match="resume_text"):
         validate(pd.DataFrame({"x": [1, 2]}), np.zeros((2, 8), dtype=np.float32))
+
+
+def test_validate_accepts_salary_features_matrix() -> None:
+    df = _fixture_resumes()
+    embeddings = np.zeros((len(df), 8), dtype=np.float32)
+    salary_features = np.zeros((len(df), 2), dtype=np.float32)
+
+    summary, per_row = validate(
+        df,
+        embeddings,
+        salary_predictor=_stub_salary_predictor,
+        salary_features=salary_features,
+    )
+
+    assert summary["n"] == 3
+    assert "pred_q50" in per_row.columns
 
 
 def test_spearman_helper() -> None:

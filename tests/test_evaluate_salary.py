@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.evaluate_salary import (  # noqa: E402
+    DEFAULT_MODEL,
     QUANTILE_KEYS,
     evaluate_salary,
 )
@@ -28,7 +29,9 @@ def _eval_df(targets: list[float], personas: list[str]) -> pd.DataFrame:
 def _make_predictor(quants_per_row: list[dict[str, float]]):
     counter = {"i": 0}
 
-    def predictor(_embedding: np.ndarray) -> dict[str, float]:
+    def predictor(
+        _embedding: np.ndarray, _extra_features: np.ndarray | None = None
+    ) -> dict[str, float]:
         out = quants_per_row[counter["i"]]
         counter["i"] += 1
         return dict(out)
@@ -132,3 +135,36 @@ def test_evaluate_salary_rejects_mismatched_embeddings() -> None:
             np.zeros((2, 4), dtype=np.float32),
             lambda _e: dict.fromkeys(QUANTILE_KEYS, 0.0),
         )
+
+
+def test_resume_salary_model_is_default() -> None:
+    assert str(DEFAULT_MODEL).endswith("models/resume_salary_model.pt")
+
+
+def test_evaluate_salary_accepts_extra_features() -> None:
+    df = _eval_df([100_000.0, 120_000.0], ["direct_match", "direct_match"])
+    embeddings = np.zeros((2, 4), dtype=np.float32)
+    extra = np.zeros((2, 3), dtype=np.float32)
+    predictor = _make_predictor(
+        [
+            {
+                "q10": 80_000.0,
+                "q25": 90_000.0,
+                "q50": 100_000.0,
+                "q75": 110_000.0,
+                "q90": 120_000.0,
+            },
+            {
+                "q10": 100_000.0,
+                "q25": 110_000.0,
+                "q50": 120_000.0,
+                "q75": 130_000.0,
+                "q90": 140_000.0,
+            },
+        ]
+    )
+
+    metrics, per_row = evaluate_salary(df, embeddings, predictor, extra)
+
+    assert metrics["n"] == 2
+    assert len(per_row) == 2

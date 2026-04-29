@@ -206,6 +206,52 @@ class TestSplitData:
         assert isinstance(scaler, SalaryScaler)
         assert scaler.std > 0
 
+    def test_stratified_split_reproducible(self, dummy_embeddings, dummy_salaries):
+        labels = np.repeat([0, 1, 2, 3], N_SAMPLES // 4)
+        t1, v1, s1, _ = split_data(
+            dummy_embeddings,
+            dummy_salaries,
+            stratify_labels=labels,
+            seed=123,
+        )
+        t2, v2, s2, _ = split_data(
+            dummy_embeddings,
+            dummy_salaries,
+            stratify_labels=labels,
+            seed=123,
+        )
+        assert torch.allclose(t1.y, t2.y)
+        assert torch.allclose(v1.y, v2.y)
+        assert torch.allclose(s1.y, s2.y)
+
+    def test_stratified_split_preserves_label_coverage(
+        self, dummy_embeddings, dummy_salaries
+    ):
+        labels = np.repeat([0, 1, 2, 3], N_SAMPLES // 4)
+        train_ds, val_ds, test_ds, _ = split_data(
+            dummy_embeddings,
+            dummy_salaries,
+            stratify_labels=labels,
+            seed=123,
+        )
+        assert len(train_ds) > 0
+        assert len(val_ds) > 0
+        assert len(test_ds) > 0
+
+    def test_stratified_split_handles_tiny_buckets(
+        self, dummy_embeddings, dummy_salaries
+    ):
+        labels = np.zeros(N_SAMPLES, dtype=int)
+        labels[:2] = 1
+        train_ds, val_ds, test_ds, _ = split_data(
+            dummy_embeddings,
+            dummy_salaries,
+            stratify_labels=labels,
+            seed=7,
+        )
+        assert len(train_ds) > 0
+        assert len(train_ds) + len(val_ds) + len(test_ds) == N_SAMPLES
+
 
 # ---------------------------------------------------------------------------
 # predict_salary tests

@@ -63,6 +63,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ml.quality import score_resume_quality  # noqa: E402
+from ml.salary_features import (  # noqa: E402
+    build_resume_salary_features,
+    load_salary_feature_metadata,
+)
 
 DEFAULT_RESUMES = PROJECT_ROOT / "data" / "eval" / "real_resumes.parquet"
 DEFAULT_INDEX = PROJECT_ROOT / "models" / "jobs.index"
@@ -71,6 +75,7 @@ DEFAULT_ONET_SKILLS = PROJECT_ROOT / "data" / "external" / "onet_skills.parquet"
 DEFAULT_BLS_WAGES = PROJECT_ROOT / "data" / "external" / "bls_wages.parquet"
 DEFAULT_SALARY_MODEL = PROJECT_ROOT / "models" / "resume_salary_model.pt"
 DEFAULT_SALARY_SCALER = PROJECT_ROOT / "models" / "resume_salary_model.scaler.json"
+DEFAULT_SALARY_FEATURES = PROJECT_ROOT / "models" / "resume_salary_model.features.json"
 DEFAULT_QUALITY_MODEL = PROJECT_ROOT / "models" / "quality_model.pt"
 DEFAULT_QUALITY_SCALER = PROJECT_ROOT / "models" / "quality_model.scaler.json"
 DEFAULT_OUT = PROJECT_ROOT / "data" / "eval" / "real_resume_validation.json"
@@ -83,6 +88,7 @@ def validate(
     *,
     retriever: Any | None = None,
     salary_predictor: Any | None = None,
+    salary_features: np.ndarray | None = None,
     quality_predictor: Any | None = None,
     occupation_router: Any | None = None,
     wage_table: Any | None = None,
@@ -94,6 +100,11 @@ def validate(
     if len(resumes_df) != len(embeddings):
         raise ValueError(
             f"resumes_df rows ({len(resumes_df)}) must match embeddings ({len(embeddings)})"
+        )
+    if salary_features is not None and len(salary_features) != len(resumes_df):
+        raise ValueError(
+            "salary_features rows must match resumes_df rows: "
+            f"{len(salary_features)} != {len(resumes_df)}"
         )
 
     rows: list[dict[str, Any]] = []
@@ -175,7 +186,10 @@ def validate(
 
         if salary_predictor is not None:
             try:
-                quants = salary_predictor(embedding)
+                feature_row = None
+                if salary_features is not None:
+                    feature_row = np.asarray(salary_features[idx], dtype=np.float32)
+                quants = salary_predictor(embedding, feature_row)
                 for key, value in quants.items():
                     record[f"pred_{key}"] = float(value)
                 if retrieved_salaries:
@@ -417,20 +431,31 @@ def _load_retriever(index_path: Path, meta_path: Path, encoder_name: str):
     return Retriever(Encoder(model_name=encoder_name), index, metadata)
 
 
-def _load_salary_predictor(model_path: Path, scaler_path: Path, embedding_dim: int):
+def _load_salary_predictor(
+    model_path: Path,
+    scaler_path: Path,
+    embedding_dim: int,
+    n_extra_features: int = 0,
+):
     if not model_path.exists():
         return None
 
     from ml.salary_model import SalaryScaler, load_model, predict_salary
 
-    model = load_model(str(model_path), embedding_dim=embedding_dim, n_extra_features=0)
+    model = load_model(
+        str(model_path),
+        embedding_dim=embedding_dim,
+        n_extra_features=n_extra_features,
+    )
     scaler = None
     if scaler_path.exists():
         with open(scaler_path, encoding="utf-8") as f:
             scaler = SalaryScaler.from_state_dict(json.load(f))
 
-    def predictor(embedding: np.ndarray) -> dict[str, float]:
-        return predict_salary(model, embedding, scaler=scaler)
+    def predictor(
+        embedding: np.ndarray, extra_features: np.ndarray | None = None
+    ) -> dict[str, float]:
+        return predict_salary(model, embedding, extra_features, scaler=scaler)
 
     return predictor
 
@@ -499,6 +524,7 @@ def main() -> None:
     parser.add_argument("--bls-wages", type=Path, default=DEFAULT_BLS_WAGES)
     parser.add_argument("--salary-model", type=Path, default=DEFAULT_SALARY_MODEL)
     parser.add_argument("--salary-scaler", type=Path, default=DEFAULT_SALARY_SCALER)
+    parser.add_argument("--salary-features", type=Path, default=DEFAULT_SALARY_FEATURES)
     parser.add_argument("--quality-model", type=Path, default=DEFAULT_QUALITY_MODEL)
     parser.add_argument("--quality-scaler", type=Path, default=DEFAULT_QUALITY_SCALER)
     parser.add_argument("--encoder", type=str, default="all-MiniLM-L6-v2")
@@ -533,8 +559,23 @@ def main() -> None:
         if retriever is None:
             print("  retriever skipped (index / metadata / Encoder missing)")
 
+    salary_features = None
+    salary_n_extra = 0
+    if args.salary_features.exists():
+        salary_metadata = load_salary_feature_metadata(args.salary_features)
+        salary_n_extra = int(salary_metadata.get("n_features", 0))
+        feature_source = pd.DataFrame(
+            {
+                "experience_level_ordinal": df.get("experience_level_ordinal", 0),
+                "work_type_remote": df.get("work_type_remote", 0),
+                "work_type_hybrid": df.get("work_type_hybrid", 0),
+                "work_type_onsite": df.get("work_type_onsite", 0),
+                "state": df.get("state", ""),
+            }
+        )
+        salary_features = build_resume_salary_features(feature_source, salary_metadata)
     salary_predictor = _load_salary_predictor(
-        args.salary_model, args.salary_scaler, dim
+        args.salary_model, args.salary_scaler, dim, salary_n_extra
     )
     if salary_predictor is None:
         print(f"  salary predictor skipped (no checkpoint at {args.salary_model})")
@@ -565,6 +606,7 @@ def main() -> None:
         embeddings,
         retriever=retriever,
         salary_predictor=salary_predictor,
+        salary_features=salary_features,
         quality_predictor=quality_predictor,
         occupation_router=occupation_router,
         wage_table=wage_table,
