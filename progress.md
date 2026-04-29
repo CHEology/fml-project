@@ -113,7 +113,7 @@
 | Real-resume ingest (`ml/resume_loader.py`, `scripts/load_real_resumes.py`) | Ryan | ✅ | PDF/.txt/.md/.csv/JSONL ingest with PII redaction, length cap, sample fixture. |
 | Real-resume validation (`scripts/validate_on_real_resumes.py`) | Ryan | ✅ | Rule-based quality + learned-MLP score + retrieval stats + self-consistency salary metric. |
 | External occupation data (O*NET / BLS) | Ryan | 🟡 | O*NET/BLS plumbing complete (`ml/occupation_router.py`, `ml/wage_bands.py`), but external data files not present in `data/external/`. |
-| Set random seeds in all scripts | — | 🟡 | Seeds set in `train_salary_model.py`, `train_resume_salary_model.py`, `train_quality_model.py`, `train_public_assessment_models.py`, `build_index.py`, `build_clusters.py`. **Missing from:** `preprocess_data.py`, `generate_synthetic_resumes.py`. |
+| Set random seeds in all scripts | — | ✅ | Seeds set in `train_salary_model.py`, `train_resume_salary_model.py`, `train_quality_model.py`, `train_public_assessment_models.py`, `build_index.py`, `build_clusters.py`, and `generate_synthetic_resumes.py`. `preprocess_data.py` is deterministic. |
 | `.gitignore` — verify `data/raw/`, `models/` excluded | — | ✅ | Also excludes `data/external/` while preserving `.gitkeep`. |
 | Final report / presentation | — | ⬜ | |
 
@@ -122,7 +122,6 @@
 ## ⚠️ Areas Still Needing Work
 
 ### High Priority (core requirements)
-### High Priority (core requirements)
 
 1. **Silhouette score (Task 3.2):** K was chosen via the elbow method, but the plan also requires silhouette score ≥ 0.15. This metric has not been computed or reported.
 
@@ -130,13 +129,11 @@
 
 ### Medium Priority (quality & completeness)
 
-3. **Random seeds in all scripts:** `preprocess_data.py` and `generate_synthetic_resumes.py` do not set `np.random.seed()` / `torch.manual_seed()`. Required by grading constraints for reproducibility.
+3. **External data files (O*NET / BLS):** Code exists in `ml/occupation_router.py` and `ml/wage_bands.py`, but `data/external/onet_skills.parquet` and `data/external/bls_wages.parquet` are not present. These are optional enrichments but enhance salary confidence and occupation routing.
 
-4. **External data files (O*NET / BLS):** Code exists in `ml/occupation_router.py` and `ml/wage_bands.py`, but `data/external/onet_skills.parquet` and `data/external/bls_wages.parquet` are not present. These are optional enrichments but enhance salary confidence and occupation routing.
+4. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. May need further tuning.
 
-5. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. May need further tuning.
-
-9. **Stale files in repo root:** `replace_main.py` (27 KB) and `fix_app.py` (2 KB) appear to be one-off scripts that should be cleaned up or moved.
+5. **Stale files in repo root:** `replace_main.py` (27 KB) and `fix_app.py` (2 KB) appear to be one-off scripts that should be cleaned up or moved.
 
 ### Low Priority (nice-to-have)
 
