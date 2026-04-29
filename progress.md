@@ -1,6 +1,6 @@
 # ResuMatch — Progress Tracker
 
-> Last updated: **2026-04-26**
+> Last updated: **2026-04-29**
 
 ---
 
@@ -19,15 +19,15 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 1.1 | Download raw Kaggle data to `data/raw/` | — | 🔴 | Missing locally. Download `arshkon/linkedin-job-postings` from Kaggle; see `data/README.md`. |
+| 1.1 | Download raw Kaggle data to `data/raw/` | — | ✅ | `postings.csv` (517 MB) + company/job/mapping subdirectories present locally. |
 | 1.2 | Join CSVs (`scripts/preprocess_data.py`) | — | ✅ | Implemented and tested with synthetic CSV layout. |
 | 1.3 | Normalize salary to annual | — | ✅ | Implemented for hourly/daily/weekly/biweekly/monthly/yearly variants. |
 | 1.4 | Clean text fields (strip HTML, combine columns) | — | ✅ | Produces embedding-ready `text` column. |
 | 1.5 | Feature engineering (ordinals, one-hot, location) | — | ✅ | Experience ordinal, work-type flags, and state extraction implemented. |
-| 1.6 | Write `data/processed/jobs.parquet` | — | 🔴 | Code path implemented; blocked until raw Kaggle files are present. |
+| 1.6 | Write `data/processed/jobs.parquet` | — | ✅ | `data/processed/jobs.parquet` exists (231 MB). |
 | 1.7 | EDA notebook (`01_data_exploration.ipynb`) | @ohortig | ✅ | Built raw-data availability checks, schema/missingness, salary, categorical, text-field, and processed-data exploration. Runs safely before Kaggle data is present. |
 
-**Phase status:** 🟡 Implementation and EDA foundation ready; real processed data is blocked on Kaggle download.
+**Phase status:** ✅ Complete — raw Kaggle data downloaded, preprocessing run, and `jobs.parquet` generated.
 
 ---
 
@@ -36,12 +36,12 @@
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | 2.1 | Embedding module (`ml/embeddings.py`) | @ohortig | ✅ | `Encoder` wraps sentence-transformers, returns float32 L2-normalized vectors, and has mocked unit tests. |
-| 2.2 | Batch embed all jobs (`scripts/build_index.py`) | Ryan | ✅ | Complete. `--smoke` flag generates synthetic data without Phase 1; real path lazy-imports `Encoder` from Task 2.1. |
-| 2.3 | Build FAISS index → `models/jobs.index` | Ryan | ✅ | Complete. `IndexFlatIP` over L2-normalized vectors. |
-| 2.4 | Retrieval module (`ml/retrieval.py`) | Ryan | ✅ | Complete. `Retriever` class + `JobMatch` dataclass with DI; module-level default `search()` still depends on generated model artifacts. |
+| 2.2 | Batch embed all jobs (`scripts/build_index.py`) | Ryan | ✅ | Complete. `--smoke` flag generates synthetic data without Phase 1; real path lazy-imports `Encoder` from Task 2.1. `models/job_embeddings.npy` exists (51 MB). |
+| 2.3 | Build FAISS index → `models/jobs.index` | Ryan | ✅ | Complete. `IndexFlatIP` over L2-normalized vectors. `models/jobs.index` exists (51 MB). |
+| 2.4 | Retrieval module (`ml/retrieval.py`) | Ryan | ✅ | Complete. `Retriever` class + `JobMatch` dataclass with DI; `models/jobs_meta.parquet` exists. |
 | 2.5 | Embedding experiments notebook (`02_embedding_experiments.ipynb`) | @ohortig | ✅ | Implemented artifact checks, embedding quality checks, PCA/t-SNE projections, FAISS row-alignment sanity checks, clustering handoff notes, and opt-in model/retrieval comparisons. |
 
-**Phase status:** ✅ Code and experiment notebook complete. Remaining work is quality tuning and Streamlit integration, not Phase 2 foundation.
+**Phase status:** ✅ Complete — all artifacts generated and verified.
 
 ---
 
@@ -50,11 +50,11 @@
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | 3.1 | K-Means from scratch (`ml/clustering.py`) | — | ✅ | NumPy implementation with unit tests. **No sklearn KMeans.** |
-| 3.2 | Choose K (elbow + silhouette) | — | ⬜ | |
-| 3.3 | Auto-label clusters (TF-IDF top terms) | — | ⬜ | |
-| 3.4 | Assign user embedding to cluster | — | ⬜ | |
+| 3.2 | Choose K (elbow + silhouette) | — | ✅ | Elbow method run in `02_embedding_experiments.ipynb` on real embeddings; chose k=8. Silhouette not explicitly computed (see remaining work). |
+| 3.3 | Auto-label clusters (TF-IDF top terms) | — | ✅ | `scripts/build_clusters.py` uses TF-IDF + heuristic pattern matching to label clusters. `models/cluster_labels.json` exists. |
+| 3.4 | Assign user embedding to cluster | — | ✅ | `cluster_position()` in `app/ml_runtime.py` calls `kmeans.predict()` and returns cluster ID, label, top terms, distances. |
 
-**Phase status:** 🟡 Core algorithm implemented; K selection/labels need real embeddings.
+**Phase status:** ✅ Core complete — K selected, clusters labeled, user assignment working. Silhouette score metric not yet computed (see remaining work).
 
 ---
 
@@ -76,12 +76,12 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 5.1 | Gap analysis (direction vector) | — | ⬜ | |
-| 5.2 | Keyword extraction (missing skills) | — | ⬜ | |
-| 5.3 | Phrase-level highlighting (strengths vs gaps) | — | ⬜ | |
-| 5.4 | Cluster migration advice | — | ⬜ | |
+| 5.1 | Gap analysis (direction vector) | — | 🟡 | `cluster_position()` computes distance to current and next-best cluster centroids, but does not compute or expose the direction vector itself. |
+| 5.2 | Keyword extraction (missing skills) | — | ✅ | `feedback_terms()` in `app/ml_runtime.py` identifies cluster/match terms missing from the resume. |
+| 5.3 | Phrase-level highlighting (strengths vs gaps) | — | 🟡 | `render_missing_terms()` shows missing keywords; `ml/quality.py` has rule-based strength/gap notes. No side-by-side highlighted resume view yet. |
+| 5.4 | Cluster migration advice | — | ⬜ | Not implemented. No advice for moving from current cluster to a target cluster. |
 
-**Phase status:** ⬜ Not started · **Blocked by:** Phases 3 & 4
+**Phase status:** 🟡 Keyword extraction works; gap analysis and cluster migration advice still incomplete.
 
 ---
 
@@ -89,15 +89,15 @@
 
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
-| 6.1 | App shell & navigation (`app/app.py`) | — | ✅ | Local Streamlit shell with synthetic fallback data. |
-| 6.2 | Resume upload page (`app/pages/01_upload.py`) | — | ⬜ | |
-| 6.3 | Job matching page (`app/pages/02_matches.py`) | — | ⬜ | |
-| 6.4 | Salary prediction page (`app/pages/03_salary.py`) | — | ⬜ | |
-| 6.5 | Market position page (`app/pages/04_market.py`) | — | ⬜ | |
-| 6.6 | Resume feedback page (`app/pages/05_feedback.py`) | — | ⬜ | |
-| 6.7 | Reusable components (`app/components/`) | — | ⬜ | |
+| 6.1 | App shell & navigation (`app/app.py`) | Ryan | ✅ | Single-page Streamlit app (~5,000 lines) with dark theme, synthetic fallback, and full ML pipeline integration. |
+| 6.2 | Resume upload page | Ryan | ✅ | Text paste + PDF upload + public URL fetch via `app/components/resume_upload.py`. |
+| 6.3 | Job matching page | Ryan | ✅ | Job results rendered via `app/components/job_results.py` with similarity scores, seniority fit, salary eligibility. |
+| 6.4 | Salary prediction page | Ryan | ✅ | Salary band rendered via `app/components/salary_chart.py`; hybrid salary (retrieved + BLS + neural) with confidence. |
+| 6.5 | Market position page | Ryan | ✅ | Cluster position shown via `app/components/cluster_view.py`; cluster browser included. |
+| 6.6 | Resume feedback page | Ryan | 🟡 | Missing keywords shown; full phrase-level highlighting and cluster migration advice not yet implemented (depends on Phase 5). |
+| 6.7 | Reusable components (`app/components/`) | Ryan | ✅ | `cluster_view.py`, `job_results.py`, `resume_upload.py`, `salary_chart.py` all implemented. |
 
-**Phase status:** ⬜ Not started · **Blocked by:** Phases 2–5 (shell can start early)
+**Phase status:** 🟡 App is functional end-to-end with most features working. Feedback page lacks depth (Phase 5 dependency).
 
 ---
 
@@ -107,34 +107,65 @@
 |------|-------|--------|-------|
 | `pyproject.toml` / `uv.lock` — manage dependencies and virtual environment with uv | — | ✅ | Switched from `requirements.txt` on 2026-04-25 |
 | Ruff / pre-commit / GitHub Actions CI | — | ✅ | Formatting, linting, and tests enforced for code directories only |
-| `tests/` — pytest coverage for `ml/` | Alan, Ryan, Omer | ✅ | Salary, retrieval, clustering, preprocessing, embeddings, plus `test_synthetic_resumes.py` (14) + `test_evaluate_retrieval.py` (6) + `test_quality.py` (13) + `test_evaluate_salary.py` (5) + `test_resume_loader.py` (9) + `test_load_real_resumes.py` (5) + `test_validate_on_real_resumes.py` (5) — 107 Ryan/Alan tests on the new surface alone, all passing. |
-| Resume-quality predictor (`ml/quality.py`) | Ryan | ✅ | Single-head PyTorch MLP + rule-based `score_resume_quality(text)` for real-resume input; both reported, agreement quantified. Trained on synthetic `quality_score` via `scripts/train_quality_model.py` (`--smoke` for CI). |
-| Salary-prediction evaluation (`scripts/evaluate_salary.py`) | Ryan | ✅ | Median MAE, pinball loss, [q10,q90]/[q25,q75] coverage, per-persona breakdown. Now able to run end-to-end since Omer landed Task 2.1. |
-| Resume-side salary model (`scripts/train_resume_salary_model.py`) | Ryan | ✅ | Retrains Alan's `SalaryQuantileNet` on `(resume_embedding, source_salary_annual)` pairs to remove the JD↔resume domain shift. Saves to `models/resume_salary_model.pt`. |
-| Real-resume ingest (`ml/resume_loader.py`, `scripts/load_real_resumes.py`) | Ryan | ✅ | PDF/.txt/.md/.csv/JSONL ingest with PII redaction, length cap, sample fixture under `tests/fixtures/sample_real_resumes.csv`. |
-| Real-resume validation (`scripts/validate_on_real_resumes.py`) | Ryan | ✅ | Rule-based quality + learned-MLP score + Spearman agreement + retrieval stats + self-consistency salary metric (predicted q50 vs. retrieved-median salary). Each section degrades gracefully when artifacts are missing; `--smoke` mode for CI. |
-| External occupation data (`scripts/load_onet_skills.py`, `scripts/load_bls_oews.py`, `ml/occupation_router.py`, `ml/wage_bands.py`) | Ryan/Codex | Complete | Optional O*NET lexicon and BLS OEWS wage bands load from `data/external/`, stay gitignored, and enrich quality/real-resume validation when present. |
-| Real-resume quality feedback (`ml/quality.py`, `scripts/validate_on_real_resumes.py`) | Ryan/Codex | Complete | Rule scorer now emits readable strength/gap notes, uses diminishing-return dimensions, flags vague/cliche phrasing and career gaps, and validation reports role-family mismatches. |
-| Set random seeds in all scripts | — | ⬜ | |
-| `.gitignore` — verify `data/raw/`, `models/` excluded | — | Complete | Also excludes `data/external/` while preserving `.gitkeep`. |
+| `tests/` — pytest coverage for `ml/` | Alan, Ryan, Omer | ✅ | 20 test files covering salary, retrieval, clustering, preprocessing, embeddings, quality, resume loader, and more. |
+| Resume-quality predictor (`ml/quality.py`) | Ryan | ✅ | Single-head PyTorch MLP + rule-based `score_resume_quality(text)` for real-resume input. |
+| Salary-prediction evaluation (`scripts/evaluate_salary.py`) | Ryan | ✅ | Median MAE, pinball loss, coverage, per-persona breakdown. |
+| Resume-side salary model (`scripts/train_resume_salary_model.py`) | Ryan | ✅ | Retrains `SalaryQuantileNet` on `(resume_embedding, source_salary_annual)` pairs. |
+| Real-resume ingest (`ml/resume_loader.py`, `scripts/load_real_resumes.py`) | Ryan | ✅ | PDF/.txt/.md/.csv/JSONL ingest with PII redaction, length cap, sample fixture. |
+| Real-resume validation (`scripts/validate_on_real_resumes.py`) | Ryan | ✅ | Rule-based quality + learned-MLP score + retrieval stats + self-consistency salary metric. |
+| External occupation data (O*NET / BLS) | Ryan | 🟡 | O*NET/BLS plumbing complete (`ml/occupation_router.py`, `ml/wage_bands.py`), but external data files not present in `data/external/`. |
+| Set random seeds in all scripts | — | 🟡 | Seeds set in `train_salary_model.py`, `train_resume_salary_model.py`, `train_quality_model.py`, `train_public_assessment_models.py`, `build_index.py`, `build_clusters.py`. **Missing from:** `preprocess_data.py`, `generate_synthetic_resumes.py`. |
+| `.gitignore` — verify `data/raw/`, `models/` excluded | — | ✅ | Also excludes `data/external/` while preserving `.gitkeep`. |
 | Final report / presentation | — | ⬜ | |
+
+---
+
+## ⚠️ Areas Still Needing Work
+
+### High Priority (core requirements)
+
+1. **Phase 5 — Cluster migration advice (Task 5.4):** No implementation exists. Users should be able to select a target cluster and see the skill/experience gap to get there. Needs a `ml/feedback.py` module.
+
+2. **Phase 5 — Direction vector gap analysis (Task 5.1):** `cluster_position()` computes distances but doesn't expose the `(target_centroid − resume_embedding)` vector or project it back to interpretable terms.
+
+3. **Phase 5 — Phrase-level resume highlighting (Task 5.3):** Missing keywords are listed, but there's no visual side-by-side view highlighting strengths (green) vs. gaps (red) on the actual resume text.
+
+4. **Silhouette score (Task 3.2):** K was chosen via the elbow method, but the plan also requires silhouette score ≥ 0.15. This metric has not been computed or reported.
+
+5. **Final report / presentation:** Not started.
+
+### Medium Priority (quality & completeness)
+
+6. **Random seeds in all scripts:** `preprocess_data.py` and `generate_synthetic_resumes.py` do not set `np.random.seed()` / `torch.manual_seed()`. Required by grading constraints for reproducibility.
+
+7. **External data files (O*NET / BLS):** Code exists in `ml/occupation_router.py` and `ml/wage_bands.py`, but `data/external/onet_skills.parquet` and `data/external/bls_wages.parquet` are not present. These are optional enrichments but enhance salary confidence and occupation routing.
+
+8. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. May need further tuning.
+
+9. **Stale files in repo root:** `replace_main.py` (27 KB) and `fix_app.py` (2 KB) appear to be one-off scripts that should be cleaned up or moved.
+
+### Low Priority (nice-to-have)
+
+10. **Multi-page Streamlit structure:** The app is currently a single 5,000-line `app.py` file instead of the planned `app/pages/` layout. Functionally complete but harder to maintain.
+
+11. **t-SNE/UMAP market position visualization:** The plan calls for a 2D scatter plot showing job clusters with the user's resume as a highlighted point. The cluster browser exists but the full interactive Plotly scatter is not confirmed.
 
 ---
 
 ## Overall Progress
 
 ```
-Phase 1  [███████░░░]  70%  ← implementation ready; raw Kaggle data missing
+Phase 1  [██████████] 100%  ← raw data downloaded, preprocessing complete
 Phase 2  [██████████] 100%  ← embeddings, retrieval, and experiment notebook ready
-Phase 3  [███░░░░░░░]  30%  ← KMeans implemented; K selection/labels pending
-Phase 4  [██████████] 100%  ← Alan
-Phase 5  [░░░░░░░░░░]   0%
-Phase 6  [░░░░░░░░░░]   0%
+Phase 3  [█████████░]  90%  ← KMeans done, clusters labeled; silhouette score missing
+Phase 4  [██████████] 100%  ← quantile regression model, training, inference, and evaluation complete
+Phase 5  [████░░░░░░]  40%  ← keyword extraction done; gap analysis & migration advice missing
+Phase 6  [████████░░]  85%  ← app functional; feedback depth limited by Phase 5
 ─────────────────────────
-Total    [█████░░░░░]  48%
+Total    [████████░░]  82%
 ```
 
-**Current state:** Preprocessing, embeddings, retrieval, clustering core, salary modeling, and a local Streamlit shell are implemented with synthetic/unit-test validation. Ryan shipped the resume-quality predictor (`ml/quality.py`), the salary-prediction evaluator (`scripts/evaluate_salary.py`), the multi-hard-negative + persona-sliced retrieval evaluator, and a salary-aware synthetic resume generator — closing the integration gaps between Phase 2, Phase 4, and the upcoming Phase 5 feedback engine. As of 2026-04-27, Ryan also made the pipeline ready for **real resume input**: PDF/text loader with PII redaction, real-corpus normaliser, rule-based quality scorer (model-free, real-resume-safe), resume-side salary model that fixes the JD↔resume domain shift, and a validation harness with self-consistency salary metric. Real end-to-end runs still need the Kaggle raw files in `data/raw/`, followed by `scripts/preprocess_data.py` and `scripts/build_index.py`; Task 2.1 (`ml/embeddings.Encoder`) has now landed via Omer's PR #10.
+**Current state:** The core ML pipeline is fully operational end-to-end: raw Kaggle data → preprocessing → embeddings → FAISS retrieval → K-Means clustering → salary quantile regression → Streamlit app. Users can upload a resume and get job matches, salary predictions, cluster assignment, and basic keyword feedback. The main gaps are in **Phase 5** (resume feedback engine: direction vector analysis, phrase-level highlighting, cluster migration advice), **silhouette score reporting**, **random seed consistency**, and the **final report**.
 
 ---
 
@@ -159,3 +190,4 @@ Total    [█████░░░░░]  48%
 | 2026-04-27 | Ryan made the pipeline real-resume-ready. Added `ml/resume_loader.py` (PDF/.txt/.md/.csv/JSONL ingest with PII redaction + length cap), `scripts/load_real_resumes.py` (corpus normaliser; auto-detects directory vs. tabular input), and `scripts/validate_on_real_resumes.py` (full validation harness reporting rule-based quality, learned-MLP quality + Spearman agreement, retrieval stats, and self-consistency salary metric). Added a rule-based `score_resume_quality(text)` to `ml/quality.py` so real resumes have a model-free path. New `scripts/train_resume_salary_model.py` retrains Alan's `SalaryQuantileNet` on `(resume_embedding, source_salary_annual)` pairs to remove the JD↔resume domain shift (saves to `models/resume_salary_model.pt`). Sample fixture `tests/fixtures/sample_real_resumes.csv` (5 hand-written real-style resumes) lets the new tests run without an external corpus. Test suite grew from 84 to 107 (added test_resume_loader.py, test_load_real_resumes.py, test_validate_on_real_resumes.py, plus new rule-based scorer cases in test_quality.py). |
 | 2026-04-27 | Continued the external-data slice without downloading large files. Finished O*NET/BLS plumbing: optional O*NET skill parquet now augments `ml.quality` when present; `ml/occupation_router.py` routes resumes to SOC titles; `ml/wage_bands.py` does exact/family/major-group BLS wage lookup; `scripts/validate_on_real_resumes.py` now reports SOC matches, BLS p10-p90 bands, and per-category quality distributions. Added focused tests and README/data docs. |
 | 2026-04-28 | Improved real-resume assessment quality. O*NET default updated to release 30.2 and local download succeeded (`105,526` rows / `26,902` unique skills / `923` SOCs, gitignored). Rule scoring now avoids trivial 100s through diminishing returns, surfaces human-readable positives/gaps, flags vague/cliche wording and career-progression issues, and validation adds role-family mismatch checks. BLS command-line download is still blocked by HTTP 403 in this environment; docs now include the manual `--input` path. |
+| 2026-04-29 | Audited full codebase against progress. Updated Phase 1 to ✅ (raw data present), Phase 3.2/3.3/3.4 to ✅, Phase 5/6 to 🟡. Added "Areas Still Needing Work" section. Identified missing silhouette score, random seeds in 2 scripts, stale root files, and Phase 5 gaps as remaining work. |
