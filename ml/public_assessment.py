@@ -155,6 +155,104 @@ def resume_public_signals(
     }
 
 
+def validate_resume_quality(
+    models: PublicAssessmentModels | None,
+    text: str,
+) -> dict[str, Any]:
+    """Determines if a piece of text looks like a valid resume.
+
+    Returns:
+        A dictionary with 'is_resume' (bool), 'score' (float), and 'reasons' (list).
+    """
+    text = str(text or "").strip()
+    if not text:
+        return {"is_resume": False, "score": 0.0, "reasons": ["Empty text"]}
+
+    reasons = []
+    scores = []
+
+    # 1. Length checks
+    char_count = len(text)
+    word_count = len(text.split())
+    if char_count < 150:
+        reasons.append(f"Too short ({char_count} characters)")
+        scores.append(0.1)
+    elif char_count < 400:
+        scores.append(0.5)
+    else:
+        scores.append(1.0)
+
+    if word_count < 30:
+        reasons.append(f"Too few words ({word_count})")
+        scores.append(0.1)
+    else:
+        scores.append(1.0)
+
+    # 2. Section and Entity signals (if models are ready)
+    if models is not None:
+        sections = predict_sections(models, text)
+        entities = predict_entities(models, text)
+
+        section_count = len(sections.get("counts", {}))
+        entity_count = sum(entities.get("counts", {}).values())
+
+        if section_count < 2:
+            reasons.append("Few standard resume sections found")
+            scores.append(0.3)
+        else:
+            scores.append(1.0)
+
+        if entity_count < 3:
+            reasons.append("Few professional entities (skills/titles) found")
+            scores.append(0.3)
+        else:
+            scores.append(min(1.0, entity_count / 8.0 + 0.5))
+    else:
+        # Fallback to keyword-based section check if models are missing
+        resume_keywords = {
+            "education",
+            "experience",
+            "skills",
+            "projects",
+            "employment",
+            "work",
+            "history",
+            "summary",
+            "objective",
+            "contact",
+        }
+        lower_text = text.lower()
+        found_keywords = [k for k in resume_keywords if k in lower_text]
+        if len(found_keywords) < 2:
+            reasons.append("Missing standard resume section headers")
+            scores.append(0.4)
+        else:
+            scores.append(1.0)
+
+    # 3. Diversity check (avoid repeated words)
+    words = [w for w in text.lower().split() if len(w) > 3]
+    if len(words) > 10:
+        unique_ratio = len(set(words)) / len(words)
+        if unique_ratio < 0.35:
+            reasons.append("Repetitive content detected")
+            scores.append(0.2)
+        else:
+            scores.append(1.0)
+
+    final_score = float(np.mean(scores)) if scores else 0.0
+    is_resume = final_score >= 0.55
+
+    return {
+        "is_resume": is_resume,
+        "score": round(final_score, 2),
+        "reasons": reasons if not is_resume else [],
+        "metadata": {
+            "char_count": char_count,
+            "word_count": word_count,
+        },
+    }
+
+
 def predict_domain(models: PublicAssessmentModels, text: str) -> dict[str, Any]:
     probs = _classifier_probs(
         models.domain_model, hashed_features([text], models.hash_dim)

@@ -237,6 +237,15 @@ def apply_public_ats_fit(
     return score_matches_with_ats_model(public_models, resume_text, matches)
 
 
+def validate_resume(
+    public_models: Any | None,
+    resume_text: str,
+) -> dict[str, Any]:
+    from ml.public_assessment import validate_resume_quality
+
+    return validate_resume_quality(public_models, resume_text)
+
+
 def encode_resume(encoder: Any, resume_text: str) -> np.ndarray:
     vector = encoder.encode([resume_text])
     return np.asarray(vector, dtype=np.float32).reshape(1, -1)

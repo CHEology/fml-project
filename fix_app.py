@@ -1,12 +1,12 @@
 import re
 
-with open("app/app.py", "r") as f:
+with open("app/app.py") as f:
     content = f.read()
 
 # 1. Update THEMES
 content = re.sub(
     r'"Light": \{.*?"bg_start": "#f7f8fa".*?"bg_end": "#eef1f4".*?"ink": "#17202a".*?"line": "#d9dee7".*?"shadow": "rgba\(16, 24, 40, 0.08\)".*?\},',
-    r'''"Light": {
+    r""""Light": {
         "bg_start": "#f6f8fb",
         "bg_end": "#f6f8fb",
         "flare_a": "transparent",
@@ -22,14 +22,14 @@ content = re.sub(
         "shadow": "rgba(15, 23, 42, 0.04)",
         "score_bg": "#ecfdf3",
         "score_ink": "#027a48",
-    },''',
+    },""",
     content,
-    flags=re.DOTALL
+    flags=re.DOTALL,
 )
 
 content = re.sub(
     r'"Dark": \{.*?"bg_start": "#101418".*?"bg_end": "#151a21".*?"panel": "#1b222b".*?"line": "#2d3642".*?\},',
-    r'''"Dark": {
+    r""""Dark": {
         "bg_start": "#0f1115",
         "bg_end": "#0f1115",
         "flare_a": "transparent",
@@ -45,25 +45,25 @@ content = re.sub(
         "shadow": "rgba(0, 0, 0, 0.24)",
         "score_bg": "#12372a",
         "score_ink": "#75e0a7",
-    },''',
+    },""",
     content,
-    flags=re.DOTALL
+    flags=re.DOTALL,
 )
 
 # 2. Update CSS in inject_styles()
 # border-radius on cards
 content = re.sub(
-    r'\.metric-card, \.info-card, \.job-card \{(.*?border-radius: )8px(.*?)\}',
-    r'.metric-card, .info-card, .job-card {\g<1>18px\g<2>}',
+    r"\.metric-card, \.info-card, \.job-card \{(.*?border-radius: )8px(.*?)\}",
+    r".metric-card, .info-card, .job-card {\g<1>18px\g<2>}",
     content,
-    flags=re.DOTALL
+    flags=re.DOTALL,
 )
 
 # add css to prevent wrapping
 css_addition = """
         .signal-value, .metric-value { word-break: normal; overflow-wrap: break-word; hyphens: none; }
 """
-content = content.replace('.info-title {', css_addition + '\n        .info-title {')
+content = content.replace(".info-title {", css_addition + "\n        .info-title {")
 
 with open("app/app.py", "w") as f:
     f.write(content)

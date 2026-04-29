@@ -1,6 +1,6 @@
 import re
 
-with open("app/app.py", "r") as f:
+with open("app/app.py") as f:
     content = f.read()
 
 main_code = """def main() -> None:
@@ -620,9 +620,9 @@ if __name__ == "__main__":
     main()
 """
 
-match = re.search(r'def main\(\) -> None:.*', content, re.DOTALL)
+match = re.search(r"def main\(\) -> None:.*", content, re.DOTALL)
 if match:
-    new_content = content[:match.start()] + main_code
+    new_content = content[: match.start()] + main_code
     with open("app/app.py", "w") as f:
         f.write(new_content)
     print("Replaced main function")

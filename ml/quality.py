@@ -668,7 +668,9 @@ def _max_years_experience(lowered_text: str) -> float:
     """Detect years of experience from explicit mentions and date ranges."""
     # 1. Explicit mentions (e.g. "8 years experience")
     explicit_matches = re.findall(r"\b(\d{1,2})\s*(?:\+\s*)?years?\b", lowered_text)
-    explicit_max = float(max(int(m) for m in explicit_matches)) if explicit_matches else 0.0
+    explicit_max = (
+        float(max(int(m) for m in explicit_matches)) if explicit_matches else 0.0
+    )
 
     # 2. Date range duration (e.g. "2019 - 2024")
     current_year = date.today().year

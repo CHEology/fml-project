@@ -53,6 +53,7 @@ retrieve_matches = runtime.retrieve_matches
 salary_band_from_model = runtime.salary_band_from_model
 salary_artifacts_ready = runtime.salary_artifacts_ready
 apply_public_ats_fit = runtime.apply_public_ats_fit
+validate_resume = runtime.validate_resume
 
 from app.components.cluster_view import (  # noqa: E402
     render_missing_terms,
@@ -4706,6 +4707,16 @@ def main() -> None:
             try:
                 with st.spinner("Reviewing resume content..."):
                     public_models = load_public_assessment_resource()
+
+                    # Validation check
+                    validation = validate_resume(public_models, resume_text_now)
+                    if not validation["is_resume"]:
+                        reasons_str = ", ".join(validation["reasons"])
+                        st.error(
+                            f"This text does not appear to be a valid resume: {reasons_str}"
+                        )
+                        return
+
                     public_signals = public_resume_signals(
                         public_models, resume_text_now
                     )
