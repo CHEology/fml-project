@@ -398,39 +398,22 @@ SENIORITY_MULTIPLIER = {
 }
 
 THEMES = {
-    "Light": {
-        "bg_start": "#f6f8fb",
-        "bg_end": "#f6f8fb",
-        "flare_a": "transparent",
-        "flare_b": "transparent",
-        "panel": "#ffffff",
-        "ink": "#111827",
-        "muted": "#667085",
-        "line": "#e5e7eb",
-        "pill_bg": "#edf4ff",
-        "pill_ink": "#175cd3",
-        "hero_a": "#ffffff",
-        "hero_b": "#ffffff",
-        "shadow": "rgba(15, 23, 42, 0.04)",
-        "score_bg": "#ecfdf3",
-        "score_ink": "#027a48",
-    },
     "Dark": {
-        "bg_start": "#0f1115",
-        "bg_end": "#0f1115",
+        "bg_start": "#0e0e0e",
+        "bg_end": "#0e0e0e",
         "flare_a": "transparent",
         "flare_b": "transparent",
-        "panel": "#1b1d22",
-        "ink": "#f2f4f7",
-        "muted": "#a5adba",
-        "line": "#374151",
-        "pill_bg": "#182b45",
-        "pill_ink": "#84caff",
-        "hero_a": "#1b222b",
-        "hero_b": "#1b222b",
-        "shadow": "rgba(0, 0, 0, 0.24)",
-        "score_bg": "#12372a",
-        "score_ink": "#75e0a7",
+        "panel": "#1a1a1a",
+        "ink": "#f0f0f0",
+        "muted": "#888888",
+        "line": "rgba(255,255,255,0.08)",
+        "pill_bg": "rgba(124,111,255,0.18)",
+        "pill_ink": "#a89aff",
+        "hero_a": "rgba(124,111,255,0.10)",
+        "hero_b": "rgba(78,205,196,0.08)",
+        "shadow": "rgba(0, 0, 0, 0.40)",
+        "score_bg": "rgba(78,205,196,0.18)",
+        "score_ink": "#6ee8e0",
     },
 }
 
@@ -1432,8 +1415,8 @@ st.set_page_config(
 )
 
 
-def inject_styles(theme_name: str) -> None:
-    theme = THEMES[theme_name]
+def inject_styles(theme_name: str = "Dark") -> None:
+    theme = THEMES["Dark"]
     css = """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -1443,10 +1426,13 @@ def inject_styles(theme_name: str) -> None:
             --ink: __INK__;
             --muted: __MUTED__;
             --line: __LINE__;
-            --accent: #175cd3;
+            --accent: #7c6fff;
             --accent-soft: __PILL_BG__;
-            --success: #027a48;
-            --warning: #b54708;
+            --accent-teal: #4ecdc4;
+            --accent-yellow: #ffd93d;
+            --accent-coral: #ff6b6b;
+            --success: #4ecdc4;
+            --warning: #ffd93d;
         }
 
         .stApp {
@@ -1480,8 +1466,8 @@ def inject_styles(theme_name: str) -> None:
         }
 
         .hero {
-            background: __HERO_A__;
-            border: 1px solid var(--line);
+            background: linear-gradient(135deg, __HERO_A__ 0%, __HERO_B__ 100%);
+            border: 1px solid rgba(124,111,255,0.2);
             border-radius: 12px;
             padding: 1rem 1.2rem 0.95rem 1.2rem;
             box-shadow: 0 8px 20px __SHADOW__;
@@ -1525,6 +1511,18 @@ def inject_styles(theme_name: str) -> None:
             padding: 0.35rem 0.65rem;
             font-size: 0.85rem;
             font-weight: 600;
+        }
+
+        .pill-teal {
+            background: rgba(78,205,196,0.18);
+            color: #6ee8e0;
+            border-color: rgba(78,205,196,0.25);
+        }
+
+        .pill-yellow {
+            background: rgba(255,217,61,0.18);
+            color: #ffe066;
+            border-color: rgba(255,217,61,0.25);
         }
 
         .metric-card, .info-card, .job-card {
@@ -4277,29 +4275,19 @@ def main() -> None:
     if "public_profile_url" not in st.session_state:
         st.session_state.public_profile_url = ""
     if "theme_name" not in st.session_state:
-        st.session_state.theme_name = "Light"
+        st.session_state.theme_name = "Dark"
     if "assessment" not in st.session_state:
         st.session_state.assessment = None
     if "sample_resume_index" not in st.session_state:
         st.session_state.sample_resume_index = None
 
-    inject_styles(st.session_state.theme_name)
+    inject_styles("Dark")
     jobs, data_source, has_real_data = load_jobs()
     status = artifact_status()
 
     with st.sidebar:
         st.markdown("## ResuMatch")
         st.caption("Resume market analysis and role matching")
-        theme_choice = st.radio(
-            "Theme",
-            ["Light", "Dark"],
-            index=0 if st.session_state.theme_name == "Light" else 1,
-            horizontal=True,
-            label_visibility="collapsed",
-        )
-        if theme_choice != st.session_state.theme_name:
-            st.session_state.theme_name = theme_choice
-            st.rerun()
 
         source_path = Path(data_source)
         source_label = source_path.name if source_path.suffix else data_source
@@ -4330,8 +4318,8 @@ def main() -> None:
             <p>Compare a resume with salary-bearing LinkedIn roles and identify ways to strengthen the profile.</p>
             <div class="pill-row">
                 <span class="pill">Role matching</span>
-                <span class="pill">Salary range</span>
-                <span class="pill">Profile guidance</span>
+                <span class="pill pill-teal">Salary range</span>
+                <span class="pill pill-yellow">Profile guidance</span>
             </div>
         </div>
         """,
@@ -4351,7 +4339,9 @@ def main() -> None:
             "from current dataset",
         )
 
-    launchpad_tab, radar_tab, methodology_tab = st.tabs(["Resume Analysis", "Market Overview", "Methodology"])
+    launchpad_tab, radar_tab, methodology_tab = st.tabs(
+        ["Resume Analysis", "Market Overview", "Methodology"]
+    )
 
     with launchpad_tab:
         left = st.container()
@@ -4878,11 +4868,11 @@ def main() -> None:
         st.markdown(
             """
             ResuMatch is trained and evaluated on the
-            **LinkedIn Job Postings (2023–2024)** dataset from Kaggle —
-            approximately 1.3 million real job postings with structured fields
+            **LinkedIn Job Postings (2023–2024)** dataset from Kaggle.
+            We process approximately **35,000 postings** filtered from the full dataset
+            to those with valid salary data and English descriptions, with fields
             including job descriptions, required skills, experience level, company,
-            location, and salary. We filter to postings with valid salary data and
-            English descriptions, then normalize all salaries to annual USD.
+            location, and normalized annual salary.
             """
         )
 
