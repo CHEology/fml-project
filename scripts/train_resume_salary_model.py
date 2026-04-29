@@ -66,6 +66,7 @@ DEFAULTS = {
     "patience": 5,
     "dropout": 0.2,
     "weight_decay": 1e-5,
+    "quantile_weights": (1.0, 1.0, 1.15, 1.35, 1.6),
 }
 
 
@@ -99,10 +100,11 @@ def train(
     epochs: int,
     patience: int,
     weight_decay: float,
+    quantile_weights: tuple[float, ...],
     output_path: Path,
 ) -> dict[str, list[float]]:
     """Standard pinball-loss training loop with early stopping."""
-    criterion = PinballLoss().to(device)
+    criterion = PinballLoss(weights=quantile_weights).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=2
@@ -178,6 +180,13 @@ def main() -> None:
     parser.add_argument("--patience", type=int, default=DEFAULTS["patience"])
     parser.add_argument("--dropout", type=float, default=DEFAULTS["dropout"])
     parser.add_argument("--weight-decay", type=float, default=DEFAULTS["weight_decay"])
+    parser.add_argument(
+        "--quantile-weights",
+        type=float,
+        nargs=len(DEFAULTS["quantile_weights"]),
+        default=DEFAULTS["quantile_weights"],
+        help="Relative weights for q10 q25 q50 q75 q90 pinball losses.",
+    )
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument(
         "--smoke",
@@ -257,7 +266,9 @@ def main() -> None:
     print(f"Device: {device}")
 
     model = SalaryQuantileNet(
-        embedding_dim=args.embedding_dim, dropout=args.dropout
+        embedding_dim=args.embedding_dim,
+        n_extra_features=int(extra_features.shape[1]),
+        dropout=args.dropout,
     ).to(device)
     print(f"Model params: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -271,6 +282,7 @@ def main() -> None:
         epochs=args.epochs,
         patience=args.patience,
         weight_decay=args.weight_decay,
+        quantile_weights=tuple(args.quantile_weights),
         output_path=args.out,
     )
 

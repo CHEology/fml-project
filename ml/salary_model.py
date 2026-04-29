@@ -73,9 +73,24 @@ class PinballLoss(nn.Module):
         L(y, ŷ) = τ * max(y - ŷ, 0) + (1 - τ) * max(ŷ - y, 0)
     """
 
-    def __init__(self, quantiles: tuple[float, ...] = QUANTILES):
+    def __init__(
+        self,
+        quantiles: tuple[float, ...] = QUANTILES,
+        weights: tuple[float, ...] | None = None,
+    ):
         super().__init__()
         self.register_buffer("quantiles", torch.tensor(quantiles, dtype=torch.float32))
+        if weights is None:
+            weights = tuple(1.0 for _ in quantiles)
+        if len(weights) != len(quantiles):
+            raise ValueError(
+                f"weights length ({len(weights)}) must match quantiles ({len(quantiles)})"
+            )
+        normalized_weights = np.asarray(weights, dtype=np.float32)
+        normalized_weights = normalized_weights / normalized_weights.mean()
+        self.register_buffer(
+            "weights", torch.tensor(normalized_weights, dtype=torch.float32)
+        )
 
     def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
         """
@@ -92,6 +107,7 @@ class PinballLoss(nn.Module):
         loss = torch.max(
             self.quantiles * errors, (self.quantiles - 1) * errors
         )  # (B, Q)
+        loss = loss * self.weights
         return loss.mean()
 
 
