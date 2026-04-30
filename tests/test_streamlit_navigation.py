@@ -19,7 +19,10 @@ def _assigned_string_list(source: str, name: str) -> list[str]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):
             continue
-        if not any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+        if not any(
+            isinstance(target, ast.Name) and target.id == name
+            for target in node.targets
+        ):
             continue
         if not isinstance(node.value, ast.List):
             continue
