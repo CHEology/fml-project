@@ -83,7 +83,7 @@ def _real_embeddings(texts: list[str], model_name: str, batch_size: int) -> np.n
     except ImportError as exc:
         raise RuntimeError(
             "ml.embeddings.Encoder is required for non-smoke training. "
-            "Land Task 2.1 first or pass --smoke."
+            "Install project dependencies or pass --smoke."
         ) from exc
     encoder = Encoder(model_name=model_name)
     return np.asarray(encoder.encode(texts, batch_size=batch_size), dtype=np.float32)
