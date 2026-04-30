@@ -1,0 +1,24 @@
+    /* Deep Indigo primary button overrides */
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%) !important;
+        border: none !important;
+        color: #fff !important;
+        font-family: "Inter", sans-serif !important;
+        font-style: normal !important;
+        font-weight: 600 !important;
+        border-radius: 999px !important;
+        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3) !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #4338CA 0%, #312E81 100%) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
+    }
+    h1, h2, h3, .panel-title, .metric-value, .salary-main, .signal-value, .hero-title {
+        font-family: "Inter", sans-serif !important;
+        font-style: normal !important;
+        font-weight: 700 !important;
+    }

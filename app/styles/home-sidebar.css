@@ -1,0 +1,263 @@
+    .sidebar-info .info-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+
+    .sidebar-info .info-source {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .sidebar-stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        margin-top: 0.7rem;
+    }
+
+    .sidebar-stat {
+        border-top: 1px solid var(--line);
+        padding-top: 0.45rem;
+    }
+
+    .sidebar-stat-label {
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .sidebar-stat-value {
+        color: var(--ink);
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-top: 0.1rem;
+    }
+
+    .sidebar-nav-label {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        margin: 1rem 0 0.25rem;
+        text-transform: uppercase;
+    }
+
+    .home-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(260px, 0.72fr);
+        align-items: center;
+        gap: 1.6rem;
+        margin: 0 0 0.85rem;
+        padding: 0.25rem 0 0.4rem;
+    }
+
+    .home-hero h1 {
+        margin: 0 0 0.25rem;
+        color: var(--ink);
+        font-size: 3rem;
+        line-height: 1.03;
+        font-weight: 800;
+    }
+
+    .home-subtitle {
+        color: var(--ink);
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin: 0 0 0.3rem;
+    }
+
+    .home-team-line {
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.35;
+        margin: 0 0 0.55rem;
+    }
+
+    .home-team-line strong {
+        color: var(--ink);
+        font-weight: 700;
+    }
+
+    .home-lede {
+        color: var(--muted);
+        font-size: 0.98rem;
+        line-height: 1.45;
+        max-width: 38rem;
+        margin: 0;
+    }
+
+    .home-mascot-frame {
+        background: linear-gradient(180deg, #FFFFFF 0%, #F5F3FF 100%);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 18px 55px rgba(87, 6, 140, 0.16);
+        overflow: hidden;
+        padding: 0.45rem;
+        max-width: 300px;
+        justify-self: center;
+    }
+
+    .home-mascot-frame img {
+        width: 100%;
+        display: block;
+        border-radius: 16px;
+    }
+
+    .home-data-card {
+        margin: 0.15rem 0 0.7rem;
+        padding: 0.65rem 0.8rem;
+    }
+
+    .home-data-card .sidebar-stat-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .home-data-card .sidebar-stat {
+        padding-top: 0.35rem;
+    }
+
+    .home-data-card .sidebar-source-path {
+        display: inline-block;
+        margin-left: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .home-data-card .source-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.35rem;
+    }
+
+    .home-data-card .data-meta-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .home-data-card .data-meta-row .sidebar-stat {
+        margin-top: 0;
+    }
+
+    .home-cta-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin: 0.25rem 0 0.85rem;
+    }
+
+    .home-cta {
+        display: block;
+        text-align: center;
+        text-decoration: none !important;
+        border-radius: 12px;
+        border: 1px solid rgba(87, 6, 140, 0.18);
+        background: #57068C;
+        color: #fff !important;
+        font-weight: 800;
+        padding: 0.78rem 0.8rem;
+        box-shadow: 0 10px 24px rgba(87, 6, 140, 0.16);
+        transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    .home-cta.secondary {
+        background: #FFFFFF;
+        color: #57068C !important;
+    }
+
+    .home-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 34px rgba(87, 6, 140, 0.22);
+        background: #6D28D9;
+        border-color: rgba(87, 6, 140, 0.32);
+    }
+
+    .home-cta.secondary:hover {
+        background: #F5F3FF;
+    }
+
+    .home-cta:active {
+        transform: translateY(0);
+        box-shadow: 0 8px 18px rgba(87, 6, 140, 0.18);
+    }
+
+    @media (max-width: 900px) {
+        .home-hero {
+            grid-template-columns: 1fr;
+        }
+
+        .home-data-card .sidebar-stat-grid,
+        .home-cta-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    [data-testid="stFileUploader"] section,
+    [data-testid="stFileUploaderDropzone"] {
+        background: rgba(23, 92, 211, 0.04);
+        border: 1.5px dashed var(--line);
+        border-radius: 12px;
+        transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    [data-testid="stFileUploader"] section:hover,
+    [data-testid="stFileUploaderDropzone"]:hover {
+        border-color: var(--accent);
+        background: rgba(23, 92, 211, 0.07);
+    }
+
+    [data-testid="stFileUploader"] label {
+        font-size: 0.88rem;
+        font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+        .demo-method-status {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .demo-accordion-intro {
+            flex-direction: column;
+        }
+
+        [data-testid="stRadio"] [role="radiogroup"] {
+            grid-template-columns: 1fr;
+        }
+
+        .st-key-demo-floating-nav {
+            right: 0.5rem;
+            width: calc(100vw - 1rem) !important;
+            max-width: calc(100vw - 1rem) !important;
+            bottom: 0.75rem;
+        }
+
+        .st-key-demo-floating-nav [data-testid="stHorizontalBlock"] {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.4rem;
+        }
+
+        .st-key-demo-floating-nav .stButton > button {
+            min-height: 2.35rem;
+            padding: 0.34rem 0.45rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    .next-steps-list {
+        margin: 0.4rem 0 0 0;
+        padding-left: 1.1rem;
+        color: var(--ink);
+        font-size: 0.9rem;
+        line-height: 1.55;
+    }
+
+    .next-steps-list li {
+        margin-bottom: 0.25rem;
+    }

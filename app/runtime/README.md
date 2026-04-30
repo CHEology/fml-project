@@ -1,0 +1,11 @@
+# App Runtime
+
+Runtime modules bridge the Streamlit UI to local artifacts and ML modules.
+
+- `ml.py` loads model artifacts, FAISS indexes, wage tables, public assessment
+  models, salary signals, and clustering helpers.
+- `cache.py` wraps runtime calls in Streamlit caching decorators and provides
+  fallback sample data when local artifacts are missing.
+
+`app/ml_runtime.py` is a compatibility alias for older imports. New code should
+import from `app.runtime` directly.

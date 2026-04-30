@@ -1,0 +1,328 @@
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+    :root {
+        --panel: __PANEL__;
+        --ink: __INK__;
+        --muted: __MUTED__;
+        --line: __LINE__;
+        --accent: #7C3AED;
+        --accent-soft: __PILL_BG__;
+        --accent-teal: #9F7AEA;
+        --accent-yellow: #FAF5FF;
+        --accent-coral: #7C3AED;
+        --success: #10B981;
+        --warning: #6366F1;
+    }
+
+    .stApp {
+        background: linear-gradient(180deg, __BG_START__ 0%, __BG_END__ 100%);
+        color: var(--ink);
+    }
+
+    [data-testid="stSidebar"] {
+        background: rgba(255, 255, 255, 0.7) !important;
+        backdrop-filter: blur(20px) saturate(180%);
+        border-right: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .stMarkdown, .stText, .stCaption, label, .stSelectbox, .stRadio {
+        color: var(--ink);
+    }
+
+    html, body, [class*="css"] {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .mono {
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--muted);
+    }
+
+    .sidebar-source-path {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .hero {
+        background: linear-gradient(135deg, __HERO_A__ 0%, #FFFFFF 50%, __HERO_B__ 100%);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 2.5rem 3rem;
+        box-shadow: 0 10px 30px __SHADOW__;
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .hero-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+    }
+
+    .hero-text {
+        flex: 1;
+    }
+
+    .hero-image {
+        flex: 0 0 320px;
+        display: flex;
+        justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+        .hero-content {
+            flex-direction: column;
+            text-align: center;
+        }
+        .hero-image {
+            flex: 0 0 auto;
+            width: 100%;
+            max-width: 250px;
+        }
+    }
+
+    .eyebrow {
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 0.76rem;
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .hero h1 {
+        margin: 0.25rem 0 0.5rem 0;
+        font-size: 2.5rem;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        background: linear-gradient(90deg, #7C3AED 0%, #4F46E5 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+    }
+
+    .hero p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--muted);
+        max-width: 62rem;
+    }
+
+    .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.65rem;
+    }
+
+    .pill {
+        border: 1px solid rgba(12,124,120,0.14);
+        background: __PILL_BG__;
+        color: __PILL_INK__;
+        border-radius: 999px;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .pill-teal {
+        background: #F5F3FF;
+        color: #7C3AED;
+        border-color: #DDD6FE;
+    }
+
+    .pill-yellow {
+        background: #E0F2FE;
+        color: #0369A1;
+        border-color: #BAE6FD;
+    }
+
+    .metric-card, .info-card, .job-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px __SHADOW__;
+        height: 100%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+    }
+
+    .metric-card:hover, .info-card:hover, .job-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(124, 58, 237, 0.15);
+        border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    .metric-label {
+        color: var(--muted);
+        font-size: 0.84rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.2rem;
+    }
+
+    .metric-value {
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1.05;
+    }
+
+
+    .signal-value, .metric-value { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+
+    .info-title {
+        font-size: 1.12rem;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+
+    .job-title {
+        font-size: 1.02rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+    }
+
+    .job-meta {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin-bottom: 0.55rem;
+    }
+
+    .score-chip {
+        display: inline-block;
+        padding: 0.28rem 0.58rem;
+        border-radius: 999px;
+        background: __SCORE_BG__;
+        color: __SCORE_INK__;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .salary-band {
+        background: var(--accent-soft);
+        border-radius: 999px;
+        height: 10px;
+        margin: 0.8rem 0 0.65rem 0;
+        overflow: hidden;
+    }
+
+    .salary-fill {
+        background: var(--accent);
+        height: 10px;
+        border-radius: 999px;
+    }
+
+    .salary-headline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: end;
+        margin-bottom: 0.4rem;
+    }
+
+    .salary-main {
+        font-size: 2.15rem;
+        line-height: 1;
+        font-weight: 700;
+    }
+
+    .salary-range {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-top: 0.25rem;
+    }
+
+    .salary-source {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.35rem 0.6rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .salary-strip {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(7.5rem, 1fr));
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.03);
+        margin-top: 0.75rem;
+    }
+
+    .salary-step {
+        padding: 0.68rem 0.75rem;
+        border-left: 1px solid var(--line);
+    }
+
+    .salary-step:first-child {
+        border-left: 0;
+    }
+
+    .salary-step-label {
+        color: var(--muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+    }
+
+    .salary-step-value {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-top: 0.18rem;
+        white-space: nowrap;
+    }
+
+    .evidence-line {
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.45;
+        margin-top: 0.7rem;
+    }
+
+    .section-label {
+        font-size: 0.84rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 0.4rem;
+    }
+
+    .stTextArea textarea, .stTextInput input {
+        background: #FFFFFF;
+        color: var(--ink);
+        border-radius: 12px;
+        border: 1px solid var(--line);
+    }
+
+    /* Streamlit Button Styling */
+    div.stButton > button {
+        background-color: #7C3AED !important;
+        color: white !important;
+        border-radius: 999px !important;
+        border: none !important;
+        padding: 0.5rem 2rem !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
+    div.stButton > button:hover {
+        background-color: #6D28D9 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3);
+    }
+    div.stButton > button:active {
+        transform: translateY(0);
+    }
+
+    .panel-banner {
+        margin-bottom: 0.75rem;
+    }
