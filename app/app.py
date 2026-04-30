@@ -5,10 +5,11 @@ import importlib.util
 import re
 import sys
 from base64 import b64encode
+from collections.abc import Callable
 from datetime import date, datetime
 from html import escape
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -5331,7 +5332,9 @@ def render_demo_page(
 
         analyze_clicked = False
 
-        def queue_profile_analysis(text_key: str, source_key: str | None = None) -> None:
+        def queue_profile_analysis(
+            text_key: str, source_key: str | None = None
+        ) -> None:
             st.session_state.resume_text = st.session_state.get(text_key, "")
             if source_key is None:
                 st.session_state.resume_source = "Pasted resume/profile text"
@@ -5768,7 +5771,9 @@ def render_demo_page(
         word_count_html = escape(str(structure["word_count"]))
         bullet_count_html = escape(str(structure["bullet_count"]))
         link_count_html = escape(str(structure["link_count"]))
-        data_mode_label = "LinkedIn job catalog" if has_real_data else "Sample role catalog"
+        data_mode_label = (
+            "LinkedIn job catalog" if has_real_data else "Sample role catalog"
+        )
         data_mode_class = "ready" if has_real_data else "missing"
         dataset_note_html = escape(linkedin_dataset_note(has_real_data))
         st.markdown(

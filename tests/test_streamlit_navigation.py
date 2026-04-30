@@ -67,7 +67,7 @@ def test_demo_page_uses_single_stage_wizard() -> None:
     assert 'st.session_state.demo_stage = "snapshot"' in demo_source
     assert 'next_stage="market"' in demo_source
     assert 'next_stage="gaps"' in demo_source
-    assert 'st.session_state.demo_stage = next_stage' in nav_source
+    assert "st.session_state.demo_stage = next_stage" in nav_source
     assert "Start over with new resume/profile" in nav_source
     assert "← Previous" in nav_source
     assert "{next_label} →" in nav_source
@@ -84,9 +84,12 @@ def test_demo_stage_navigation_is_floating() -> None:
     assert "right: 1rem;" in app_source
     assert "width: auto !important;" in app_source
     assert "display: grid !important;" in app_source
-    assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);" in app_source
+    assert (
+        "grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);"
+        in app_source
+    )
     assert "text-overflow: ellipsis;" in app_source
-    assert 'render_demo_floating_nav(' in app_source
+    assert "render_demo_floating_nav(" in app_source
 
 
 def test_demo_removes_intro_hero_and_static_metrics() -> None:
