@@ -702,7 +702,7 @@ def render_demo_page(
 
         render_demo_section_header(
             "Market readout",
-            "The app explains the salary range it can support from retrieved roles and available wage/model evidence.",
+            "",
             market_info,
         )
         band = assessment.get("band")
