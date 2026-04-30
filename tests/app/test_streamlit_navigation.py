@@ -26,10 +26,68 @@ def test_extracted_app_modules_are_importable() -> None:
 
     assert callable(app.main)
     assert callable(demo.render_demo_page)
+    assert callable(demo.render_scroll_to_top)
+    assert callable(demo.seniority_ladder_html)
+    assert callable(demo.focus_evidence_html)
+    assert callable(demo.seniority_evidence_html)
     assert callable(home.render_home_page)
     assert callable(market.render_market_overview_page)
     assert callable(inject_styles)
     assert callable(resume_assessment.assess_resume_text)
+
+
+def test_demo_seniority_ladder_uses_shared_runtime_levels() -> None:
+    import app.pages.demo as demo
+    from app.runtime.ml import SENIORITY_RANKS
+
+    ladder = demo.seniority_ladder_html("Associate")
+
+    for level in SENIORITY_RANKS:
+        assert level in ladder
+    assert ladder.index("Lead / Executive") < ladder.index("Intern / Entry")
+    assert 'class="seniority-step current"' in ladder
+    assert "Current" not in ladder
+
+
+def test_demo_snapshot_evidence_helpers_render_specific_reasons() -> None:
+    import app.pages.demo as demo
+
+    focus_html = demo.focus_evidence_html(
+        {
+            "skills_present": ["Python", "Kubernetes", "APIs"],
+            "skills_missing": ["Leadership"],
+            "confidence": 82,
+        }
+    )
+    seniority_html = demo.seniority_evidence_html(
+        "Associate",
+        {
+            "weighted_ft_months": 24,
+            "role_count": 3,
+            "max_seniority_keyword": "Associate",
+        },
+    )
+    capability_html = demo.capability_evidence_html(
+        {
+            "summary": "thin within-level evidence",
+            "skill_hits": ["Python", "Kubernetes"],
+            "notes": ["Impact evidence is light relative to similar-level candidates."],
+        },
+        {
+            "impact_score": 31,
+            "specificity_score": 72,
+        },
+    )
+
+    assert "Matched skills" in focus_html
+    assert "Python, Kubernetes, APIs" in focus_html
+    assert "Less visible" in focus_html
+    assert "Highest title signal" in seniority_html
+    assert "24 weighted months" in seniority_html
+    assert "Tier readout" in capability_html
+    assert "thin within-level evidence" in capability_html
+    assert "Impact signal" in capability_html
+    assert "Why this tier" in capability_html
 
 
 def test_stylesheet_keeps_demo_navigation_and_input_method_rules() -> None:
@@ -148,5 +206,6 @@ demo.render_demo_page(jobs, True, status)
     at.button(key="analyze_sample_resume").click().run()
 
     assert at.session_state["demo_stage"] == "results"
+    assert at.session_state["demo_scroll_to_top"] is False
     assert not at.error
     assert not at.exception

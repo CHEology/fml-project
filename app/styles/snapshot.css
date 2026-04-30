@@ -227,6 +227,52 @@
         margin-top: 0.28rem;
     }
 
+    .seniority-ladder {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.85rem;
+    }
+
+    .seniority-step {
+        align-items: center;
+        color: var(--muted);
+        display: grid;
+        font-size: 0.78rem;
+        font-weight: 700;
+        gap: 0.45rem;
+        grid-template-columns: 0.7rem minmax(0, 1fr);
+        min-width: 0;
+    }
+
+    .seniority-dot {
+        background: #E2E8F0;
+        border: 2px solid #CBD5E1;
+        border-radius: 999px;
+        display: block;
+        height: 0.7rem;
+        width: 0.7rem;
+    }
+
+    .seniority-step.complete .seniority-dot {
+        background: rgba(79, 70, 229, 0.24);
+        border-color: rgba(79, 70, 229, 0.42);
+    }
+
+    .seniority-step.current {
+        color: var(--ink);
+    }
+
+    .seniority-step.current .seniority-dot {
+        background: #4F46E5;
+        border-color: #4F46E5;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.14);
+    }
+
+    .seniority-step-label {
+        min-width: 0;
+        overflow-wrap: break-word;
+    }
+
     .snapshot-section-title {
         color: var(--ink);
         font-size: 1.05rem;
