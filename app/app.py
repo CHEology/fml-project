@@ -4706,7 +4706,7 @@ def render_data_source_card(
         <div class="{escape(card_class)}">
             <div class="info-title">Data source</div>
             <div class="source-line">
-                <span class="info-source"><strong>{escape('LinkedIn job catalog' if has_real_data else 'Sample role catalog')}</strong></span>
+                <span class="info-source"><strong>{escape("LinkedIn job catalog" if has_real_data else "Sample role catalog")}</strong></span>
                 <span class="sidebar-source-path">{escape(source_label)}</span>
             </div>
             <div class="sidebar-stat-grid">
@@ -4795,7 +4795,7 @@ def render_home_page(
         else ""
     )
     team_line = " | ".join(
-        f'<strong>{escape(member["name"])}</strong> {escape(member["github"])}'
+        f"<strong>{escape(member['name'])}</strong> {escape(member['github'])}"
         for member in TEAM_MEMBERS
     )
     st.markdown(
@@ -5282,7 +5282,9 @@ def render_demo_page(
                 unsafe_allow_html=True,
             )
             if structure["missing_sections"]:
-                st.caption("Missing sections: " + ", ".join(structure["missing_sections"]))
+                st.caption(
+                    "Missing sections: " + ", ".join(structure["missing_sections"])
+                )
 
             st.markdown(
                 '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
@@ -5432,6 +5434,7 @@ def render_demo_page(
                 "Complete the analysis first; then this section will show segment evidence, missing market terms, and top matching jobs.",
             )
 
+
 def render_market_overview_page(
     jobs: pd.DataFrame,
     data_source: str,
@@ -5451,7 +5454,9 @@ def render_market_overview_page(
     left, right = st.columns([0.52, 0.48], gap="large")
     with left, st.container(border=True):
         st.markdown("**Top locations**")
-        location_counts = display_jobs["location"].fillna("Unknown").value_counts().head(8)
+        location_counts = (
+            display_jobs["location"].fillna("Unknown").value_counts().head(8)
+        )
         st.bar_chart(location_counts)
 
         st.markdown("**Experience mix**")
@@ -5521,6 +5526,7 @@ def main() -> None:
     )
     render_app_sidebar(jobs, data_source, has_real_data, status, pages)
     page.run()
+
 
 if __name__ == "__main__":
     main()

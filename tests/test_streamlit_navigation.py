@@ -36,6 +36,12 @@ def test_home_page_has_team_and_mascot_asset() -> None:
 
     assert "render_home_page" in app_source
     assert "Lucky Hamsters" in team_source
-    for contributor in ("Omer Hortig", "Tanvi Patel", "Ryan Lu", "Alan He", "Eliguli Han"):
+    for contributor in (
+        "Omer Hortig",
+        "Tanvi Patel",
+        "Ryan Lu",
+        "Alan He",
+        "Eliguli Han",
+    ):
         assert contributor in team_source
     assert mascot.exists()
