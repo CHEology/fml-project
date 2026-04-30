@@ -150,6 +150,45 @@ def test_demo_results_sections_have_explainable_headers() -> None:
         assert provenance in demo_source
 
 
+def test_demo_market_readout_renders_cluster_salary_distribution() -> None:
+    app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
+    demo_source = _function_source(app_source, "render_demo_page")
+
+    assert "render_cluster_salary_distribution" in app_source
+    assert '"cluster_assignments": cluster_assignments' in demo_source
+    assert '"cluster_labels": cluster_labels' in demo_source
+    assert '"job_embeddings": job_embeddings' in demo_source
+    assert '"resume_embedding": resume_embedding' in demo_source
+    assert 'assessment.get("cluster_assignments")' in demo_source
+    assert 'assessment.get("cluster_labels")' in demo_source
+    assert 'assessment.get("job_embeddings")' in demo_source
+    assert 'assessment.get("resume_embedding")' in demo_source
+
+    salary_band_index = demo_source.index("render_salary_band(band)")
+    distribution_index = demo_source.index("render_cluster_salary_distribution(")
+    segment_index = demo_source.index(
+        'render_demo_section_header(\n            "Market segment and match evidence"'
+    )
+    assert salary_band_index < distribution_index < segment_index
+
+
+def test_demo_market_readout_explains_cluster_salary_distribution() -> None:
+    app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
+    demo_source = _function_source(app_source, "render_demo_page")
+
+    for phrase in (
+        "sentence-transformer vectors",
+        "K-Means groups job embeddings into 8 role-family clusters",
+        "PCA-reduced embedding components",
+        "TF-IDF top terms and common titles",
+        "nearest centroid",
+        "2D cluster map",
+        "random visualization sample",
+        "hybrid band q50",
+    ):
+        assert phrase in demo_source
+
+
 def test_demo_removes_intro_hero_and_static_metrics() -> None:
     app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
     demo_source = _function_source(app_source, "render_demo_page")

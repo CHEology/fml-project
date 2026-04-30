@@ -44,6 +44,7 @@ encode_resume = runtime.encode_resume
 feedback_terms = runtime.feedback_terms
 hybrid_salary_band = runtime.hybrid_salary_band
 load_cluster_artifacts = runtime.load_cluster_artifacts
+load_job_embeddings = runtime.load_job_embeddings
 load_real_jobs = runtime.load_jobs
 load_occupation_router = runtime.load_occupation_router
 load_public_assessment_artifacts = runtime.load_public_assessment_artifacts
@@ -74,6 +75,7 @@ from app.components.resume_upload import (  # noqa: E402
     fetch_public_webpage_text,
 )
 from app.components.salary_chart import (  # noqa: E402
+    render_cluster_salary_distribution,
     render_salary_band,
 )
 from app.components.team import TEAM_MEMBERS, TEAM_NAME  # noqa: E402
@@ -2928,6 +2930,11 @@ def load_wage_resource():
 @st.cache_resource(show_spinner=False)
 def load_cluster_resource():
     return load_cluster_artifacts(PROJECT_ROOT)
+
+
+@st.cache_resource(show_spinner=False)
+def load_job_embedding_resource():
+    return load_job_embeddings(PROJECT_ROOT)
 
 
 @st.cache_resource(show_spinner=False)
@@ -5840,12 +5847,19 @@ def render_demo_page(
                 band = apply_capability_adjustment(band, capability)
 
                 cluster = None
+                cluster_assignments = None
+                cluster_labels = None
+                job_embeddings = None
                 if artifacts_ready(status, "clustering"):
                     with st.spinner("Finding market segment..."):
-                        kmeans_model, _, cluster_labels = load_cluster_resource()
+                        kmeans_model, cluster_assignments, cluster_labels = (
+                            load_cluster_resource()
+                        )
                         cluster = cluster_position(
                             kmeans_model, cluster_labels, resume_embedding
                         )
+                        if artifacts_ready(status, "retrieval"):
+                            job_embeddings = load_job_embedding_resource()
 
                 missing_terms = feedback_terms(resume_text_now, matches, cluster)
             except Exception as exc:  # pragma: no cover - UI guardrail
@@ -5867,6 +5881,10 @@ def render_demo_page(
                 "salary_matches": salary_matches,
                 "band": band,
                 "cluster": cluster,
+                "cluster_assignments": cluster_assignments,
+                "cluster_labels": cluster_labels,
+                "job_embeddings": job_embeddings,
+                "resume_embedding": resume_embedding,
                 "missing_terms": missing_terms,
             }
             st.session_state.demo_stage = "results"
@@ -5929,6 +5947,14 @@ def render_demo_page(
             "matching in ml/retrieval.py, optional neural quantile salary estimates from "
             "ml/salary_model.py, optional BLS/O*NET occupation wages via ml/occupation_router.py "
             "and ml/wage_bands.py, then app/app.py applies quality and capability adjustments. "
+            "For the 2D cluster map, jobs are embedded as sentence-transformer vectors; "
+            "K-Means groups job embeddings into 8 role-family clusters; cluster labels come from "
+            "TF-IDF top terms and common titles; PCA-reduced embedding components are used as "
+            "the x/y axes; and the resume is embedded and placed in the nearest centroid cluster. "
+            "To keep the app responsive, the plotted job dots are a deterministic random visualization sample "
+            "from the projected dataset rather than every posting. "
+            "The plotted user marker uses the hybrid band q50 median estimate in hover text for "
+            "the candidate's predicted salary and cluster position. "
             "Assumption: this is a matched-market reference, not a guaranteed compensation offer."
         )
         match_info = (
@@ -6075,15 +6101,28 @@ def render_demo_page(
             market_info,
         )
         band = assessment.get("band")
+        cluster = assessment.get("cluster")
+        cluster_assignments = assessment.get("cluster_assignments")
+        cluster_labels = assessment.get("cluster_labels")
+        job_embeddings = assessment.get("job_embeddings")
+        resume_embedding = assessment.get("resume_embedding")
         with st.container(border=True):
             if band is not None:
                 render_salary_band(band)
+                render_cluster_salary_distribution(
+                    jobs,
+                    cluster_assignments,
+                    cluster_labels,
+                    cluster,
+                    band,
+                    job_embeddings=job_embeddings,
+                    resume_embedding=resume_embedding,
+                )
             else:
                 st.warning(
                     "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                 )
 
-        cluster = assessment.get("cluster")
         matches = assessment.get("matches")
         if matches is not None and not isinstance(matches, pd.DataFrame):
             matches = pd.DataFrame(matches)
