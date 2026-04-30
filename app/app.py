@@ -67,7 +67,6 @@ from app.components.job_results import (  # noqa: E402
     render_job_results,
     render_metric_card,
     render_panel_banner,
-    render_signal_card,
 )
 from app.components.methodology import render_methodology_page  # noqa: E402
 from app.components.resume_upload import (  # noqa: E402
@@ -1845,12 +1844,122 @@ def inject_styles(theme_name: str = "Lavender") -> None:
             box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
         }
 
+        .snapshot-hero.result-section-header {
+            margin-top: 1.25rem;
+        }
+
+        .snapshot-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.55rem;
+        }
+
         .snapshot-title {
             color: var(--ink);
             font-size: 1.75rem;
             font-weight: 800;
             line-height: 1.1;
             margin: 0;
+        }
+
+        .info-dot {
+            align-items: center;
+            background: #FFFFFF;
+            border: 2px solid #8A8F98;
+            border-radius: 999px;
+            color: #8A8F98;
+            cursor: help;
+            display: inline-flex;
+            flex: 0 0 auto;
+            font-size: 0.72rem;
+            font-weight: 800;
+            height: 1.18rem;
+            justify-content: center;
+            line-height: 1;
+            position: relative;
+            width: 1.18rem;
+            z-index: 20;
+        }
+
+        .info-dot:hover,
+        .info-dot:focus {
+            border-color: #6B7280;
+            color: #6B7280;
+            outline: none;
+        }
+
+        .info-dot::after {
+            background: #111827;
+            border-radius: 10px;
+            bottom: calc(100% + 0.65rem);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+            color: #FFFFFF;
+            content: attr(data-tooltip);
+            font-size: 0.78rem;
+            font-weight: 500;
+            left: 50%;
+            line-height: 1.42;
+            max-width: min(28rem, calc(100vw - 2rem));
+            opacity: 0;
+            padding: 0.7rem 0.8rem;
+            pointer-events: none;
+            position: absolute;
+            text-align: left;
+            text-transform: none;
+            transform: translate(-50%, 0.3rem);
+            transition: opacity 0.14s ease, transform 0.14s ease;
+            visibility: hidden;
+            white-space: normal;
+            width: max-content;
+            z-index: 1000;
+        }
+
+        .info-dot::before {
+            border: 0.42rem solid transparent;
+            border-top-color: #111827;
+            bottom: calc(100% - 0.15rem);
+            content: "";
+            left: 50%;
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            transform: translateX(-50%);
+            transition: opacity 0.14s ease;
+            visibility: hidden;
+            z-index: 1001;
+        }
+
+        .info-dot:hover::after,
+        .info-dot:focus::after,
+        .info-dot:hover::before,
+        .info-dot:focus::before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .info-dot:hover::after,
+        .info-dot:focus::after {
+            transform: translate(-50%, 0);
+        }
+
+        .snapshot-title-row > .info-dot::after {
+            left: 0;
+            transform: translate(0, 0.3rem);
+        }
+
+        .snapshot-title-row > .info-dot::before {
+            left: 0.59rem;
+        }
+
+        .snapshot-title-row > .info-dot:hover::after,
+        .snapshot-title-row > .info-dot:focus::after {
+            transform: translate(0, 0);
+        }
+
+        .inline-info {
+            margin-left: 0.35rem;
+            vertical-align: 0.08rem;
         }
 
         .snapshot-summary {
@@ -2233,20 +2342,19 @@ def inject_styles(theme_name: str = "Lavender") -> None:
 
         .st-key-demo-floating-nav {
             position: fixed;
-            left: max(1rem, min(29rem, 24vw));
             right: 1rem;
             bottom: 1.25rem;
-            width: auto !important;
-            max-width: none !important;
+            transform: none;
+            width: min(32rem, calc(100vw - 2rem)) !important;
+            max-width: min(32rem, calc(100vw - 2rem)) !important;
             min-width: 0 !important;
             z-index: 999;
             box-sizing: border-box;
-            padding: 0.45rem;
-            border: 1px solid rgba(124, 58, 237, 0.16);
-            border-radius: 14px;
-            background: rgba(255,255,255,0.92);
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
-            backdrop-filter: blur(14px);
+            padding: 0;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            pointer-events: none;
         }
 
         .st-key-demo-floating-nav [data-testid="stHorizontalBlock"] {
@@ -2265,12 +2373,25 @@ def inject_styles(theme_name: str = "Lavender") -> None:
         .st-key-demo-floating-nav .stButton > button {
             min-height: 2.55rem;
             width: 100%;
+            max-width: 28rem;
+            margin: 0 auto;
             padding: 0.42rem 0.8rem;
             border-radius: 12px;
+            background: #175CD3;
+            border-color: #175CD3;
+            color: #FFFFFF;
+            box-shadow: 0 12px 24px rgba(23, 92, 211, 0.26);
             font-size: 0.92rem;
             overflow: hidden;
+            pointer-events: auto;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .st-key-demo-floating-nav .stButton > button:hover {
+            background: #1D4ED8;
+            border-color: #1D4ED8;
+            color: #FFFFFF;
         }
 
         .sidebar-info {
@@ -2515,9 +2636,9 @@ def inject_styles(theme_name: str = "Lavender") -> None:
             }
 
             .st-key-demo-floating-nav {
-                left: 0.5rem;
                 right: 0.5rem;
-                width: auto !important;
+                width: calc(100vw - 1rem) !important;
+                max-width: calc(100vw - 1rem) !important;
                 bottom: 0.75rem;
             }
 
@@ -5256,20 +5377,69 @@ def render_home_page(
     )
 
 
+def info_dot(text: str, *, extra_class: str = "") -> str:
+    class_name = f"info-dot {extra_class}".strip()
+    return (
+        f'<span class="{escape(class_name)}" data-tooltip="{escape(text)}" '
+        'aria-label="More information" role="button" tabindex="0">?</span>'
+    )
+
+
+def render_demo_section_header(title: str, body: str, explanation: str) -> None:
+    st.markdown(
+        f"""
+        <div class="snapshot-hero result-section-header">
+            <div class="snapshot-title-row">
+                <h1 class="snapshot-title">{escape(title)}</h1>
+            </div>
+            <div class="snapshot-summary">{escape(body)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.expander(f"Read more about {title}"):
+        st.markdown(explanation)
+
+
+def render_demo_signal_card(
+    label: str,
+    value: str,
+    copy: str,
+    explanation: str,
+) -> None:
+    st.markdown(
+        f"""
+        <div class="signal-card">
+            <div class="signal-label">{escape(label)}{info_dot(explanation, extra_class="inline-info")}</div>
+            <div class="signal-value">{escape(value)}</div>
+            <div class="signal-copy">{escape(copy)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_demo_floating_nav(
     *,
-    previous_stage: str,
+    previous_stage: str | None = None,
     restart_demo: Callable[[], None],
     next_label: str | None = None,
     next_stage: str | None = None,
 ) -> None:
     with st.container(key="demo-floating-nav"):
+        if previous_stage is None and not (next_label and next_stage):
+            if st.button("Start over with new resume/profile", width="stretch"):
+                restart_demo()
+                st.rerun()
+            return
+
         widths = [0.25, 0.4, 0.35] if next_label and next_stage else [0.3, 0.45]
         nav_cols = st.columns(widths, gap="small")
-        with nav_cols[0]:
-            if st.button("← Previous", width="stretch"):
-                st.session_state.demo_stage = previous_stage
-                st.rerun()
+        if previous_stage is not None:
+            with nav_cols[0]:
+                if st.button("← Previous", width="stretch"):
+                    st.session_state.demo_stage = previous_stage
+                    st.rerun()
         with nav_cols[1]:
             if st.button("Start over with new resume/profile", width="stretch"):
                 restart_demo()
@@ -5286,7 +5456,7 @@ def render_demo_page(
     has_real_data: bool,
     status: list[dict[str, str | bool]],
 ) -> None:
-    valid_stages = {"input", "snapshot", "market", "gaps"}
+    valid_stages = {"input", "results"}
     if st.session_state.demo_stage not in valid_stages:
         st.session_state.demo_stage = "input"
 
@@ -5420,7 +5590,7 @@ def render_demo_page(
                         args=("uploaded_resume_text", "uploaded_resume_source"),
                     )
 
-                elif selected_method == "Paste or edit resume/profile text":
+                elif selected_method == "Paste resume/profile text":
                     st.session_state.pasted_resume_text = st.text_area(
                         "Paste or edit resume/profile text",
                         value=st.session_state.pasted_resume_text,
@@ -5699,7 +5869,7 @@ def render_demo_page(
                 "cluster": cluster,
                 "missing_terms": missing_terms,
             }
-            st.session_state.demo_stage = "snapshot"
+            st.session_state.demo_stage = "results"
             st.rerun()
         elif analyze_clicked:
             st.warning(
@@ -5707,13 +5877,73 @@ def render_demo_page(
             )
         return
 
-    if st.session_state.demo_stage == "snapshot":
+    if st.session_state.demo_stage == "results":
         profile = assessment["profile"]
         structure = assessment["structure"]
         quality = assessment["quality"]
         capability = assessment.get("capability") or {}
         public_signals = assessment.get("public_signals")
         learned_quality = assessment.get("learned_quality")
+        snapshot_info = (
+            "Candidate Snapshot is computed in app/app.py from resume text parsing, "
+            "detect_profile(), extract_work_history(), score_projects(), "
+            "assess_quality(), and assess_capability_tier(). It is rule-based and "
+            "uses resume wording, detected skills, section structure, job-title "
+            "signals, quantified-impact language, and optional public-resume models "
+            "from ml/public_assessment.py. Assumption: the uploaded or pasted text is "
+            "a truthful candidate profile; this is an evidence summary, not a hiring decision."
+        )
+        focus_info = (
+            "Detected focus comes from app/app.py::detect_profile(), which scores "
+            "track keyword hits against TRACK_KEYWORDS and resume evidence such as "
+            "skills, titles, projects, and market examples."
+        )
+        seniority_info = (
+            "Seniority is inferred in app/app.py from extracted work-history spans, "
+            "seniority words in titles, project evidence, and runtime.SENIORITY_RANKS. "
+            "It is an estimate when dates or titles are missing."
+        )
+        capability_info = (
+            "Capability tier is computed by app/app.py::assess_capability_tier(). "
+            "It combines quality subscores, detected track-specific skills, project "
+            "strength, public-model signals, and high-rigor employer/title/publication "
+            "signals into a 0-100 within-level score used for salary adjustment."
+        )
+        evidence_info = (
+            "Evidence counts come from app/app.py::resume_structure(), SECTION_ALIASES, "
+            "and the active input source. The dataset badge uses app/ml_runtime.py "
+            "artifact readiness and whether data/processed/jobs.parquet is loaded."
+        )
+        strengths_info = (
+            "Detected strengths are the top skills and domain terms surfaced by "
+            "detect_profile() from the resume text and local track lexicons in app/app.py."
+        )
+        organization_info = (
+            "Resume organization is based on section-heading aliases in SECTION_ALIASES "
+            "inside app/app.py, plus public section classifiers when public assessment "
+            "artifacts are available."
+        )
+        market_info = (
+            "Market readout is built in app/ml_runtime.py and app/components/salary_chart.py. "
+            "The salary range combines retrieved-role salary quantiles from FAISS/vector "
+            "matching in ml/retrieval.py, optional neural quantile salary estimates from "
+            "ml/salary_model.py, optional BLS/O*NET occupation wages via ml/occupation_router.py "
+            "and ml/wage_bands.py, then app/app.py applies quality and capability adjustments. "
+            "Assumption: this is a matched-market reference, not a guaranteed compensation offer."
+        )
+        match_info = (
+            "Gaps and matching roles combine clustering and retrieval. Market segment uses "
+            "K-Means artifacts from scripts/build_clusters.py through ml/clustering.py and "
+            "app/ml_runtime.py::cluster_position(). Missing terms come from "
+            "app/ml_runtime.py::feedback_terms(), comparing resume language with top matched "
+            "roles and cluster terms. Assumption: terms are directional signals to strengthen "
+            "evidence, not mandatory requirements."
+            "Top matching roles come from app/ml_runtime.py::retrieve_matches(), which encodes "
+            "the resume with the loaded embedding model, searches the local FAISS index built "
+            "by scripts/build_index.py, filters/scales by inferred seniority, and renders the "
+            "top jobs in app/components/job_results.py. Similarity is cosine-like vector "
+            "similarity from the local embedding space."
+        )
 
         profile_track_html = escape(str(profile["track"]))
         profile_seniority_html = escape(str(profile["seniority"]))
@@ -5734,7 +5964,9 @@ def render_demo_page(
         st.markdown(
             f"""
             <div class="snapshot-hero">
-                <h1 class="snapshot-title">Candidate Snapshot</h1>
+                <div class="snapshot-title-row">
+                    <h1 class="snapshot-title">Candidate Snapshot</h1>
+                </div>
                 <div class="snapshot-summary">
                     This resume reads as a <strong>{profile_track_html}</strong> profile
                     at the <strong>{profile_seniority_html}</strong> level with about
@@ -5745,17 +5977,17 @@ def render_demo_page(
             </div>
             <div class="snapshot-highlight-grid">
                 <div class="snapshot-card primary">
-                    <div class="snapshot-label">Detected focus</div>
+                    <div class="snapshot-label">Detected focus{info_dot(focus_info, extra_class="inline-info")}</div>
                     <div class="snapshot-value">{profile_track_html}</div>
                     <div class="snapshot-copy">Inferred from resume language and market evidence.</div>
                 </div>
                 <div class="snapshot-card primary">
-                    <div class="snapshot-label">Seniority</div>
+                    <div class="snapshot-label">Seniority{info_dot(seniority_info, extra_class="inline-info")}</div>
                     <div class="snapshot-value">{profile_seniority_html}</div>
                     <div class="snapshot-copy">{seniority_reason_html}</div>
                 </div>
                 <div class="snapshot-card primary">
-                    <div class="snapshot-label">Capability tier</div>
+                    <div class="snapshot-label">Capability tier{info_dot(capability_info, extra_class="inline-info")}</div>
                     <div class="snapshot-value">{capability_tier_html} ({capability_score_html}/100)</div>
                     <div class="snapshot-copy">Within-level strength; salary effect {effect_html}.</div>
                 </div>
@@ -5763,6 +5995,8 @@ def render_demo_page(
             """,
             unsafe_allow_html=True,
         )
+        with st.expander("Read more about Candidate Snapshot"):
+            st.markdown(snapshot_info)
 
         render_quality_scorecard(quality, learned_quality)
         render_public_model_card(public_signals)
@@ -5778,7 +6012,7 @@ def render_demo_page(
         dataset_note_html = escape(linkedin_dataset_note(has_real_data))
         st.markdown(
             f"""
-            <div class="snapshot-section-title">Evidence used in this snapshot</div>
+            <div class="snapshot-section-title">Evidence used in this snapshot{info_dot(evidence_info, extra_class="inline-info")}</div>
             <div class="snapshot-card snapshot-source-card">
                 <div>
                     <div class="snapshot-label">Resume source</div>
@@ -5822,11 +6056,11 @@ def render_demo_page(
             f"""
             <div class="snapshot-evidence-grid">
                 <div class="snapshot-card">
-                    <div class="snapshot-label">Detected strengths</div>
+                    <div class="snapshot-label">Detected strengths{info_dot(strengths_info, extra_class="inline-info")}</div>
                     <div class="chip-cloud">{skills_html}</div>
                 </div>
                 <div class="snapshot-card">
-                    <div class="snapshot-label">Resume organization</div>
+                    <div class="snapshot-label">Resume organization{info_dot(organization_info, extra_class="inline-info")}</div>
                     <div class="chip-cloud">{sections_html}</div>
                     {missing_sections_html}
                 </div>
@@ -5835,19 +6069,10 @@ def render_demo_page(
             unsafe_allow_html=True,
         )
 
-        render_demo_floating_nav(
-            previous_stage="input",
-            restart_demo=restart_demo,
-            next_label="Continue to market readout",
-            next_stage="market",
-        )
-        return
-
-    if st.session_state.demo_stage == "market":
-        render_panel_banner(
-            "Stage 3",
+        render_demo_section_header(
             "Market readout",
             "The app explains the salary range it can support from retrieved roles and available wage/model evidence.",
+            market_info,
         )
         band = assessment.get("band")
         with st.container(border=True):
@@ -5858,73 +6083,74 @@ def render_demo_page(
                     "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                 )
 
-        render_demo_floating_nav(
-            previous_stage="snapshot",
-            restart_demo=restart_demo,
-            next_label="Continue to gaps and matching roles",
-            next_stage="gaps",
-        )
-        return
-
-    if st.session_state.demo_stage == "gaps":
-        render_panel_banner(
-            "Stage 4",
-            "Gaps and matching roles",
-            "The final view connects market segment, missing terms, and concrete role matches.",
-        )
         cluster = assessment.get("cluster")
         matches = assessment.get("matches")
+        if matches is not None and not isinstance(matches, pd.DataFrame):
+            matches = pd.DataFrame(matches)
         missing_terms = assessment.get("missing_terms") or []
 
-        render_panel_banner(
-            "Profile Signal",
+        render_demo_section_header(
             "Market segment and match evidence",
             "The app infers the closest market segment and shows the strength of the role matches in one row.",
+            "This row combines clustering and retrieval outputs. Segment/alignment come from K-Means cluster assignment in ml/clustering.py through app/ml_runtime.py::cluster_position(); similarity and retrieved-role count come from vector search in app/ml_runtime.py::retrieve_matches().",
         )
         with st.container(border=True):
             signal_cols = st.columns(4, gap="small")
             with signal_cols[0]:
                 if cluster is not None:
-                    render_signal_card(
+                    render_demo_signal_card(
                         "Segment",
                         str(cluster["cluster_id"]),
                         cluster["label"],
+                        "Segment is the nearest K-Means cluster from models/cluster artifacts, loaded through app/ml_runtime.py::load_cluster_artifacts() and assigned by cluster_position().",
                     )
                 else:
-                    render_signal_card(
+                    render_demo_signal_card(
                         "Segment",
                         "Unavailable",
                         "Market segment data is not available.",
+                        "Segment is unavailable when clustering artifacts from scripts/build_clusters.py are not present or not marked ready.",
                     )
             with signal_cols[1]:
                 if cluster is not None:
                     alignment = max(
                         0, min(100, int(round(100 / (1 + cluster["distance"]))))
                     )
-                    render_signal_card(
+                    render_demo_signal_card(
                         "Alignment",
                         f"{alignment}%",
                         "Relative closeness to this segment.",
+                        "Alignment is a display score derived from the distance to the nearest K-Means centroid: round(100 / (1 + distance)), clipped to 0-100.",
                     )
                 else:
-                    render_signal_card("Alignment", "N/A", "Build segment data first.")
+                    render_demo_signal_card(
+                        "Alignment",
+                        "N/A",
+                        "Build segment data first.",
+                        "Alignment requires cluster distance from app/ml_runtime.py::cluster_position().",
+                    )
             with signal_cols[2]:
                 if matches is None or matches.empty:
-                    render_signal_card(
-                        "Top similarity", "N/A", "No matching roles surfaced."
+                    render_demo_signal_card(
+                        "Top similarity",
+                        "N/A",
+                        "No matching roles surfaced.",
+                        "Top similarity requires at least one retrieved role from the FAISS index.",
                     )
                 else:
-                    render_signal_card(
+                    render_demo_signal_card(
                         "Top similarity",
                         f"{matches.iloc[0]['similarity'] * 100:.0f}%",
                         "Best role match for this resume.",
+                        "Top similarity is the first retrieved role's embedding similarity returned by app/ml_runtime.py::retrieve_matches() using ml/retrieval.py and the local FAISS index.",
                     )
             with signal_cols[3]:
                 count = 0 if matches is None else len(matches)
-                render_signal_card(
+                render_demo_signal_card(
                     "Retrieved roles",
                     f"{count:,}",
                     "Roles surfaced for this resume.",
+                    "Retrieved roles is the count of top-k matches retained after vector search, metadata join, and seniority-aware filtering in app/ml_runtime.py.",
                 )
             if cluster is not None:
                 st.markdown(
@@ -5938,19 +6164,19 @@ def render_demo_page(
                 )
 
         st.write("")
-        render_panel_banner(
-            "Opportunity Lens",
+        render_demo_section_header(
             "Gaps to close",
             "Missing terms from the strongest matching roles and market segment.",
+            "Gap chips are produced by app/ml_runtime.py::feedback_terms(). It compares the normalized resume text with top retrieved job descriptions and nearest-cluster top terms, then surfaces terms that appear in the market evidence but not clearly in the candidate text.",
         )
         with st.container(border=True):
             render_missing_terms(missing_terms)
 
         st.write("")
-        render_panel_banner(
-            "Match Board",
+        render_demo_section_header(
             "Top matching roles",
             "These roles are ordered by similarity to the resume.",
+            match_info,
         )
         if matches is None or matches.empty:
             st.info(
@@ -5960,7 +6186,6 @@ def render_demo_page(
             render_job_results(matches)
 
         render_demo_floating_nav(
-            previous_stage="market",
             restart_demo=restart_demo,
         )
 
