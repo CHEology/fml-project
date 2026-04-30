@@ -130,6 +130,11 @@ def load_jobs(project_root: Path = PROJECT_ROOT) -> pd.DataFrame:
     return _ensure_app_columns(frame)
 
 
+def load_job_embeddings(project_root: Path = PROJECT_ROOT) -> np.ndarray:
+    path = Path(project_root) / "models" / "job_embeddings.npy"
+    return np.load(path).astype(np.float32, copy=False)
+
+
 def load_retriever(project_root: Path = PROJECT_ROOT, encoder: Any | None = None):
     root = Path(project_root)
     index = _read_faiss_index(root / "models" / "jobs.index")

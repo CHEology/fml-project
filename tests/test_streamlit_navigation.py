@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
@@ -11,6 +12,27 @@ def _function_source(source: str, name: str) -> str:
     start = source.index(f"def {name}(")
     next_def = source.index("\ndef ", start + 1)
     return source[start:next_def]
+
+
+def _assigned_string_list(source: str, name: str) -> list[str]:
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == name
+            for target in node.targets
+        ):
+            continue
+        if not isinstance(node.value, ast.List):
+            continue
+        values: list[str] = []
+        for item in node.value.elts:
+            if not isinstance(item, ast.Constant) or not isinstance(item.value, str):
+                raise AssertionError(f"{name} must be a literal string list")
+            values.append(item.value)
+        return values
+    raise AssertionError(f"{name} assignment not found")
 
 
 def test_methodology_is_extracted_to_shared_renderer() -> None:
@@ -61,12 +83,13 @@ def test_demo_page_uses_single_stage_wizard() -> None:
     nav_source = _function_source(app_source, "render_demo_floating_nav")
 
     assert 'st.session_state.demo_stage == "input"' in demo_source
-    assert 'st.session_state.demo_stage == "snapshot"' in demo_source
-    assert 'st.session_state.demo_stage == "market"' in demo_source
-    assert 'st.session_state.demo_stage == "gaps"' in demo_source
-    assert 'st.session_state.demo_stage = "snapshot"' in demo_source
-    assert 'next_stage="market"' in demo_source
-    assert 'next_stage="gaps"' in demo_source
+    assert 'st.session_state.demo_stage == "results"' in demo_source
+    assert 'st.session_state.demo_stage = "results"' in demo_source
+    assert 'st.session_state.demo_stage == "snapshot"' not in demo_source
+    assert 'st.session_state.demo_stage == "market"' not in demo_source
+    assert 'st.session_state.demo_stage == "gaps"' not in demo_source
+    assert 'next_stage="market"' not in demo_source
+    assert 'next_stage="gaps"' not in demo_source
     assert "st.session_state.demo_stage = next_stage" in nav_source
     assert "Start over with new resume/profile" in nav_source
     assert "← Previous" in nav_source
@@ -80,16 +103,90 @@ def test_demo_stage_navigation_is_floating() -> None:
     assert 'key="demo-floating-nav"' in nav_source
     assert ".st-key-demo-floating-nav" in app_source
     assert "position: fixed;" in app_source
-    assert "left: max(1rem, min(29rem, 24vw));" in app_source
     assert "right: 1rem;" in app_source
-    assert "width: auto !important;" in app_source
+    assert "transform: none;" in app_source
+    assert "width: min(32rem, calc(100vw - 2rem)) !important;" in app_source
+    assert "background: transparent;" in app_source
+    assert "border: 0;" in app_source
+    assert "box-shadow: none;" in app_source
+    assert "background: #175CD3;" in app_source
     assert "display: grid !important;" in app_source
     assert (
         "grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);"
         in app_source
     )
+    assert "max-width: 28rem;" in app_source
+    assert "margin: 0 auto;" in app_source
     assert "text-overflow: ellipsis;" in app_source
     assert "render_demo_floating_nav(" in app_source
+
+
+def test_demo_results_sections_have_explainable_headers() -> None:
+    app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
+    demo_source = _function_source(app_source, "render_demo_page")
+
+    assert "render_demo_section_header" in app_source
+    assert "info_dot" in app_source
+    assert 'with st.expander(f"Read more about {title}")' in app_source
+    assert 'with st.expander("Read more about Candidate Snapshot")' in demo_source
+    assert "{info_dot(snapshot_info)}" not in demo_source
+    section_header_source = _function_source(app_source, "render_demo_section_header")
+    assert "info_dot(" not in section_header_source
+    for title in (
+        "Candidate Snapshot",
+        "Market readout",
+        "Market segment and match evidence",
+        "Gaps to close",
+        "Top matching roles",
+    ):
+        assert title in demo_source
+    for provenance in (
+        "ml/retrieval.py",
+        "ml/salary_model.py",
+        "ml/clustering.py",
+        "app/ml_runtime.py::feedback_terms()",
+        "scripts/build_index.py",
+    ):
+        assert provenance in demo_source
+
+
+def test_demo_market_readout_renders_cluster_salary_distribution() -> None:
+    app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
+    demo_source = _function_source(app_source, "render_demo_page")
+
+    assert "render_cluster_salary_distribution" in app_source
+    assert '"cluster_assignments": cluster_assignments' in demo_source
+    assert '"cluster_labels": cluster_labels' in demo_source
+    assert '"job_embeddings": job_embeddings' in demo_source
+    assert '"resume_embedding": resume_embedding' in demo_source
+    assert 'assessment.get("cluster_assignments")' in demo_source
+    assert 'assessment.get("cluster_labels")' in demo_source
+    assert 'assessment.get("job_embeddings")' in demo_source
+    assert 'assessment.get("resume_embedding")' in demo_source
+
+    salary_band_index = demo_source.index("render_salary_band(band)")
+    distribution_index = demo_source.index("render_cluster_salary_distribution(")
+    segment_index = demo_source.index(
+        'render_demo_section_header(\n            "Market segment and match evidence"'
+    )
+    assert salary_band_index < distribution_index < segment_index
+
+
+def test_demo_market_readout_explains_cluster_salary_distribution() -> None:
+    app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
+    demo_source = _function_source(app_source, "render_demo_page")
+
+    for phrase in (
+        "sentence-transformer vectors",
+        "K-Means groups job embeddings into 8 role-family clusters",
+        "PCA-reduced embedding components",
+        "TF-IDF top terms and common titles",
+        "nearest centroid",
+        "2D cluster map",
+        "random visualization sample",
+        "hybrid band q50",
+    ):
+        assert phrase in demo_source
 
 
 def test_demo_removes_intro_hero_and_static_metrics() -> None:
@@ -123,14 +220,18 @@ def test_demo_rechecks_resume_text_after_upload_before_enabling_analysis() -> No
 def test_demo_input_stage_uses_accordion_methods() -> None:
     app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
     demo_source = _function_source(app_source, "render_demo_page")
+    input_methods = _assigned_string_list(demo_source, "input_methods")
 
-    assert demo_source.count("st.expander(") == 2
+    input_stage_source = demo_source[: demo_source.index("if analyze_clicked:")]
+    assert input_stage_source.count("st.expander(") == 2
     assert "st.radio(" in demo_source
     assert 'key="demo_input_method"' in demo_source
-    assert "Upload a PDF or TXT resume" in demo_source
-    assert "Paste or edit resume/profile text" in demo_source
-    assert "Import a public portfolio or resume page" in demo_source
-    assert "Use a random sample resume" in demo_source
+    assert input_methods == [
+        "Upload a PDF or TXT resume",
+        "Paste resume/profile text",
+        "Import a public portfolio or resume page",
+        "Use a random sample resume",
+    ]
     assert "Choose an input method" in demo_source
     assert "Clear current input" not in demo_source
     assert "demo-readiness" not in demo_source
@@ -254,7 +355,7 @@ app.render_demo_page(jobs, True, status)
 
     at.button(key="analyze_sample_resume").click().run()
 
-    assert at.session_state["demo_stage"] == "snapshot"
+    assert at.session_state["demo_stage"] == "results"
     assert not at.error
     assert not at.exception
 
@@ -301,10 +402,8 @@ def test_demo_input_method_selector_is_styled_as_cards() -> None:
 def test_demo_selected_method_labels_match_render_branches() -> None:
     app_source = (PROJECT_ROOT / "app" / "app.py").read_text(encoding="utf-8")
     demo_source = _function_source(app_source, "render_demo_page")
+    input_methods = _assigned_string_list(demo_source, "input_methods")
 
-    for label in (
-        "Upload a PDF or TXT resume",
-        "Paste or edit resume/profile text",
-        "Import a public portfolio or resume page",
-    ):
+    for label in input_methods[:-1]:
         assert f'selected_method == "{label}"' in demo_source
+    assert f'selected_method == "{input_methods[-1]}"' not in demo_source
