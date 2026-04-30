@@ -4,9 +4,8 @@ from html import escape
 
 import pandas as pd
 import streamlit as st
-from app.components.cluster_view import render_missing_terms
 from app.components.job_results import render_job_results
-from app.components.quality import render_public_model_card, render_quality_scorecard
+from app.components.quality import render_profile_quality_section
 from app.components.resume_upload import (
     extract_uploaded_text,
     fetch_public_webpage_text,
@@ -23,7 +22,7 @@ from app.demo.components import (
     render_demo_signal_card,
 )
 from app.demo.sample_data import SAMPLE_RESUME_SOURCE_HELP, SAMPLE_RESUME_SOURCE_SUMMARY
-from app.demo.samples import linkedin_dataset_note, random_premade_sample_resume
+from app.demo.samples import random_premade_sample_resume
 from app.demo.snapshot import (
     capability_evidence_html,
     encoded_image_data_uri,
@@ -559,20 +558,6 @@ def render_demo_page(
             "strength, public-model signals, and high-rigor employer/title/publication "
             "signals into a 0-100 within-level score used for salary adjustment."
         )
-        evidence_info = (
-            "Evidence counts come from ml.resume_assessment.resume_structure(), SECTION_ALIASES, "
-            "and the active input source. The dataset badge uses app/ml_runtime.py "
-            "artifact readiness and whether data/processed/jobs.parquet is loaded."
-        )
-        strengths_info = (
-            "Detected strengths are the top skills and domain terms surfaced by "
-            "detect_profile() from the resume text and shared track lexicons in ml.resume_assessment."
-        )
-        organization_info = (
-            "Resume organization is based on section-heading aliases in SECTION_ALIASES "
-            "inside ml.resume_assessment, plus public section classifiers when public assessment "
-            "artifacts are available."
-        )
         market_info = (
             "Market positioning is built in app/ml_runtime.py and app/components/salary_chart.py. "
             "The salary range combines retrieved-role salary quantiles from FAISS/vector "
@@ -619,7 +604,7 @@ def render_demo_page(
         )
         capability_evidence = capability_evidence_html(capability, quality)
         seniority_ladder = seniority_ladder_html(str(profile["seniority"]))
-        with st.container(key="candidate-snapshot-header"):
+        with st.container(key="candidate-snapshot-section"):
             st.markdown(
                 f"""
                 <div class="snapshot-hero candidate-snapshot-hero">
@@ -637,63 +622,30 @@ def render_demo_page(
             )
             with st.expander("Read more about Candidate Snapshot"):
                 st.markdown(snapshot_info)
-        st.markdown(
-            f"""
-            <div class="snapshot-highlight-grid">
-                <div class="snapshot-card primary">
-                    <div class="snapshot-label">Detected focus{info_dot(focus_info, extra_class="inline-info")}</div>
-                    <div class="snapshot-value">{profile_track_html}</div>
-                    {focus_evidence}
-                </div>
-                <div class="snapshot-card primary">
-                    <div class="snapshot-label">Seniority{info_dot(seniority_info, extra_class="inline-info")}</div>
-                    <div class="snapshot-value">{profile_seniority_html}</div>
-                    {seniority_evidence}
-                    {seniority_ladder}
-                </div>
-                <div class="snapshot-card primary">
-                    <div class="snapshot-label">Capability tier{info_dot(capability_info, extra_class="inline-info")}</div>
-                    <div class="snapshot-value">{capability_tier_html} ({capability_score_html}/100)</div>
-                    <div class="snapshot-copy">Within-level strength; salary effect {effect_html}.</div>
-                    {capability_evidence}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        render_quality_scorecard(quality, learned_quality)
-        render_public_model_card(public_signals)
-
-        resume_source_html = escape(str(assessment.get("resume_source", "")))
-        word_count_html = escape(str(structure["word_count"]))
-        bullet_count_html = escape(str(structure["bullet_count"]))
-        link_count_html = escape(str(structure["link_count"]))
-        data_mode_label = (
-            "LinkedIn job catalog" if has_real_data else "Sample role catalog"
-        )
-        data_mode_class = "ready" if has_real_data else "missing"
-        dataset_note_html = escape(linkedin_dataset_note(has_real_data))
-        st.markdown(
-            f"""
-            <div class="snapshot-section-title">Evidence used in this snapshot{info_dot(evidence_info, extra_class="inline-info")}</div>
-            <div class="snapshot-card snapshot-source-card">
-                <div>
-                    <div class="snapshot-label">Resume source</div>
-                    <div class="snapshot-value">{resume_source_html}</div>
-                    <div class="snapshot-stat-row">
-                        <span class="snapshot-stat">{word_count_html} words</span>
-                        <span class="snapshot-stat">{bullet_count_html} bullets</span>
-                        <span class="snapshot-stat">{link_count_html} links</span>
-                        <span class="snapshot-stat">{found_sections_count}/{total_sections_count} sections</span>
+            st.markdown(
+                f"""
+                <div class="snapshot-highlight-grid">
+                    <div class="snapshot-card primary">
+                        <div class="snapshot-label">Detected focus{info_dot(focus_info, extra_class="inline-info")}</div>
+                        <div class="snapshot-value">{profile_track_html}</div>
+                        {focus_evidence}
                     </div>
-                    <div class="snapshot-copy">{dataset_note_html}</div>
+                    <div class="snapshot-card primary">
+                        <div class="snapshot-label">Seniority{info_dot(seniority_info, extra_class="inline-info")}</div>
+                        <div class="snapshot-value">{profile_seniority_html}</div>
+                        {seniority_evidence}
+                        {seniority_ladder}
+                    </div>
+                    <div class="snapshot-card primary">
+                        <div class="snapshot-label">Capability tier{info_dot(capability_info, extra_class="inline-info")}</div>
+                        <div class="snapshot-value">{capability_tier_html} ({capability_score_html}/100)</div>
+                        <div class="snapshot-copy">Within-level strength; salary effect {effect_html}.</div>
+                        {capability_evidence}
+                    </div>
                 </div>
-                <span class="snapshot-market-badge {data_mode_class}">{data_mode_label}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
 
         present_skills = profile["skills_present"] or [
             "Generalist profile",
@@ -701,50 +653,40 @@ def render_demo_page(
         ]
         structure_chips = structure["found_sections"] or ["No formal sections detected"]
         missing_sections = structure["missing_sections"]
-        missing_sections_html = (
-            '<div class="snapshot-copy">Missing sections: '
-            + escape(", ".join(missing_sections))
-            + "</div>"
-            if missing_sections
-            else '<div class="snapshot-copy">Core resume sections are represented.</div>'
-        )
-        skills_html = "".join(
-            f'<span class="mini-chip">{escape(str(skill))}</span>'
-            for skill in present_skills[:8]
-        )
-        sections_html = "".join(
-            f'<span class="mini-chip">{escape(str(section))}</span>'
-            for section in structure_chips
-        )
-        st.markdown(
-            f"""
-            <div class="snapshot-evidence-grid">
-                <div class="snapshot-card">
-                    <div class="snapshot-label">Detected strengths{info_dot(strengths_info, extra_class="inline-info")}</div>
-                    <div class="chip-cloud">{skills_html}</div>
-                </div>
-                <div class="snapshot-card">
-                    <div class="snapshot-label">Resume organization{info_dot(organization_info, extra_class="inline-info")}</div>
-                    <div class="chip-cloud">{sections_html}</div>
-                    {missing_sections_html}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        missing_terms = assessment.get("missing_terms") or []
+        render_profile_quality_section(
+            quality=quality,
+            learned_quality=learned_quality,
+            public_signals=public_signals,
+            resume_stats={
+                "word_count": int(structure["word_count"]),
+                "bullet_count": int(structure["bullet_count"]),
+                "link_count": int(structure["link_count"]),
+                "found_sections_count": found_sections_count,
+                "total_sections_count": total_sections_count,
+            },
+            strengths=[str(skill) for skill in present_skills],
+            sections=[str(section) for section in structure_chips],
+            missing_sections=[str(section) for section in missing_sections],
+            missing_terms=[str(term) for term in missing_terms],
         )
 
-        render_demo_section_header(
-            "Market Positioning",
-            "",
-            market_info,
-        )
         band = assessment.get("band")
         cluster = assessment.get("cluster")
         cluster_assignments = assessment.get("cluster_assignments")
         cluster_labels = assessment.get("cluster_labels")
         job_embeddings = assessment.get("job_embeddings")
         resume_embedding = assessment.get("resume_embedding")
-        with st.container(border=True):
+        matches = assessment.get("matches")
+        if matches is not None and not isinstance(matches, pd.DataFrame):
+            matches = pd.DataFrame(matches)
+
+        with st.container(key="market-positioning-section"):
+            render_demo_section_header(
+                "Market Positioning",
+                "",
+                market_info,
+            )
             if band is not None:
                 render_salary_band(band)
                 render_cluster_salary_distribution(
@@ -761,17 +703,7 @@ def render_demo_page(
                     "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                 )
 
-        matches = assessment.get("matches")
-        if matches is not None and not isinstance(matches, pd.DataFrame):
-            matches = pd.DataFrame(matches)
-        missing_terms = assessment.get("missing_terms") or []
-
-        render_demo_section_header(
-            "Market segment and match evidence",
-            "The app infers the closest market segment and shows the strength of the role matches in one row.",
-            "This row combines clustering and retrieval outputs. Segment/alignment come from K-Means cluster assignment in ml/clustering.py through app/ml_runtime.py::cluster_position(); similarity and retrieved-role count come from vector search in app/ml_runtime.py::retrieve_matches().",
-        )
-        with st.container(border=True):
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
             signal_cols = st.columns(4, gap="small")
             with signal_cols[0]:
                 if cluster is not None:
@@ -840,27 +772,18 @@ def render_demo_page(
                     unsafe_allow_html=True,
                 )
 
-        st.write("")
-        render_demo_section_header(
-            "Gaps to close",
-            "Missing terms from the strongest matching roles and market segment.",
-            "Gap chips are produced by app/ml_runtime.py::feedback_terms(). It compares the normalized resume text with top retrieved job descriptions and nearest-cluster top terms, then surfaces terms that appear in the market evidence but not clearly in the candidate text.",
-        )
-        with st.container(border=True):
-            render_missing_terms(missing_terms)
-
-        st.write("")
-        render_demo_section_header(
-            "Top matching roles",
-            "These roles are ordered by similarity to the resume.",
-            match_info,
-        )
-        if matches is None or matches.empty:
-            st.info(
-                "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
+        with st.container(key="top-matching-roles-section"):
+            render_demo_section_header(
+                "Top matching roles",
+                "These roles are ordered by similarity to the resume.",
+                match_info,
             )
-        else:
-            render_job_results(matches)
+            if matches is None or matches.empty:
+                st.info(
+                    "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
+                )
+            else:
+                render_job_results(matches)
 
         render_demo_floating_nav(
             restart_demo=restart_demo,

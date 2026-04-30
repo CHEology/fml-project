@@ -1,24 +1,107 @@
     .quality-card {
-        border: 1px solid var(--line);
+        border: 1px solid rgba(15, 23, 42, 0.07);
         border-radius: 12px;
         padding: 1rem 1.1rem;
-        background: var(--panel);
-        box-shadow: 0 4px 12px __SHADOW__;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: none;
         margin-top: 0.75rem;
+    }
+
+    .st-key-candidate-snapshot-section,
+    .st-key-profile-quality-section,
+    .st-key-market-positioning-section,
+    .st-key-top-matching-roles-section {
+        border: 1px solid rgba(79, 70, 229, 0.18);
+        border-radius: 18px;
+        padding: 1.15rem 1.25rem;
+        margin: 1rem 0 1.15rem;
+        background:
+            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(240,249,255,0.92));
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+    }
+
+    .st-key-candidate-snapshot-section .snapshot-card,
+    .st-key-profile-quality-section .snapshot-card,
+    .st-key-market-positioning-section .signal-card,
+    .st-key-top-matching-roles-section .job-row {
+        box-shadow: none;
+    }
+
+    .st-key-candidate-snapshot-section .snapshot-card,
+    .st-key-profile-quality-section .snapshot-card,
+    .st-key-market-positioning-section .signal-card {
+        background: rgba(255, 255, 255, 0.72);
+        border-color: rgba(15, 23, 42, 0.07);
+    }
+
+    .st-key-candidate-snapshot-section .snapshot-highlight-grid {
+        margin-bottom: 0;
+    }
+
+    .st-key-market-positioning-section .snapshot-hero,
+    .st-key-top-matching-roles-section .snapshot-hero {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        margin-bottom: 0.85rem;
+        margin-top: 0;
+        padding: 0;
+    }
+
+    .section-divider {
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        margin: 1rem 0;
+    }
+
+    .profile-quality-hero {
+        margin-bottom: 0.85rem;
+    }
+
+    .profile-quality-title-row {
+        align-items: start;
+        display: flex;
+        gap: 0.85rem;
+        justify-content: space-between;
+    }
+
+    .profile-quality-stats {
+        justify-content: flex-end;
+        margin-top: 0;
     }
 
     .quality-headline {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 0.6rem;
+        gap: 1rem;
         margin-bottom: 0.6rem;
+    }
+
+    .quality-score-row {
+        align-items: flex-start;
+        display: flex;
+        gap: 1.15rem;
+        min-width: 0;
+    }
+
+    .quality-peer-metric {
+        min-width: max-content;
     }
 
     .quality-overall {
         font-size: 1.6rem;
         font-weight: 700;
         line-height: 1;
+    }
+
+    .quality-agreement-copy {
+        border-left: 1px solid rgba(15, 23, 42, 0.1);
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.35;
+        max-width: 18rem;
+        padding-left: 1rem;
     }
 
     .quality-band-pill {
@@ -71,13 +154,20 @@
         line-height: 1.45;
     }
 
-    .quality-section-label {
+    .quality-section-label,
+    .quality-subsection-label {
         font-size: 0.78rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--muted);
         margin-top: 0;
         margin-bottom: 0.3rem;
+    }
+
+    .quality-chip-subsection {
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        margin-top: 0.75rem;
+        padding-top: 0.7rem;
     }
 
     .quality-feedback-grid {
@@ -88,27 +178,82 @@
     }
 
     .quality-feedback-panel {
-        border-top: 1px solid var(--line);
-        padding-top: 0.7rem;
+        background: rgba(248, 250, 252, 0.82);
+        border: 1px solid rgba(15, 23, 42, 0.07);
+        border-radius: 12px;
+        padding: 0.75rem 0.85rem;
     }
 
     .quality-list {
         margin: 0;
-        padding-left: 1.1rem;
+        max-width: 42rem;
+        padding-left: 1.15rem;
         font-size: 0.9rem;
-        line-height: 1.5;
+        line-height: 1.58;
     }
 
     .quality-list.flags li { color: var(--warning); }
     .quality-list.strengths li { color: var(--success); }
+
+    .quality-subsection {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        box-shadow: none;
+        grid-column: 1 / -1;
+        padding: 0.9rem 0.95rem;
+    }
+
+    .public-checks-copy {
+        max-width: 64rem;
+    }
+
+    .profile-quality-detail-grid {
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 0.85rem;
+    }
+
+    .profile-quality-organization-card {
+        grid-column: 1 / -1;
+    }
+
+    .profile-quality-gaps-card {
+        grid-column: 1 / -1;
+    }
 
     @media (max-width: 900px) {
         .quality-feedback-grid {
             grid-template-columns: 1fr;
         }
 
+        .quality-headline,
+        .quality-score-row {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .quality-agreement-copy {
+            border-left: 0;
+            border-top: 1px solid rgba(15, 23, 42, 0.1);
+            max-width: none;
+            padding-left: 0;
+            padding-top: 0.65rem;
+        }
+
+        .profile-quality-title-row {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .profile-quality-stats {
+            justify-content: flex-start;
+        }
+
         .snapshot-highlight-grid,
-        .snapshot-evidence-grid {
+        .snapshot-evidence-grid,
+        .profile-quality-detail-grid {
             grid-template-columns: 1fr;
         }
 
