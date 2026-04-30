@@ -7,7 +7,6 @@ from ml.taxonomy import (
     RoleProfile,
     quality_label_from_score,
 )
-from scripts.synthetic_resumes.cli import main
 from scripts.synthetic_resumes.generator import (
     DEGREES_BY_FAMILY,
     PERSONA_SALARY_RANGES,
@@ -27,11 +26,6 @@ __all__ = [
     "generate_paired_synthetic_resumes",
     "generate_synthetic_resumes",
     "load_jobs",
-    "main",
     "quality_label_from_score",
     "write_synthetic_resumes",
 ]
-
-
-if __name__ == "__main__":
-    main()

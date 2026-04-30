@@ -402,7 +402,7 @@ def _load_embeddings(
     except ImportError as exc:
         raise RuntimeError(
             "ml.embeddings.Encoder is required for non-smoke validation. "
-            "Land Task 2.1 first or pass --smoke."
+            "Install project dependencies or pass --smoke."
         ) from exc
     encoder = Encoder(model_name=encoder_name)
     embeddings = np.asarray(

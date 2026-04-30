@@ -8,8 +8,8 @@ Usage:
         --index-out      models/jobs.index \
         --meta-out       models/jobs_meta.parquet
 
-Reads the preprocessed jobs parquet (Phase 1 output), encodes the `text`
-column with the project Encoder (Task 2.1), builds an IndexFlatIP over
+Reads the preprocessed jobs parquet, encodes the `text`
+column with `ml.embeddings.Encoder`, builds an IndexFlatIP over
 L2-normalized vectors, and writes the embeddings, index, and a small
 metadata parquet for downstream retrieval.
 
@@ -247,8 +247,8 @@ def main():
             from ml.embeddings import Encoder
         except ImportError as e:
             raise RuntimeError(
-                "ml/embeddings.Encoder not yet implemented "
-                "(Task 2.1, @ohortig). Run with --smoke for synthetic data."
+                "ml.embeddings.Encoder is required for the real index path. "
+                "Run with --smoke for synthetic data."
             ) from e
 
         encoder = Encoder(model_name=args.model)
