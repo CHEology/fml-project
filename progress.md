@@ -63,10 +63,10 @@
 | # | Task | Owner | Status | Notes |
 |---|------|-------|--------|-------|
 | 4.1 | `SalaryQuantileNet` architecture (`ml/salary_model.py`) | Alan | ✅ | Complete. Added `SalaryScaler` for target normalization. **Raw PyTorch.** |
-| 4.2 | `SalaryDataset` + DataLoader | Alan | ✅ | Complete. Supports optional structured salary features concatenated onto embeddings. |
-| 4.3 | Training loop (`scripts/train_salary_model.py`) | Alan | ✅ | Complete. Features early stopping, scaler saving, optional feature-metadata saving, and configurable quantile-loss weights. |
+| 4.2 | `SalaryDataset` + DataLoader | Alan | ✅ | Complete |
+| 4.3 | Training loop (`scripts/train_salary_model.py`) | Alan | ✅ | Complete. Features early stopping & scaler saving. |
 | 4.4 | Inference API (`predict_salary()`) | Alan | ✅ | Complete. Returns monotonic quantiles. |
-| 4.5 | Evaluation notebook (`03_salary_regression.ipynb`) | Alan | ✅ | Complete and rerun with real Phase 2 embeddings/salary targets. Reports calibration, interval coverage, residuals, and median MAE in USD. Offline script defaults now prefer the resume-side checkpoint when present. |
+| 4.5 | Evaluation notebook (`03_salary_regression.ipynb`) | Alan | ✅ | Complete and rerun with real Phase 2 embeddings/salary targets. Reports calibration, interval coverage, residuals, and median MAE in USD. |
 
 **Phase status:** ✅ Complete (Alan) · Real-data notebook run is unblocked by Phase 2 embeddings.
 
@@ -108,9 +108,8 @@
 | Ruff / pre-commit / GitHub Actions CI | — | ✅ | Formatting, linting, and tests enforced for code directories only |
 | `tests/` — pytest coverage for `ml/` | Alan, Ryan, Omer | ✅ | 20 test files covering salary, retrieval, clustering, preprocessing, embeddings, quality, resume loader, and more. |
 | Resume-quality predictor (`ml/quality.py`) | Ryan | ✅ | Single-head PyTorch MLP + rule-based `score_resume_quality(text)` for real-resume input. |
-| Salary-prediction evaluation (`scripts/evaluate_salary.py`) | Ryan | ✅ | Median MAE, pinball loss, coverage, per-persona breakdown. Defaults to the resume-side checkpoint and uses saved salary feature metadata when present. |
-| Resume-side salary model (`scripts/train_resume_salary_model.py`) | Ryan | ✅ | Retrains `SalaryQuantileNet` on `(resume_embedding, source_salary_annual)` pairs. Now uses structured resume-side salary features and saves `resume_salary_model.features.json`. |
-| Structured salary features (`ml/salary_features.py`) | Ryan | ✅ | Shared feature builder for experience level, work-type flags, and top-state one-hot + `state_other`. Used by JD-side training, resume-side training, eval, runtime, and validation. |
+| Salary-prediction evaluation (`scripts/evaluate_salary.py`) | Ryan | ✅ | Median MAE, pinball loss, coverage, per-persona breakdown. |
+| Resume-side salary model (`scripts/train_resume_salary_model.py`) | Ryan | ✅ | Retrains `SalaryQuantileNet` on `(resume_embedding, source_salary_annual)` pairs. |
 | Real-resume ingest (`ml/resume_loader.py`, `scripts/load_real_resumes.py`) | Ryan | ✅ | PDF/.txt/.md/.csv/JSONL ingest with PII redaction, length cap, sample fixture. |
 | Real-resume validation (`scripts/validate_on_real_resumes.py`) | Ryan | ✅ | Rule-based quality + learned-MLP score + retrieval stats + self-consistency salary metric. |
 | External occupation data (O*NET / BLS) | Ryan | 🟡 | O*NET/BLS plumbing complete (`ml/occupation_router.py`, `ml/wage_bands.py`), but external data files not present in `data/external/`. |
@@ -132,7 +131,7 @@
 
 3. **External data files (O*NET / BLS):** Code exists in `ml/occupation_router.py` and `ml/wage_bands.py`, but `data/external/onet_skills.parquet` and `data/external/bls_wages.parquet` are not present. These are optional enrichments but enhance salary confidence and occupation routing.
 
-4. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. The code path now includes feature-aware resume-side training and weighted upper-quantile loss, but the improved checkpoint has not been retrained locally in this environment yet.
+4. **Salary model calibration:** q90 calibration is reported as slightly outside the ±5 pp target. May need further tuning.
 
 5. **Stale files in repo root:** `replace_main.py` (27 KB) and `fix_app.py` (2 KB) appear to be one-off scripts that should be cleaned up or moved.
 
@@ -157,7 +156,7 @@ Phase 6  [█████████░]  90%  ← app functional; Phase 5 logi
 Total    [█████████░]  92%
 ```
 
-**Current state:** The core ML pipeline is fully operational end-to-end: raw Kaggle data → preprocessing → embeddings → FAISS retrieval → K-Means clustering → salary quantile regression → Streamlit app. Users can upload a resume and get job matches, salary predictions, cluster assignment, and detailed gap analysis with migration advice. The salary path now prefers the resume-side checkpoint, supports structured feature metadata, and uses experience-stratified splits. The main remaining gaps are **silhouette score reporting**, **local retraining/evaluation of the improved salary checkpoint**, and the **final report**.
+**Current state:** The core ML pipeline is fully operational end-to-end: raw Kaggle data → preprocessing → embeddings → FAISS retrieval → K-Means clustering → salary quantile regression → Streamlit app. Users can upload a resume and get job matches, salary predictions, cluster assignment, and detailed gap analysis with migration advice. The main remaining gaps are **silhouette score reporting**, **random seed consistency**, and the **final report**.
 
 ---
 
@@ -183,4 +182,3 @@ Total    [█████████░]  92%
 | 2026-04-27 | Continued the external-data slice without downloading large files. Finished O*NET/BLS plumbing: optional O*NET skill parquet now augments `ml.quality` when present; `ml/occupation_router.py` routes resumes to SOC titles; `ml/wage_bands.py` does exact/family/major-group BLS wage lookup; `scripts/validate_on_real_resumes.py` now reports SOC matches, BLS p10-p90 bands, and per-category quality distributions. Added focused tests and README/data docs. |
 | 2026-04-28 | Improved real-resume assessment quality. O*NET default updated to release 30.2 and local download succeeded (`105,526` rows / `26,902` unique skills / `923` SOCs, gitignored). Rule scoring now avoids trivial 100s through diminishing returns, surfaces human-readable positives/gaps, flags vague/cliche wording and career-progression issues, and validation adds role-family mismatch checks. BLS command-line download is still blocked by HTTP 403 in this environment; docs now include the manual `--input` path. |
 | 2026-04-29 | Audited full codebase against progress. Updated Phase 1 to ✅ (raw data present), Phase 3.2/3.3/3.4 to ✅, Phase 5/6 to 🟡. Added "Areas Still Needing Work" section. Identified missing silhouette score, random seeds in 2 scripts, stale root files, and Phase 5 gaps as remaining work. |
-| 2026-04-29 | Implemented the salary-upgrade pass. Added shared structured salary features in `ml/salary_features.py`; made salary splits experience-stratified; updated `scripts/train_salary_model.py`, `scripts/train_resume_salary_model.py`, `scripts/evaluate_salary.py`, `app/ml_runtime.py`, and `scripts/validate_on_real_resumes.py` to use feature metadata when available. Resume-side training now correctly wires extra features into `SalaryQuantileNet`. Added weighted quantile loss support in `ml/salary_model.PinballLoss` and exposed configurable quantile weights in both salary training scripts. |

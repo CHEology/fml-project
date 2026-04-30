@@ -26,7 +26,6 @@ def test_train_writes_checkpoint_with_current_torch_scheduler(tmp_path) -> None:
         epochs=1,
         patience=1,
         weight_decay=0.0,
-        quantile_weights=(1.0, 1.0, 1.0, 1.0, 1.0),
         output_path=str(output_path),
     )
 
