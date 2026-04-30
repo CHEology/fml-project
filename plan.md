@@ -77,26 +77,11 @@ All ML logic lives in `ml/`, offline pipelines live in `scripts/`, and the Strea
 
 | # | Task | File(s) | Details |
 |---|------|---------|---------|
-| 4.1 | Model architecture | `ml/salary_model.py` | `SalaryQuantileNet(nn.Module)`: input = embedding dim (384 or 768) + engineered features, hidden layers (256 → 128 → 64), output = 5 quantile heads. `PinballLoss` now supports optional per-quantile weights so the upper tail can be emphasized without changing the architecture. |
-| 4.2 | Dataset & DataLoader | `ml/salary_model.py`, `ml/salary_features.py` | `SalaryDataset(Dataset)`: loads embeddings + salary targets. Structured salary features are built separately and concatenated onto embeddings. Train/val/test split is 80/10/10 and now supports deterministic stratification by experience level. |
-| 4.3 | Training loop | `scripts/train_salary_model.py`, `scripts/train_resume_salary_model.py` | Adam optimizer, LR scheduler (ReduceLROnPlateau), early stopping on val loss. Save best checkpoint plus scaler JSON. Both training scripts now support configurable quantile-loss weights; JD-side training can build structured features from `--jobs-parquet`, and resume-side training saves aligned feature metadata. |
-| 4.4 | Inference API | `ml/salary_model.py`, `ml/salary_features.py` | `predict_salary(resume_embedding: np.ndarray, extra_features: np.ndarray | None = None) → dict` returning `{q10, q25, q50, q75, q90}` in USD. Feature metadata can be used to build aligned runtime/eval features when available. |
+| 4.1 | Model architecture | `ml/salary_model.py` | `SalaryQuantileNet(nn.Module)`: input = embedding dim (384 or 768) + engineered features, hidden layers (256 → 128 → 64), output = 5 quantile heads. Pinball (quantile) loss function. |
+| 4.2 | Dataset & DataLoader | `ml/salary_model.py` | `SalaryDataset(Dataset)`: loads embeddings + salary targets. Train/val/test split (80/10/10, stratified by experience level). |
+| 4.3 | Training loop | `scripts/train_salary_model.py` | Adam optimizer, LR scheduler (ReduceLROnPlateau), early stopping on val loss. Log metrics with print or TensorBoard. Save best checkpoint to `models/salary_model.pt`. |
+| 4.4 | Inference API | `ml/salary_model.py` | `predict_salary(resume_embedding: np.ndarray) → dict` returning `{q10, q25, q50, q75, q90}` in USD. |
 | 4.5 | Evaluation notebook | `notebooks/03_salary_regression.ipynb` | Calibration plots (actual fraction below predicted quantile vs nominal quantile). MAE of median prediction. Residual analysis. |
-
-### Phase 4 Notes (Implemented After Initial Plan)
-
-- The repo now has a shared structured salary feature builder in `ml/salary_features.py`.
-- Feature set for this pass:
-  - `experience_level_ordinal`
-  - `work_type_remote`
-  - `work_type_hybrid`
-  - `work_type_onsite`
-  - top-state one-hot + `state_other`
-- The resume-side salary path is the intended primary inference/evaluation path when `models/resume_salary_model.pt` is available.
-- Feature metadata is saved alongside salary checkpoints as `*.features.json` and is consumed by:
-  - `scripts/evaluate_salary.py`
-  - `app/ml_runtime.py`
-  - `scripts/validate_on_real_resumes.py`
 
 **Acceptance criteria:** Quantile calibration within ±5 pp (e.g., 50th percentile captures ~45–55 % of actuals). Median MAE < $15 K on test set.
 

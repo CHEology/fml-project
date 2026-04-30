@@ -104,18 +104,6 @@ class TestPinballLoss:
         # q=0.9 penalises under-prediction more than q=0.1
         assert loss_high.item() > loss_low.item()
 
-    def test_weights_raise_selected_quantile_penalty(self):
-        criterion_plain = PinballLoss(quantiles=(0.5, 0.9), weights=(1.0, 1.0))
-        criterion_weighted = PinballLoss(quantiles=(0.5, 0.9), weights=(1.0, 3.0))
-
-        y_true = torch.tensor([100.0])
-        y_pred = torch.tensor([[100.0, 80.0]])
-
-        plain = criterion_plain(y_pred, y_true)
-        weighted = criterion_weighted(y_pred, y_true)
-
-        assert weighted.item() > plain.item()
-
 
 # ---------------------------------------------------------------------------
 # SalaryQuantileNet tests

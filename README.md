@@ -128,59 +128,6 @@ model is used as a final fallback or supporting reference. If you train the
 resume-side model, the app prefers `models/resume_salary_model.pt` over the
 older JD-side `models/salary_model.pt`.
 
-### Salary model training
-
-There are now two supported salary-training paths:
-
-- `models/salary_model.pt`: legacy JD-side model trained on job embeddings
-- `models/resume_salary_model.pt`: preferred resume-side model trained on resume embeddings
-
-Both paths support structured salary features and save a matching
-`*.features.json` file when those features are used. The current feature set is:
-
-- `experience_level_ordinal`
-- `work_type_remote`
-- `work_type_hybrid`
-- `work_type_onsite`
-- top-state one-hot encoding plus `state_other`
-
-Train the JD-side model with structured features from the processed jobs parquet:
-
-```bash
-uv run python scripts/train_salary_model.py \
-    --embeddings  models/job_embeddings.npy \
-    --salaries    data/processed/salaries.npy \
-    --jobs-parquet data/processed/jobs.parquet \
-    --output      models/salary_model.pt
-```
-
-Train the preferred resume-side model:
-
-```bash
-uv run python scripts/train_resume_salary_model.py \
-    --resumes data/eval/synthetic_resumes.parquet \
-    --out     models/resume_salary_model.pt
-```
-
-Both training scripts also accept `--quantile-weights` so you can upweight
-upper quantiles if q75/q90 are under-calibrated.
-
-### Salary evaluation
-
-`scripts/evaluate_salary.py` now defaults to the resume-side checkpoint:
-
-```bash
-uv run python scripts/evaluate_salary.py \
-    --resumes data/eval/synthetic_resumes.parquet \
-    --model   models/resume_salary_model.pt \
-    --scaler  models/resume_salary_model.scaler.json \
-    --features-metadata models/resume_salary_model.features.json
-```
-
-If the feature metadata file is missing, the script falls back to
-embeddings-only inference. You can still evaluate the legacy JD-side checkpoint
-by explicitly passing the `salary_model.pt` paths.
-
 ## Retrieval Evaluation
 
 After building the real index, generate synthetic resume/job pairs and evaluate
@@ -239,10 +186,7 @@ When O*NET/BLS artifacts are present, it also reports the nearest SOC
 occupation, federal p10-p90 wage band, per-category quality distribution, and
 retrieval role-family mismatch rate.
 
-If `models/resume_salary_model.features.json` exists, the validation harness
-also builds aligned structured salary features before calling the salary model.
-
-> **Calibration caveat.** The learned quality MLP was trained on the synthetic generator's `quality_score` formula. The repo now prefers the resume-side salary model to reduce the JD↔resume domain shift, but the final reported salary quality still depends on retraining and evaluating the latest checkpoint locally. Treat these numbers as proxies until real labels exist. The rule-based scorer + self-consistency salary check are what we trust on real input.
+> **Calibration caveat.** The learned quality MLP was trained on the synthetic generator's `quality_score` formula and the JD-side salary model has a domain shift on resume embeddings. Treat numbers from these as proxies until real labels exist. The rule-based scorer + self-consistency salary check are what we trust on real input.
 
 ## Repo Structure
 
