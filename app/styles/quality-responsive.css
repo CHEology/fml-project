@@ -72,16 +72,36 @@
 
     .quality-headline {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 0.6rem;
+        gap: 1rem;
         margin-bottom: 0.6rem;
+    }
+
+    .quality-score-row {
+        align-items: flex-start;
+        display: flex;
+        gap: 1.15rem;
+        min-width: 0;
+    }
+
+    .quality-peer-metric {
+        min-width: max-content;
     }
 
     .quality-overall {
         font-size: 1.6rem;
         font-weight: 700;
         line-height: 1;
+    }
+
+    .quality-agreement-copy {
+        border-left: 1px solid rgba(15, 23, 42, 0.1);
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.35;
+        max-width: 18rem;
+        padding-left: 1rem;
     }
 
     .quality-band-pill {
@@ -134,13 +154,20 @@
         line-height: 1.45;
     }
 
-    .quality-section-label {
+    .quality-section-label,
+    .quality-subsection-label {
         font-size: 0.78rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--muted);
         margin-top: 0;
         margin-bottom: 0.3rem;
+    }
+
+    .quality-chip-subsection {
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        margin-top: 0.75rem;
+        padding-top: 0.7rem;
     }
 
     .quality-feedback-grid {
@@ -191,6 +218,20 @@
     @media (max-width: 900px) {
         .quality-feedback-grid {
             grid-template-columns: 1fr;
+        }
+
+        .quality-headline,
+        .quality-score-row {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .quality-agreement-copy {
+            border-left: 0;
+            border-top: 1px solid rgba(15, 23, 42, 0.1);
+            max-width: none;
+            padding-left: 0;
+            padding-top: 0.65rem;
         }
 
         .profile-quality-title-row {

@@ -276,10 +276,12 @@ def test_profile_quality_section_renders_consolidated_content(monkeypatch) -> No
     assert "582 words" in html
     assert "Learned MLP cross-check" in html
     assert "Public-data model checks" in html
-    assert "Detected strengths" in html
+    assert "Evidence tags" in html
     assert "Resume organization" in html
-    assert "Gaps to close" in html
+    assert "Market-language gaps" in html
     assert "Add stronger evidence for client" in html
+    assert '<div class="snapshot-label">Detected strengths</div>' not in html
+    assert '<div class="snapshot-label">Gaps to close</div>' not in html
     assert "Evidence used in this snapshot" not in html
     assert "Uploaded file:" not in html
 
