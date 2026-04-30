@@ -18,6 +18,7 @@ def test_app_entrypoint_stays_thin() -> None:
 
 
 def test_extracted_app_modules_are_importable() -> None:
+    from app.components import quality
     from app.pages import demo, home, market
     from app.styles import inject_styles
 
@@ -30,6 +31,7 @@ def test_extracted_app_modules_are_importable() -> None:
     assert callable(demo.seniority_ladder_html)
     assert callable(demo.focus_evidence_html)
     assert callable(demo.seniority_evidence_html)
+    assert callable(quality.render_profile_quality_section)
     assert callable(home.render_home_page)
     assert callable(market.render_market_overview_page)
     assert callable(inject_styles)
@@ -209,3 +211,88 @@ demo.render_demo_page(jobs, True, status)
     assert at.session_state["demo_scroll_to_top"] is False
     assert not at.error
     assert not at.exception
+
+
+def test_profile_quality_section_renders_consolidated_content(monkeypatch) -> None:
+    import streamlit as st
+    from app.components.quality import render_profile_quality_section
+
+    rendered: list[str] = []
+
+    class DummyExpander:
+        def __enter__(self) -> None:
+            return None
+
+        def __exit__(self, exc_type, exc, traceback) -> bool:
+            return False
+
+    def capture_markdown(body: str, *args, **kwargs) -> None:
+        rendered.append(body)
+
+    def capture_expander(label: str, *args, **kwargs) -> DummyExpander:
+        rendered.append(label)
+        return DummyExpander()
+
+    monkeypatch.setattr(st, "markdown", capture_markdown)
+    monkeypatch.setattr(st, "expander", capture_expander)
+
+    render_profile_quality_section(
+        quality={
+            "overall": 39,
+            "band_label": "Weak",
+            "experience_score": 22,
+            "impact_score": 0,
+            "specificity_score": 100,
+            "structure_score": 63,
+            "strengths": ["History includes recognized, selective employers or labs."],
+            "red_flags": ["Resume organization could be clearer; missing Projects."],
+        },
+        learned_quality={"score": 37, "label": "weak"},
+        public_signals={
+            "ready": True,
+            "domain": {"label": "Information-Technology", "confidence": 0.09},
+            "sections": {"counts": {"Exp": 44, "Edu": 2, "Sum": 2}},
+            "entities": {
+                "counts": {"College Name": 1, "Degree": 1, "Companies worked at": 7}
+            },
+        },
+        resume_stats={
+            "word_count": 582,
+            "bullet_count": 0,
+            "link_count": 0,
+            "found_sections_count": 4,
+            "total_sections_count": 5,
+        },
+        strengths=["Python", "SQL"],
+        sections=["Experience", "Education", "Skills", "Summary"],
+        missing_sections=["Projects"],
+        missing_terms=["client", "conversion"],
+    )
+
+    html = "\n".join(rendered)
+
+    assert "Profile Quality" in html
+    assert "Read more about Profile Quality" in html
+    assert "582 words" in html
+    assert "Learned MLP cross-check" in html
+    assert "Public-data model checks" in html
+    assert "Detected strengths" in html
+    assert "Resume organization" in html
+    assert "Gaps to close" in html
+    assert "Add stronger evidence for client" in html
+    assert "Evidence used in this snapshot" not in html
+    assert "Uploaded file:" not in html
+
+
+def test_demo_results_composition_removes_obsolete_profile_quality_sections() -> None:
+    demo_source = (PROJECT_ROOT / "app" / "pages" / "demo.py").read_text(
+        encoding="utf-8"
+    )
+    results_source = demo_source.split('if st.session_state.demo_stage == "results":')[
+        1
+    ]
+
+    assert "render_profile_quality_section" in demo_source
+    assert "Evidence used in this snapshot" not in results_source
+    assert "Uploaded file:" not in results_source
+    assert '"Gaps to close",' not in results_source

@@ -7,6 +7,32 @@
         margin-top: 0.75rem;
     }
 
+    .st-key-profile-quality-header {
+        border: 1px solid rgba(79, 70, 229, 0.18);
+        border-radius: 18px;
+        padding: 1.15rem 1.25rem;
+        margin: 1rem 0 0.95rem;
+        background:
+            linear-gradient(135deg, rgba(255,255,255,0.98), rgba(240,249,255,0.92));
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+    }
+
+    .profile-quality-hero {
+        margin-bottom: 0.85rem;
+    }
+
+    .profile-quality-title-row {
+        align-items: start;
+        display: flex;
+        gap: 0.85rem;
+        justify-content: space-between;
+    }
+
+    .profile-quality-stats {
+        justify-content: flex-end;
+        margin-top: 0;
+    }
+
     .quality-headline {
         display: flex;
         align-items: center;
@@ -88,27 +114,60 @@
     }
 
     .quality-feedback-panel {
-        border-top: 1px solid var(--line);
-        padding-top: 0.7rem;
+        background: rgba(248, 250, 252, 0.82);
+        border: 1px solid rgba(15, 23, 42, 0.07);
+        border-radius: 12px;
+        padding: 0.75rem 0.85rem;
     }
 
     .quality-list {
         margin: 0;
-        padding-left: 1.1rem;
+        max-width: 42rem;
+        padding-left: 1.15rem;
         font-size: 0.9rem;
-        line-height: 1.5;
+        line-height: 1.58;
     }
 
     .quality-list.flags li { color: var(--warning); }
     .quality-list.strengths li { color: var(--success); }
+
+    .quality-subsection {
+        background: #FFFFFF;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+        grid-column: 1 / -1;
+        padding: 0.9rem 0.95rem;
+    }
+
+    .profile-quality-detail-grid {
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 0.85rem;
+    }
+
+    .profile-quality-gaps-card {
+        grid-column: 1 / -1;
+    }
 
     @media (max-width: 900px) {
         .quality-feedback-grid {
             grid-template-columns: 1fr;
         }
 
+        .profile-quality-title-row {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .profile-quality-stats {
+            justify-content: flex-start;
+        }
+
         .snapshot-highlight-grid,
-        .snapshot-evidence-grid {
+        .snapshot-evidence-grid,
+        .profile-quality-detail-grid {
             grid-template-columns: 1fr;
         }
 
