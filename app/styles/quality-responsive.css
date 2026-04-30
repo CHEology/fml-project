@@ -204,11 +204,19 @@
         padding: 0.9rem 0.95rem;
     }
 
+    .public-checks-copy {
+        max-width: 64rem;
+    }
+
     .profile-quality-detail-grid {
         display: grid;
         gap: 0.8rem;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         margin-top: 0.85rem;
+    }
+
+    .profile-quality-organization-card {
+        grid-column: 1 / -1;
     }
 
     .profile-quality-gaps-card {

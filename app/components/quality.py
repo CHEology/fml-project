@@ -253,6 +253,12 @@ def render_profile_quality_section(
                 '<div class="quality-subsection">'
                 '<div class="snapshot-label">Public-data model checks'
                 f"{info_dot(PUBLIC_CHECKS_INFO, extra_class='inline-info')}</div>"
+                '<div class="snapshot-copy public-checks-copy">'
+                "These chips are a secondary public-resume model readout, separate "
+                "from the rule-based quality score. They show the model's inferred "
+                "domain, section counts, and entity counts so you can sanity-check "
+                "what resume evidence was recognized."
+                "</div>"
                 f'<div class="chip-cloud">{_chips_html(public_chips[:5])}</div>'
                 "</div>"
             )
@@ -267,7 +273,7 @@ def render_profile_quality_section(
         body = (
             '<div class="profile-quality-detail-grid">'
             + public_html
-            + '<div class="snapshot-card">'
+            + '<div class="snapshot-card profile-quality-organization-card">'
             '<div class="snapshot-label">Resume organization</div>'
             f'<div class="chip-cloud">{_chips_html(sections)}</div>'
             f"{missing_sections_html}</div>" + "</div>"
