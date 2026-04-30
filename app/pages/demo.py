@@ -604,7 +604,7 @@ def render_demo_page(
         )
         capability_evidence = capability_evidence_html(capability, quality)
         seniority_ladder = seniority_ladder_html(str(profile["seniority"]))
-        with st.container(key="candidate-snapshot-header"):
+        with st.container(key="candidate-snapshot-section"):
             st.markdown(
                 f"""
                 <div class="snapshot-hero candidate-snapshot-hero">
@@ -622,30 +622,30 @@ def render_demo_page(
             )
             with st.expander("Read more about Candidate Snapshot"):
                 st.markdown(snapshot_info)
-        st.markdown(
-            f"""
-            <div class="snapshot-highlight-grid">
-                <div class="snapshot-card primary">
-                    <div class="snapshot-label">Detected focus{info_dot(focus_info, extra_class="inline-info")}</div>
-                    <div class="snapshot-value">{profile_track_html}</div>
-                    {focus_evidence}
+            st.markdown(
+                f"""
+                <div class="snapshot-highlight-grid">
+                    <div class="snapshot-card primary">
+                        <div class="snapshot-label">Detected focus{info_dot(focus_info, extra_class="inline-info")}</div>
+                        <div class="snapshot-value">{profile_track_html}</div>
+                        {focus_evidence}
+                    </div>
+                    <div class="snapshot-card primary">
+                        <div class="snapshot-label">Seniority{info_dot(seniority_info, extra_class="inline-info")}</div>
+                        <div class="snapshot-value">{profile_seniority_html}</div>
+                        {seniority_evidence}
+                        {seniority_ladder}
+                    </div>
+                    <div class="snapshot-card primary">
+                        <div class="snapshot-label">Capability tier{info_dot(capability_info, extra_class="inline-info")}</div>
+                        <div class="snapshot-value">{capability_tier_html} ({capability_score_html}/100)</div>
+                        <div class="snapshot-copy">Within-level strength; salary effect {effect_html}.</div>
+                        {capability_evidence}
+                    </div>
                 </div>
-                <div class="snapshot-card primary">
-                    <div class="snapshot-label">Seniority{info_dot(seniority_info, extra_class="inline-info")}</div>
-                    <div class="snapshot-value">{profile_seniority_html}</div>
-                    {seniority_evidence}
-                    {seniority_ladder}
-                </div>
-                <div class="snapshot-card primary">
-                    <div class="snapshot-label">Capability tier{info_dot(capability_info, extra_class="inline-info")}</div>
-                    <div class="snapshot-value">{capability_tier_html} ({capability_score_html}/100)</div>
-                    <div class="snapshot-copy">Within-level strength; salary effect {effect_html}.</div>
-                    {capability_evidence}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
 
         present_skills = profile["skills_present"] or [
             "Generalist profile",
@@ -671,18 +671,22 @@ def render_demo_page(
             missing_terms=[str(term) for term in missing_terms],
         )
 
-        render_demo_section_header(
-            "Market Positioning",
-            "",
-            market_info,
-        )
         band = assessment.get("band")
         cluster = assessment.get("cluster")
         cluster_assignments = assessment.get("cluster_assignments")
         cluster_labels = assessment.get("cluster_labels")
         job_embeddings = assessment.get("job_embeddings")
         resume_embedding = assessment.get("resume_embedding")
-        with st.container(border=True):
+        matches = assessment.get("matches")
+        if matches is not None and not isinstance(matches, pd.DataFrame):
+            matches = pd.DataFrame(matches)
+
+        with st.container(key="market-positioning-section"):
+            render_demo_section_header(
+                "Market Positioning",
+                "",
+                market_info,
+            )
             if band is not None:
                 render_salary_band(band)
                 render_cluster_salary_distribution(
@@ -699,10 +703,7 @@ def render_demo_page(
                     "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                 )
 
-        matches = assessment.get("matches")
-        if matches is not None and not isinstance(matches, pd.DataFrame):
-            matches = pd.DataFrame(matches)
-        with st.container(border=True):
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
             signal_cols = st.columns(4, gap="small")
             with signal_cols[0]:
                 if cluster is not None:
@@ -771,18 +772,18 @@ def render_demo_page(
                     unsafe_allow_html=True,
                 )
 
-        st.write("")
-        render_demo_section_header(
-            "Top matching roles",
-            "These roles are ordered by similarity to the resume.",
-            match_info,
-        )
-        if matches is None or matches.empty:
-            st.info(
-                "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
+        with st.container(key="top-matching-roles-section"):
+            render_demo_section_header(
+                "Top matching roles",
+                "These roles are ordered by similarity to the resume.",
+                match_info,
             )
-        else:
-            render_job_results(matches)
+            if matches is None or matches.empty:
+                st.info(
+                    "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
+                )
+            else:
+                render_job_results(matches)
 
         render_demo_floating_nav(
             restart_demo=restart_demo,

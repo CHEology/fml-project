@@ -184,7 +184,7 @@ def render_profile_quality_section(
             f"{found_sections_count}/{total_sections_count} sections",
         )
     )
-    with st.container(key="profile-quality-header"):
+    with st.container(key="profile-quality-section"):
         st.markdown(
             f"""
             <div class="profile-quality-hero">
@@ -199,45 +199,45 @@ def render_profile_quality_section(
         with st.expander("Read more about Profile Quality"):
             st.markdown(PROFILE_QUALITY_INFO)
 
-    render_quality_scorecard(quality, learned_quality)
+        render_quality_scorecard(quality, learned_quality)
 
-    public_chips = _public_model_chips(public_signals)
-    public_html = ""
-    if public_chips:
-        public_html = (
-            '<div class="quality-subsection">'
-            '<div class="snapshot-label">Public-data model checks'
-            f"{info_dot(PUBLIC_CHECKS_INFO, extra_class='inline-info')}</div>"
-            f'<div class="chip-cloud">{_chips_html(public_chips[:5])}</div>'
-            "</div>"
+        public_chips = _public_model_chips(public_signals)
+        public_html = ""
+        if public_chips:
+            public_html = (
+                '<div class="quality-subsection">'
+                '<div class="snapshot-label">Public-data model checks'
+                f"{info_dot(PUBLIC_CHECKS_INFO, extra_class='inline-info')}</div>"
+                f'<div class="chip-cloud">{_chips_html(public_chips[:5])}</div>'
+                "</div>"
+            )
+
+        missing_sections_html = (
+            '<div class="snapshot-copy">Missing sections: '
+            + escape(", ".join(missing_sections))
+            + "</div>"
+            if missing_sections
+            else '<div class="snapshot-copy">Core resume sections are represented.</div>'
         )
-
-    missing_sections_html = (
-        '<div class="snapshot-copy">Missing sections: '
-        + escape(", ".join(missing_sections))
-        + "</div>"
-        if missing_sections
-        else '<div class="snapshot-copy">Core resume sections are represented.</div>'
-    )
-    gap_chips = [f"Add stronger evidence for {term}" for term in missing_terms[:8]] or [
-        "No major market-language gaps detected"
-    ]
-    body = (
-        '<div class="profile-quality-detail-grid">'
-        + public_html
-        + '<div class="snapshot-card">'
-        '<div class="snapshot-label">Detected strengths</div>'
-        f'<div class="chip-cloud">{_chips_html(strengths[:8])}</div>'
-        "</div>" + '<div class="snapshot-card">'
-        '<div class="snapshot-label">Resume organization</div>'
-        f'<div class="chip-cloud">{_chips_html(sections)}</div>'
-        f"{missing_sections_html}</div>"
-        + '<div class="snapshot-card profile-quality-gaps-card">'
-        '<div class="snapshot-label">Gaps to close</div>'
-        f'<div class="chip-cloud">{_chips_html(gap_chips)}</div>'
-        "</div></div>"
-    )
-    st.markdown(body, unsafe_allow_html=True)
+        gap_chips = [
+            f"Add stronger evidence for {term}" for term in missing_terms[:8]
+        ] or ["No major market-language gaps detected"]
+        body = (
+            '<div class="profile-quality-detail-grid">'
+            + public_html
+            + '<div class="snapshot-card">'
+            '<div class="snapshot-label">Detected strengths</div>'
+            f'<div class="chip-cloud">{_chips_html(strengths[:8])}</div>'
+            "</div>" + '<div class="snapshot-card">'
+            '<div class="snapshot-label">Resume organization</div>'
+            f'<div class="chip-cloud">{_chips_html(sections)}</div>'
+            f"{missing_sections_html}</div>"
+            + '<div class="snapshot-card profile-quality-gaps-card">'
+            '<div class="snapshot-label">Gaps to close</div>'
+            f'<div class="chip-cloud">{_chips_html(gap_chips)}</div>'
+            "</div></div>"
+        )
+        st.markdown(body, unsafe_allow_html=True)
 
 
 def render_public_model_card(public_signals: dict[str, Any] | None) -> None:
