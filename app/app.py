@@ -22,7 +22,6 @@ from ml.resume_assessment import (
     score_projects,
     seniority_filtered_salary_matches,
 )
-
 from app.components.methodology import render_methodology_page
 from app.components.quality import render_public_model_card, render_quality_scorecard
 from app.components.sidebar import render_app_sidebar
