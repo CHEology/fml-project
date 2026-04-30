@@ -154,7 +154,7 @@ main_code = """def main() -> None:
                     )
 
             st.caption(
-                "Public webpage import is intended for generic portfolio or resume pages. LinkedIn pages are not imported here; paste the visible profile text or use an approved API flow instead."
+                "Public webpage import is intended for generic portfolio or resume pages. LinkedIn pages are not imported here; paste the visible profile text instead."
             )
 
             st.session_state.resume_text = st.text_area(

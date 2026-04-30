@@ -4626,6 +4626,8 @@ def initialize_session_state() -> None:
         st.session_state.assessment = None
     if "sample_resume_index" not in st.session_state:
         st.session_state.sample_resume_index = None
+    if "demo_stage" not in st.session_state:
+        st.session_state.demo_stage = "input"
 
 
 def format_count(value: int | float | None) -> str:
@@ -4843,43 +4845,31 @@ def render_demo_page(
     has_real_data: bool,
     status: list[dict[str, str | bool]],
 ) -> None:
-    st.markdown(
-        """
-        <div class="hero">
-            <div class="hero-content">
-                <div class="hero-text">
-                    <div class="eyebrow">Resume market intelligence</div>
-                    <h1>Understand role fit, salary range, and market position.</h1>
-                    <p>Compare a resume with salary-bearing LinkedIn roles and identify ways to strengthen the profile.</p>
-                    <div class="pill-row">
-                        <span class="pill">Role matching</span>
-                        <span class="pill pill-teal">Salary range</span>
-                        <span class="pill pill-yellow">Profile guidance</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    valid_stages = {"input", "snapshot", "market", "gaps"}
+    if st.session_state.demo_stage not in valid_stages:
+        st.session_state.demo_stage = "input"
+
+    def restart_demo() -> None:
+        st.session_state.resume_text = ""
+        st.session_state.resume_source = "Empty canvas"
+        st.session_state.public_profile_url = ""
+        st.session_state.assessment = None
+        st.session_state.demo_stage = "input"
+
+    current_text = st.session_state.resume_text.strip()
+    assessment = st.session_state.get("assessment")
+    assessment_ready = (
+        assessment is not None
+        and bool(current_text)
+        and assessment.get("resume_text", "") == current_text
     )
+    if st.session_state.demo_stage != "input" and not assessment_ready:
+        st.session_state.demo_stage = "input"
 
-    metric_cols = st.columns(2)
-    with metric_cols[0]:
-        render_metric_card("Jobs loaded", f"{len(jobs):,}", "local catalog size")
-    with metric_cols[1]:
-        median_salary = pd.to_numeric(
-            jobs.get("salary_annual"), errors="coerce"
-        ).dropna()
-        render_metric_card(
-            "Median salary",
-            fmt_money(median_salary.median() if len(median_salary) else None),
-            "from current dataset",
-        )
-
-    with st.container():
+    if st.session_state.demo_stage == "input":
         render_panel_banner(
             "Stage 1",
-            "1. Add resume or profile input",
+            "Add resume or profile input",
             "Start with a PDF, pasted resume text, a public portfolio page, or a sample profile. The app waits for this evidence before unlocking the analysis.",
         )
         with st.container(border=True):
@@ -4959,44 +4949,34 @@ def render_demo_page(
                     st.session_state.resume_source = sample_source
                     st.session_state.sample_resume_index = sample_index
                     st.session_state.assessment = None
+                    st.session_state.demo_stage = "input"
                     st.rerun()
                 if st.button("Clear", width="stretch"):
-                    st.session_state.resume_text = ""
-                    st.session_state.resume_source = "Empty canvas"
-                    st.session_state.assessment = None
+                    restart_demo()
                     st.rerun()
 
             word_count = len(st.session_state.resume_text.split())
             st.caption(f"{word_count} words currently loaded.")
 
-        current_text = st.session_state.resume_text.strip()
         can_analyze = bool(current_text)
-
-        st.write("")
-        render_panel_banner(
-            "Stage 2",
-            "2. Run profile analysis",
-            "Once text is loaded, ResuMatch validates that it looks like a resume, embeds it, retrieves similar roles, and builds the downstream readouts.",
+        analyze_clicked = st.button(
+            "Run profile analysis",
+            type="primary",
+            width="stretch",
+            disabled=not can_analyze,
         )
-        with st.container(border=True):
-            analyze_clicked = st.button(
-                "Analyze profile",
-                type="primary",
-                width="stretch",
-                disabled=not can_analyze,
+        if not can_analyze:
+            st.info(
+                "Add resume text, import a public page, or load a sample resume to unlock analysis."
             )
-            if not can_analyze:
-                st.info(
-                    "Add resume text, import a public page, or load a sample resume to unlock analysis."
-                )
-            elif st.session_state.get("assessment") is None:
-                st.caption("Ready to analyze this profile.")
-            elif st.session_state.assessment.get("resume_text", "") != current_text:
-                st.warning(
-                    "Resume text changed since the last analysis. Run profile analysis again to refresh the unlocked sections."
-                )
-            else:
-                st.success("Analysis is complete. The sections below are unlocked.")
+        elif st.session_state.get("assessment") is None:
+            st.caption("Ready to analyze this profile.")
+        elif st.session_state.assessment.get("resume_text", "") != current_text:
+            st.warning(
+                "Resume text changed since the last analysis. Run profile analysis again to refresh the unlocked sections."
+            )
+        else:
+            st.success("Analysis is complete. Run again to refresh or continue below.")
 
         if analyze_clicked and st.session_state.resume_text.strip():
             if not has_real_data:
@@ -5154,285 +5134,289 @@ def render_demo_page(
                 "cluster": cluster,
                 "missing_terms": missing_terms,
             }
+            st.session_state.demo_stage = "snapshot"
             st.rerun()
         elif analyze_clicked:
             st.warning(
                 "Paste a resume or load a random sample resume before running the analysis."
             )
+        return
 
-        assessment = st.session_state.get("assessment")
-        assessment_ready = assessment is not None and bool(current_text)
+    if st.session_state.demo_stage == "snapshot":
+        render_panel_banner(
+            "Stage 2",
+            "Candidate snapshot",
+            "This view explains how the app reads the profile before it shows market outcomes.",
+        )
+        st.markdown("## Candidate snapshot")
 
-        st.write("")
+        profile = assessment["profile"]
+        structure = assessment["structure"]
+        quality = assessment["quality"]
+        capability = assessment.get("capability") or {}
+        public_signals = assessment.get("public_signals")
+        learned_quality = assessment.get("learned_quality")
+
+        render_quality_scorecard(quality, learned_quality)
+        render_public_model_card(public_signals)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            render_signal_card(
+                "Detected focus",
+                profile["track"],
+                "Inferred from resume language and market evidence.",
+            )
+        with col2:
+            render_signal_card(
+                "Seniority",
+                profile["seniority"],
+                profile.get("seniority_reason")
+                or "Derived from parsed employment history and titles.",
+            )
+        col3, col4, col5 = st.columns(3)
+        with col3:
+            effect = float(capability.get("salary_effect_pct", 0.0) or 0.0)
+            direction = "+" if effect > 0 else ""
+            render_signal_card(
+                "Capability tier",
+                f"{capability.get('tier', 'Competitive')} ({capability.get('score', 0)}/100)",
+                f"Within-level strength; salary effect {direction}{effect:.1f}%.",
+            )
+        with col4:
+            render_signal_card(
+                "Sections",
+                f"{len(structure['found_sections'])}/{len(SECTION_ALIASES)}",
+                "Structured resumes score better.",
+            )
+        with col5:
+            render_signal_card(
+                "Data mode",
+                "Live data" if has_real_data else "Sample data",
+                "Uses the local LinkedIn job catalog.",
+            )
+
+        profile_track_html = escape(str(profile["track"]))
+        profile_seniority_html = escape(str(profile["seniority"]))
+        profile_confidence_html = escape(str(profile["confidence"]))
+        st.markdown(
+            f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Profile read</div><div class="signal-copy">This resume reads as a <strong>{profile_track_html}</strong> profile at the <strong>{profile_seniority_html}</strong> level with about <strong>{profile_confidence_html}%</strong> confidence.</div></div>',
+            unsafe_allow_html=True,
+        )
+
+        resume_source_html = escape(str(assessment.get("resume_source", "")))
+        word_count_html = escape(str(structure["word_count"]))
+        bullet_count_html = escape(str(structure["bullet_count"]))
+        link_count_html = escape(str(structure["link_count"]))
+        st.markdown(
+            f"""
+            <div class="metric-card" style="margin-top:0.75rem;">
+                <div class="metric-label">Resume source</div>
+                <div class="signal-copy">
+                    <strong>{resume_source_html}</strong><br/>
+                    {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>',
+            unsafe_allow_html=True,
+        )
+        present_skills = profile["skills_present"] or [
+            "Generalist profile",
+            "Cross-functional communication",
+        ]
+        st.markdown(
+            '<div class="chip-cloud">'
+            + "".join(
+                f'<span class="mini-chip">{escape(str(skill))}</span>'
+                for skill in present_skills[:6]
+            )
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>',
+            unsafe_allow_html=True,
+        )
+        structure_chips = structure["found_sections"] or ["No formal sections detected"]
+        st.markdown(
+            '<div class="chip-cloud">'
+            + "".join(
+                f'<span class="mini-chip">{escape(str(section))}</span>'
+                for section in structure_chips
+            )
+            + "</div>",
+            unsafe_allow_html=True,
+        )
+        if structure["missing_sections"]:
+            st.caption("Missing sections: " + ", ".join(structure["missing_sections"]))
+
+        st.markdown(
+            '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""
+            <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption(linkedin_dataset_note(has_real_data))
+
+        nav_cols = st.columns([0.25, 0.4, 0.35], gap="small")
+        with nav_cols[0]:
+            if st.button("← Previous", width="stretch"):
+                st.session_state.demo_stage = "input"
+                st.rerun()
+        with nav_cols[1]:
+            if st.button("Start over with new resume/profile", width="stretch"):
+                restart_demo()
+                st.rerun()
+        with nav_cols[2]:
+            if st.button("Continue to market readout", type="primary", width="stretch"):
+                st.session_state.demo_stage = "market"
+                st.rerun()
+        return
+
+    if st.session_state.demo_stage == "market":
         render_panel_banner(
             "Stage 3",
-            "3. Candidate snapshot",
-            "This section explains how the app reads the profile before it shows market outcomes.",
+            "Market readout",
+            "The app explains the salary range it can support from retrieved roles and available wage/model evidence.",
         )
-        if assessment_ready:
-            st.markdown("## Candidate snapshot")
-            if assessment.get("resume_text", "") != current_text:
+        band = assessment.get("band")
+        with st.container(border=True):
+            if band is not None:
+                render_salary_band(band)
+            else:
                 st.warning(
-                    "Resume text changed since the last analysis. Click Analyze profile to refresh."
+                    "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                 )
 
-            profile = assessment["profile"]
-            structure = assessment["structure"]
-            quality = assessment["quality"]
-            capability = assessment.get("capability") or {}
-            public_signals = assessment.get("public_signals")
-            learned_quality = assessment.get("learned_quality")
+        nav_cols = st.columns([0.25, 0.4, 0.35], gap="small")
+        with nav_cols[0]:
+            if st.button("← Previous", width="stretch"):
+                st.session_state.demo_stage = "snapshot"
+                st.rerun()
+        with nav_cols[1]:
+            if st.button("Start over with new resume/profile", width="stretch"):
+                restart_demo()
+                st.rerun()
+        with nav_cols[2]:
+            if st.button(
+                "Continue to gaps and matching roles", type="primary", width="stretch"
+            ):
+                st.session_state.demo_stage = "gaps"
+                st.rerun()
+        return
 
-            render_quality_scorecard(quality, learned_quality)
-            render_public_model_card(public_signals)
+    if st.session_state.demo_stage == "gaps":
+        render_panel_banner(
+            "Stage 4",
+            "Gaps and matching roles",
+            "The final view connects market segment, missing terms, and concrete role matches.",
+        )
+        cluster = assessment.get("cluster")
+        matches = assessment.get("matches")
+        missing_terms = assessment.get("missing_terms") or []
 
-            col1, col2 = st.columns(2)
-            with col1:
+        render_panel_banner(
+            "Profile Signal",
+            "Market segment and match evidence",
+            "The app infers the closest market segment and shows the strength of the role matches in one row.",
+        )
+        with st.container(border=True):
+            signal_cols = st.columns(4, gap="small")
+            with signal_cols[0]:
+                if cluster is not None:
+                    render_signal_card(
+                        "Segment",
+                        str(cluster["cluster_id"]),
+                        cluster["label"],
+                    )
+                else:
+                    render_signal_card(
+                        "Segment",
+                        "Unavailable",
+                        "Market segment data is not available.",
+                    )
+            with signal_cols[1]:
+                if cluster is not None:
+                    alignment = max(
+                        0, min(100, int(round(100 / (1 + cluster["distance"]))))
+                    )
+                    render_signal_card(
+                        "Alignment",
+                        f"{alignment}%",
+                        "Relative closeness to this segment.",
+                    )
+                else:
+                    render_signal_card("Alignment", "N/A", "Build segment data first.")
+            with signal_cols[2]:
+                if matches is None or matches.empty:
+                    render_signal_card(
+                        "Top similarity", "N/A", "No matching roles surfaced."
+                    )
+                else:
+                    render_signal_card(
+                        "Top similarity",
+                        f"{matches.iloc[0]['similarity'] * 100:.0f}%",
+                        "Best role match for this resume.",
+                    )
+            with signal_cols[3]:
+                count = 0 if matches is None else len(matches)
                 render_signal_card(
-                    "Detected focus",
-                    profile["track"],
-                    "Inferred from resume language and market evidence.",
+                    "Retrieved roles",
+                    f"{count:,}",
+                    "Roles surfaced for this resume.",
                 )
-            with col2:
-                render_signal_card(
-                    "Seniority",
-                    profile["seniority"],
-                    profile.get("seniority_reason")
-                    or "Derived from parsed employment history and titles.",
+            if cluster is not None:
+                st.markdown(
+                    '<div class="chip-cloud">'
+                    + "".join(
+                        f'<span class="mini-chip">{escape(str(term))}</span>'
+                        for term in cluster["top_terms"][:8]
+                    )
+                    + "</div>",
+                    unsafe_allow_html=True,
                 )
-            col3, col4, col5 = st.columns(3)
-            with col3:
-                effect = float(capability.get("salary_effect_pct", 0.0) or 0.0)
-                direction = "+" if effect > 0 else ""
-                render_signal_card(
-                    "Capability tier",
-                    f"{capability.get('tier', 'Competitive')} ({capability.get('score', 0)}/100)",
-                    f"Within-level strength; salary effect {direction}{effect:.1f}%.",
-                )
-            with col4:
-                render_signal_card(
-                    "Sections",
-                    f"{len(structure['found_sections'])}/{len(SECTION_ALIASES)}",
-                    "Structured resumes score better.",
-                )
-            with col5:
-                render_signal_card(
-                    "Data mode",
-                    "Live data" if has_real_data else "Sample data",
-                    "Uses the local LinkedIn job catalog.",
-                )
-
-            profile_track_html = escape(str(profile["track"]))
-            profile_seniority_html = escape(str(profile["seniority"]))
-            profile_confidence_html = escape(str(profile["confidence"]))
-            st.markdown(
-                f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Profile read</div><div class="signal-copy">This resume reads as a <strong>{profile_track_html}</strong> profile at the <strong>{profile_seniority_html}</strong> level with about <strong>{profile_confidence_html}%</strong> confidence.</div></div>',
-                unsafe_allow_html=True,
-            )
-
-            resume_source_html = escape(str(assessment.get("resume_source", "")))
-            word_count_html = escape(str(structure["word_count"]))
-            bullet_count_html = escape(str(structure["bullet_count"]))
-            link_count_html = escape(str(structure["link_count"]))
-            st.markdown(
-                f"""
-                <div class="metric-card" style="margin-top:0.75rem;">
-                    <div class="metric-label">Resume source</div>
-                    <div class="signal-copy">
-                        <strong>{resume_source_html}</strong><br/>
-                        {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>',
-                unsafe_allow_html=True,
-            )
-            present_skills = profile["skills_present"] or [
-                "Generalist profile",
-                "Cross-functional communication",
-            ]
-            st.markdown(
-                '<div class="chip-cloud">'
-                + "".join(
-                    f'<span class="mini-chip">{escape(str(skill))}</span>'
-                    for skill in present_skills[:6]
-                )
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-
-            st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>',
-                unsafe_allow_html=True,
-            )
-            structure_chips = structure["found_sections"] or [
-                "No formal sections detected"
-            ]
-            st.markdown(
-                '<div class="chip-cloud">'
-                + "".join(
-                    f'<span class="mini-chip">{escape(str(section))}</span>'
-                    for section in structure_chips
-                )
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-            if structure["missing_sections"]:
-                st.caption(
-                    "Missing sections: " + ", ".join(structure["missing_sections"])
-                )
-
-            st.markdown(
-                '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"""
-                <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.caption(linkedin_dataset_note(has_real_data))
-        else:
-            render_locked_stage(
-                "Locked until analysis completes",
-                "Run profile analysis to unlock the quality score, detected focus, seniority, strengths, and resume structure signals.",
-            )
 
         st.write("")
         render_panel_banner(
-            "Stage 4",
-            "4. Market readout",
-            "After the candidate snapshot is ready, the app explains the salary range it can support from retrieved roles and available wage/model evidence.",
+            "Opportunity Lens",
+            "Gaps to close",
+            "Missing terms from the strongest matching roles and market segment.",
         )
-        if assessment_ready:
-            band = assessment.get("band")
-            cluster = assessment.get("cluster")
-            matches = assessment.get("matches")
-            missing_terms = assessment.get("missing_terms") or []
+        with st.container(border=True):
+            render_missing_terms(missing_terms)
 
-            render_panel_banner(
-                "Market Readout",
-                "Salary range",
-                "This estimate is anchored to the salary data from the most relevant roles, with a haircut when the resume's evidence is thin.",
+        st.write("")
+        render_panel_banner(
+            "Match Board",
+            "Top matching roles",
+            "These roles are ordered by similarity to the resume.",
+        )
+        if matches is None or matches.empty:
+            st.info(
+                "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
             )
-            with st.container(border=True):
-                if band is not None:
-                    render_salary_band(band)
-                else:
-                    st.warning(
-                        "No salary evidence is available from retrieved jobs, BLS, or the neural model."
-                    )
-
-            st.write("")
-            render_panel_banner(
-                "Stage 5",
-                "5. Gaps and matching roles",
-                "The final view opens once the salary readout exists, connecting market segment, missing terms, and concrete role matches.",
-            )
-            render_panel_banner(
-                "Profile Signal",
-                "Market segment and match evidence",
-                "The app infers the closest market segment and shows the strength of the role matches in one row.",
-            )
-            with st.container(border=True):
-                signal_cols = st.columns(4, gap="small")
-                with signal_cols[0]:
-                    if cluster is not None:
-                        render_signal_card(
-                            "Segment",
-                            str(cluster["cluster_id"]),
-                            cluster["label"],
-                        )
-                    else:
-                        render_signal_card(
-                            "Segment",
-                            "Unavailable",
-                            "Market segment data is not available.",
-                        )
-                with signal_cols[1]:
-                    if cluster is not None:
-                        alignment = max(
-                            0, min(100, int(round(100 / (1 + cluster["distance"]))))
-                        )
-                        render_signal_card(
-                            "Alignment",
-                            f"{alignment}%",
-                            "Relative closeness to this segment.",
-                        )
-                    else:
-                        render_signal_card(
-                            "Alignment", "N/A", "Build segment data first."
-                        )
-                with signal_cols[2]:
-                    if matches is None or matches.empty:
-                        render_signal_card(
-                            "Top similarity", "N/A", "No matching roles surfaced."
-                        )
-                    else:
-                        render_signal_card(
-                            "Top similarity",
-                            f"{matches.iloc[0]['similarity'] * 100:.0f}%",
-                            "Best role match for this resume.",
-                        )
-                with signal_cols[3]:
-                    count = 0 if matches is None else len(matches)
-                    render_signal_card(
-                        "Retrieved roles",
-                        f"{count:,}",
-                        "Roles surfaced for this resume.",
-                    )
-                if cluster is not None:
-                    st.markdown(
-                        '<div class="chip-cloud">'
-                        + "".join(
-                            f'<span class="mini-chip">{escape(str(term))}</span>'
-                            for term in cluster["top_terms"][:8]
-                        )
-                        + "</div>",
-                        unsafe_allow_html=True,
-                    )
-
-            st.write("")
-            render_panel_banner(
-                "Opportunity Lens",
-                "Gaps to close",
-                "Missing terms from the strongest matching roles and market segment.",
-            )
-            with st.container(border=True):
-                render_missing_terms(missing_terms)
-
-            st.write("")
-            render_panel_banner(
-                "Match Board",
-                "Top matching roles",
-                "These roles are ordered by similarity to the resume.",
-            )
-            if matches is None or matches.empty:
-                st.info(
-                    "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
-                )
-            else:
-                render_job_results(matches)
         else:
-            render_locked_stage(
-                "Locked until analysis completes",
-                "The salary range, market segment, gap analysis, and matched roles unlock after a successful profile analysis.",
-            )
-            st.write("")
-            render_panel_banner(
-                "Stage 5",
-                "5. Gaps and matching roles",
-                "This final stage will connect the profile to role matches and terms worth strengthening.",
-            )
-            render_locked_stage(
-                "Locked until market readout exists",
-                "Complete the analysis first; then this section will show segment evidence, missing market terms, and top matching jobs.",
-            )
+            render_job_results(matches)
+
+        nav_cols = st.columns([0.25, 0.4], gap="small")
+        with nav_cols[0]:
+            if st.button("← Previous", width="stretch"):
+                st.session_state.demo_stage = "market"
+                st.rerun()
+        with nav_cols[1]:
+            if st.button("Start over with new resume/profile", width="stretch"):
+                restart_demo()
+                st.rerun()
 
 
 def render_market_overview_page(
@@ -5441,6 +5425,20 @@ def render_market_overview_page(
     has_real_data: bool,
     status: list[dict[str, str | bool]],
 ) -> None:
+    metric_cols = st.columns(2)
+    with metric_cols[0]:
+        render_metric_card("Jobs loaded", f"{len(jobs):,}", "local catalog size")
+    with metric_cols[1]:
+        median_salary = pd.to_numeric(
+            jobs.get("salary_annual"), errors="coerce"
+        ).dropna()
+        render_metric_card(
+            "Median salary",
+            fmt_money(median_salary.median() if len(median_salary) else None),
+            "from current dataset",
+        )
+
+    st.write("")
     render_panel_banner(
         "Market Radar",
         "Where the current feed is concentrated",
