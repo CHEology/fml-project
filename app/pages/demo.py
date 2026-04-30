@@ -701,7 +701,7 @@ def render_demo_page(
         )
 
         render_demo_section_header(
-            "Market readout",
+            "Market Positioning",
             "",
             market_info,
         )
