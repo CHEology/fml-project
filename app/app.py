@@ -8,7 +8,7 @@ from base64 import b64encode
 from datetime import date, datetime
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -1412,6 +1412,20 @@ SAMPLE_RESUME_SPECS = [
         "thin",
     ),
 ]
+SAMPLE_RESUME_SOURCE_HELP = """This sample resume is generated inside `app/app.py`.
+
+The profile library is `SAMPLE_RESUME_SPECS` in `app/app.py`, and the selected profile is rendered by `generate_premade_sample_resume()`. Clicking "Load random sample resume" calls `random_premade_sample_resume(jobs, previous_index)`, which chooses one profile, avoids repeating the previously loaded profile when possible, and stores the rendered text in Streamlit session state.
+
+Generation details: the renderer uses a Python f-string resume template, deterministic NumPy values seeded from the selected profile tuple, local fake schools/company fallbacks, track-specific skills, role seniority, location, and domain cues.
+
+Job-catalog context: company and market examples come from `choose_market_examples()`. If `data/processed/jobs.parquet` exists, `app/ml_runtime.py::load_jobs()` reads that processed job catalog. That parquet is generated from the Kaggle LinkedIn job postings data by running `uv run python scripts/preprocess_data.py`. If the parquet is missing, the app uses the in-code `SYNTHETIC_JOBS` sample role catalog.
+
+These resumes are synthetic demo examples for trying the workflow, not real candidate data."""
+SAMPLE_RESUME_SOURCE_SUMMARY = (
+    "Sample resumes are synthetic demo examples generated from local templates "
+    "and seeded with role, skill, location, and job-catalog cues. They are not "
+    "real candidate data."
+)
 SECTION_ALIASES = {
     "Summary": ["summary", "professional summary", "profile"],
     "Experience": [
@@ -1820,6 +1834,133 @@ def inject_styles(theme_name: str = "Lavender") -> None:
             line-height: 1.42;
         }
 
+        .snapshot-hero {
+            border: 1px solid rgba(79, 70, 229, 0.18);
+            border-radius: 18px;
+            padding: 1.15rem 1.25rem;
+            margin-bottom: 0.95rem;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,0.98), rgba(240,249,255,0.92));
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+        }
+
+        .snapshot-title {
+            color: var(--ink);
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin: 0;
+        }
+
+        .snapshot-summary {
+            color: var(--muted);
+            font-size: 0.98rem;
+            line-height: 1.5;
+            margin-top: 0.45rem;
+            max-width: 60rem;
+        }
+
+        .snapshot-highlight-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin: 0.75rem 0 0.9rem;
+        }
+
+        .snapshot-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            padding: 0.9rem 0.95rem;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+            height: 100%;
+        }
+
+        .snapshot-card.primary {
+            border-color: rgba(79, 70, 229, 0.2);
+            background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        }
+
+        .snapshot-label {
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.32rem;
+            text-transform: uppercase;
+        }
+
+        .snapshot-value {
+            color: var(--ink);
+            font-size: 1.12rem;
+            font-weight: 800;
+            line-height: 1.2;
+            overflow-wrap: break-word;
+        }
+
+        .snapshot-copy {
+            color: var(--muted);
+            font-size: 0.86rem;
+            line-height: 1.45;
+            margin-top: 0.28rem;
+        }
+
+        .snapshot-section-title {
+            color: var(--ink);
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin: 1rem 0 0.45rem;
+        }
+
+        .snapshot-evidence-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 0.8rem;
+            margin-top: 0.45rem;
+        }
+
+        .snapshot-source-card {
+            align-items: start;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.9rem;
+        }
+
+        .snapshot-stat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-top: 0.55rem;
+        }
+
+        .snapshot-stat {
+            border: 1px solid rgba(79, 70, 229, 0.14);
+            border-radius: 10px;
+            background: rgba(238, 242, 255, 0.62);
+            color: var(--ink);
+            font-size: 0.83rem;
+            font-weight: 700;
+            padding: 0.34rem 0.5rem;
+        }
+
+        .snapshot-market-badge {
+            border-radius: 999px;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .snapshot-market-badge.ready {
+            background: __SCORE_BG__;
+            color: __SCORE_INK__;
+        }
+
+        .snapshot-market-badge.missing {
+            background: rgba(181, 71, 8, 0.12);
+            color: var(--warning);
+        }
+
         .chip-cloud {
             display: flex;
             flex-wrap: wrap;
@@ -1915,6 +2056,220 @@ def inject_styles(theme_name: str = "Lavender") -> None:
             font-weight: 500;
             color: var(--ink);
             margin-bottom: 0.35rem;
+        }
+
+        .demo-intake-hero {
+            background:
+                radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.14), transparent 30%),
+                linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,243,255,0.9));
+            border: 1px solid rgba(124, 58, 237, 0.16);
+            border-radius: 18px;
+            padding: 1.35rem 1.45rem;
+            box-shadow: 0 12px 28px rgba(79, 70, 229, 0.08);
+            margin-bottom: 1rem;
+        }
+
+        .demo-intake-hero h1 {
+            margin: 0;
+            font-size: clamp(1.85rem, 4vw, 2.75rem);
+            line-height: 1.05;
+            color: var(--ink);
+            letter-spacing: 0;
+        }
+
+        .demo-intake-copy {
+            max-width: 52rem;
+            margin: 0.65rem 0 0;
+            color: var(--muted);
+            font-size: 1rem;
+            line-height: 1.55;
+        }
+
+        .demo-flow-step {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border: 1px solid rgba(124, 58, 237, 0.16);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
+            color: var(--ink);
+            padding: 0.42rem 0.7rem 0.42rem 0.45rem;
+            font-size: 0.84rem;
+            font-weight: 650;
+        }
+
+        .demo-step-number {
+            display: inline-grid;
+            place-items: center;
+            width: 1.45rem;
+            height: 1.45rem;
+            border-radius: 50%;
+            background: #4F46E5;
+            color: #FFFFFF;
+            font-size: 0.76rem;
+            font-weight: 750;
+        }
+
+        .demo-accordion-intro {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 0.35rem 0 0.85rem;
+        }
+
+        .demo-accordion-intro h2 {
+            margin: 0;
+            color: var(--ink);
+            font-size: 1.25rem;
+            line-height: 1.2;
+        }
+
+        .demo-accordion-intro p,
+        .demo-method-note {
+            margin: 0.35rem 0 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        [data-testid="stRadio"] {
+            margin: 0.35rem 0 1rem;
+        }
+
+        [data-testid="stRadio"] [role="radiogroup"] {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.65rem;
+            align-items: stretch;
+        }
+
+        [data-testid="stRadio"] label {
+            min-height: 4.35rem;
+            margin: 0 !important;
+            padding: 0.85rem 0.95rem !important;
+            border: 1px solid rgba(124, 58, 237, 0.14);
+            border-radius: 14px;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.86));
+            box-shadow: 0 7px 18px rgba(79, 70, 229, 0.06);
+            transition:
+                border-color 0.16s ease,
+                box-shadow 0.16s ease,
+                transform 0.16s ease,
+                background 0.16s ease;
+        }
+
+        [data-testid="stRadio"] label:hover {
+            transform: translateY(-1px);
+            border-color: rgba(79, 70, 229, 0.32);
+            box-shadow: 0 12px 26px rgba(79, 70, 229, 0.11);
+            background: #FFFFFF;
+        }
+
+        [data-testid="stRadio"] label:has(input:checked) {
+            border-color: rgba(79, 70, 229, 0.58);
+            background:
+                radial-gradient(circle at 92% 16%, rgba(14, 165, 233, 0.16), transparent 30%),
+                linear-gradient(135deg, rgba(238,242,255,0.98), rgba(255,255,255,0.94));
+            box-shadow:
+                0 0 0 1px rgba(79, 70, 229, 0.18),
+                0 14px 30px rgba(79, 70, 229, 0.14);
+        }
+
+        [data-testid="stRadio"] label > div:first-child {
+            margin-right: 0.55rem;
+        }
+
+        [data-testid="stRadio"] label p {
+            color: var(--ink);
+            font-size: 0.96rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        [data-testid="stExpander"] {
+            border: 1px solid rgba(124, 58, 237, 0.14);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.76);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.06);
+            overflow: hidden;
+        }
+
+        [data-testid="stExpander"] details summary {
+            font-weight: 750;
+            color: var(--ink);
+        }
+
+        .demo-method-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1rem 0 0.75rem;
+            padding: 0.85rem 1rem;
+            background: rgba(255,255,255,0.78);
+            border: 1px solid rgba(124, 58, 237, 0.14);
+            border-radius: 14px;
+        }
+
+        .demo-method-status strong {
+            color: var(--ink);
+            font-weight: 750;
+        }
+
+        .demo-method-status span {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .demo-word-count {
+            flex: 0 0 auto;
+            color: #4F46E5;
+            font-size: 0.86rem;
+            font-weight: 750;
+        }
+
+        .st-key-demo-floating-nav {
+            position: fixed;
+            left: max(1rem, min(29rem, 24vw));
+            right: 1rem;
+            bottom: 1.25rem;
+            width: auto !important;
+            max-width: none !important;
+            min-width: 0 !important;
+            z-index: 999;
+            box-sizing: border-box;
+            padding: 0.45rem;
+            border: 1px solid rgba(124, 58, 237, 0.16);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.92);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+            backdrop-filter: blur(14px);
+        }
+
+        .st-key-demo-floating-nav [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+            gap: 0.55rem !important;
+            width: 100% !important;
+            min-width: 0;
+        }
+
+        .st-key-demo-floating-nav [data-testid="stHorizontalBlock"] > div {
+            min-width: 0 !important;
+            width: 100% !important;
+        }
+
+        .st-key-demo-floating-nav .stButton > button {
+            min-height: 2.55rem;
+            width: 100%;
+            padding: 0.42rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .sidebar-info {
@@ -2144,6 +2499,39 @@ def inject_styles(theme_name: str = "Lavender") -> None:
             font-weight: 500;
         }
 
+        @media (max-width: 900px) {
+            .demo-method-status {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .demo-accordion-intro {
+                flex-direction: column;
+            }
+
+            [data-testid="stRadio"] [role="radiogroup"] {
+                grid-template-columns: 1fr;
+            }
+
+            .st-key-demo-floating-nav {
+                left: 0.5rem;
+                right: 0.5rem;
+                width: auto !important;
+                bottom: 0.75rem;
+            }
+
+            .st-key-demo-floating-nav [data-testid="stHorizontalBlock"] {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.4rem;
+            }
+
+            .st-key-demo-floating-nav .stButton > button {
+                min-height: 2.35rem;
+                padding: 0.34rem 0.45rem;
+                font-size: 0.8rem;
+            }
+        }
+
         .next-steps-list {
             margin: 0.4rem 0 0 0;
             padding-left: 1.1rem;
@@ -2262,6 +2650,15 @@ def inject_styles(theme_name: str = "Lavender") -> None:
 
         @media (max-width: 900px) {
             .quality-feedback-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .snapshot-highlight-grid,
+            .snapshot-evidence-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .snapshot-source-card {
                 grid-template-columns: 1fr;
             }
 
@@ -4618,6 +5015,22 @@ def initialize_session_state() -> None:
         st.session_state.resume_text = ""
     if "resume_source" not in st.session_state:
         st.session_state.resume_source = "Empty canvas"
+    if "uploaded_resume_text" not in st.session_state:
+        st.session_state.uploaded_resume_text = ""
+    if "uploaded_resume_source" not in st.session_state:
+        st.session_state.uploaded_resume_source = "Uploaded resume"
+    if "pasted_resume_text" not in st.session_state:
+        st.session_state.pasted_resume_text = ""
+    if "imported_profile_text" not in st.session_state:
+        st.session_state.imported_profile_text = ""
+    if "imported_profile_source" not in st.session_state:
+        st.session_state.imported_profile_source = "Imported public webpage"
+    if "sample_resume_text" not in st.session_state:
+        st.session_state.sample_resume_text = ""
+    if "sample_resume_source" not in st.session_state:
+        st.session_state.sample_resume_source = "Sample resume"
+    if "demo_input_method" not in st.session_state:
+        st.session_state.demo_input_method = "Upload a PDF or TXT resume"
     if "public_profile_url" not in st.session_state:
         st.session_state.public_profile_url = ""
     if "theme_name" not in st.session_state:
@@ -4626,6 +5039,8 @@ def initialize_session_state() -> None:
         st.session_state.assessment = None
     if "sample_resume_index" not in st.session_state:
         st.session_state.sample_resume_index = None
+    if "pending_analysis" not in st.session_state:
+        st.session_state.pending_analysis = False
     if "demo_stage" not in st.session_state:
         st.session_state.demo_stage = "input"
 
@@ -4840,6 +5255,31 @@ def render_home_page(
     )
 
 
+def render_demo_floating_nav(
+    *,
+    previous_stage: str,
+    restart_demo: Callable[[], None],
+    next_label: str | None = None,
+    next_stage: str | None = None,
+) -> None:
+    with st.container(key="demo-floating-nav"):
+        widths = [0.25, 0.4, 0.35] if next_label and next_stage else [0.3, 0.45]
+        nav_cols = st.columns(widths, gap="small")
+        with nav_cols[0]:
+            if st.button("← Previous", width="stretch"):
+                st.session_state.demo_stage = previous_stage
+                st.rerun()
+        with nav_cols[1]:
+            if st.button("Start over with new resume/profile", width="stretch"):
+                restart_demo()
+                st.rerun()
+        if next_label and next_stage:
+            with nav_cols[2]:
+                if st.button(f"{next_label} →", type="primary", width="stretch"):
+                    st.session_state.demo_stage = next_stage
+                    st.rerun()
+
+
 def render_demo_page(
     jobs: pd.DataFrame,
     has_real_data: bool,
@@ -4853,7 +5293,16 @@ def render_demo_page(
         st.session_state.resume_text = ""
         st.session_state.resume_source = "Empty canvas"
         st.session_state.public_profile_url = ""
+        st.session_state.uploaded_resume_text = ""
+        st.session_state.uploaded_resume_source = "Uploaded resume"
+        st.session_state.pasted_resume_text = ""
+        st.session_state.imported_profile_text = ""
+        st.session_state.imported_profile_source = "Imported public webpage"
+        st.session_state.sample_resume_text = ""
+        st.session_state.sample_resume_source = "Sample resume"
+        st.session_state.demo_input_method = "Upload a PDF or TXT resume"
         st.session_state.assessment = None
+        st.session_state.pending_analysis = False
         st.session_state.demo_stage = "input"
 
     current_text = st.session_state.resume_text.strip()
@@ -4861,123 +5310,236 @@ def render_demo_page(
     assessment_ready = (
         assessment is not None
         and bool(current_text)
-        and assessment.get("resume_text", "") == current_text
+        and str(assessment.get("resume_text", "")).strip() == current_text
     )
     if st.session_state.demo_stage != "input" and not assessment_ready:
         st.session_state.demo_stage = "input"
 
     if st.session_state.demo_stage == "input":
-        render_panel_banner(
-            "Stage 1",
-            "Add resume or profile input",
-            "Start with a PDF, pasted resume text, a public portfolio page, or a sample profile. The app waits for this evidence before unlocking the analysis.",
+
+        def render_method_status(title: str, copy: str, method_text: str) -> None:
+            word_count = len(method_text.split())
+            st.markdown(
+                f"""
+                <div class="demo-method-status">
+                    <div><strong>{escape(title)}</strong><br/><span>{escape(copy)}</span></div>
+                    <div class="demo-word-count">{word_count:,} words loaded</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        analyze_clicked = False
+
+        def queue_profile_analysis(text_key: str, source_key: str | None = None) -> None:
+            st.session_state.resume_text = st.session_state.get(text_key, "")
+            if source_key is None:
+                st.session_state.resume_source = "Pasted resume/profile text"
+            else:
+                st.session_state.resume_source = st.session_state.get(source_key, "")
+            st.session_state.pending_analysis = True
+
+        st.markdown(
+            """
+            <div class="demo-intake-hero">
+                <h1>Add a resume or profile</h1>
+                <p class="demo-intake-copy">
+                    Choose between uploading a resume, pasting profile text,
+                    importing a public portfolio page, or using a sample to see the analysis flow.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        with st.container(border=True):
-            st.markdown("## Analyze a candidate profile")
-            st.caption("Add candidate information to review market positioning.")
+        with st.container():
+            input_methods = [
+                "Upload a PDF or TXT resume",
+                "Paste resume/profile text",
+                "Import a public portfolio or resume page",
+                "Use a random sample resume",
+            ]
+            st.markdown(
+                """
+                <div class="demo-accordion-intro">
+                    <div>
+                        <h2>Choose an input method</h2>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            selected_method = st.radio(
+                "Input method",
+                input_methods,
+                key="demo_input_method",
+                horizontal=True,
+                label_visibility="collapsed",
+            )
 
-            input_left, input_right = st.columns([0.58, 0.42], gap="large")
-            with input_left:
-                uploader = st.file_uploader(
-                    "Drag and drop resume here (PDF or TXT, up to 200MB)",
-                    type=["pdf", "txt"],
-                )
-                if uploader is not None:
-                    parsed = extract_uploaded_text(uploader)
-                    if parsed:
-                        st.session_state.resume_text = parsed
-                        st.session_state.resume_source = (
-                            f"Uploaded file: {uploader.name}"
-                        )
-                    else:
-                        st.warning(
-                            "Could not extract text from the uploaded file. Paste the resume text below instead."
-                        )
+            with st.expander(selected_method, expanded=True):
+                if selected_method == "Upload a PDF or TXT resume":
+                    uploader = st.file_uploader(
+                        "Upload resume file",
+                        type=["pdf", "txt"],
+                        help="PDF and TXT files are supported.",
+                    )
+                    if uploader is not None:
+                        parsed = extract_uploaded_text(uploader)
+                        if parsed:
+                            st.session_state.uploaded_resume_text = parsed
+                            st.session_state.uploaded_resume_source = (
+                                f"Uploaded file: {uploader.name}"
+                            )
+                        else:
+                            st.warning(
+                                "Could not extract text from the uploaded file. Paste the resume text instead."
+                            )
+                    st.text_area(
+                        "Uploaded resume text",
+                        value=st.session_state.uploaded_resume_text,
+                        height=260,
+                        disabled=True,
+                        placeholder="Upload a PDF or TXT resume to preview the extracted text here.",
+                    )
+                    current_text = st.session_state.uploaded_resume_text.strip()
+                    render_method_status(
+                        "Upload input",
+                        "Upload a PDF or TXT file, then run analysis from this panel.",
+                        st.session_state.uploaded_resume_text,
+                    )
+                    st.button(
+                        "Run profile analysis",
+                        type="primary",
+                        width="stretch",
+                        disabled=not bool(current_text),
+                        key="analyze_upload_resume",
+                        on_click=queue_profile_analysis,
+                        args=("uploaded_resume_text", "uploaded_resume_source"),
+                    )
 
-                st.session_state.resume_text = st.text_area(
-                    "Paste resume text",
-                    value=st.session_state.resume_text,
-                    height=300,
-                    placeholder="Paste a resume, portfolio bio, or achievement summary here...",
-                )
-            with input_right:
-                st.markdown(
-                    '<div class="field-label">Public profile or portfolio URL</div>',
-                    unsafe_allow_html=True,
-                )
-                url_col, import_col = st.columns([0.68, 0.32], gap="small")
-                with url_col:
+                elif selected_method == "Paste or edit resume/profile text":
+                    st.session_state.pasted_resume_text = st.text_area(
+                        "Paste or edit resume/profile text",
+                        value=st.session_state.pasted_resume_text,
+                        height=260,
+                        placeholder="Paste a resume, portfolio bio, or achievement summary here...",
+                    )
+                    current_text = st.session_state.pasted_resume_text.strip()
+                    render_method_status(
+                        "Paste input",
+                        "Only the text currently in this box will be used for analysis.",
+                        st.session_state.pasted_resume_text,
+                    )
+                    st.button(
+                        "Run profile analysis",
+                        type="primary",
+                        width="stretch",
+                        disabled=not bool(current_text),
+                        key="analyze_pasted_resume",
+                        on_click=queue_profile_analysis,
+                        args=("pasted_resume_text", None),
+                    )
+
+                elif selected_method == "Import a public portfolio or resume page":
+                    st.markdown(
+                        '<p class="demo-method-note">Import a public portfolio, personal site, or resume page. Private sites and LinkedIn pages are not imported.</p>',
+                        unsafe_allow_html=True,
+                    )
                     public_profile_url = st.text_input(
                         "Public profile or portfolio URL",
                         value=st.session_state.public_profile_url,
                         placeholder="https://portfolio.example.com/about",
-                        label_visibility="collapsed",
                     )
                     st.session_state.public_profile_url = public_profile_url
-                with import_col:
                     import_clicked = st.button("Import page", width="stretch")
 
-                if import_clicked:
-                    try:
-                        with st.spinner("Importing public page text..."):
-                            imported_text, imported_host = fetch_public_webpage_text(
-                                st.session_state.public_profile_url
+                    if import_clicked:
+                        try:
+                            with st.spinner("Importing public page text..."):
+                                imported_text, imported_host = (
+                                    fetch_public_webpage_text(
+                                        st.session_state.public_profile_url
+                                    )
+                                )
+                            st.session_state.imported_profile_text = imported_text
+                            st.session_state.imported_profile_source = (
+                                f"Imported public webpage: {imported_host}"
                             )
-                        st.session_state.resume_text = imported_text
-                        st.session_state.resume_source = (
-                            f"Imported public webpage: {imported_host}"
-                        )
-                        st.rerun()
-                    except ValueError as exc:
-                        st.warning(str(exc))
-                    except Exception:
-                        st.warning(
-                            "Could not import that page. Try another public URL or paste the resume text directly."
-                        )
-
-                st.caption(
-                    "Public webpage import is intended for generic portfolio or resume pages. LinkedIn pages are not imported here; paste the visible profile text or use an approved API flow instead."
-                )
-                if st.button("Load random sample resume", width="stretch"):
-                    sample_text, sample_source, sample_index = (
-                        random_premade_sample_resume(
-                            jobs,
-                            st.session_state.sample_resume_index,
-                        )
+                            st.rerun()
+                        except ValueError as exc:
+                            st.warning(str(exc))
+                        except Exception:
+                            st.warning(
+                                "Could not import that page. Try another public URL or paste the resume text directly."
+                            )
+                    st.text_area(
+                        "Imported page text",
+                        value=st.session_state.imported_profile_text,
+                        height=260,
+                        disabled=True,
+                        placeholder="Import a public portfolio or resume page to preview the extracted text here.",
                     )
-                    st.session_state.resume_text = sample_text
-                    st.session_state.resume_source = sample_source
-                    st.session_state.sample_resume_index = sample_index
-                    st.session_state.assessment = None
-                    st.session_state.demo_stage = "input"
-                    st.rerun()
-                if st.button("Clear", width="stretch"):
-                    restart_demo()
-                    st.rerun()
+                    current_text = st.session_state.imported_profile_text.strip()
+                    render_method_status(
+                        "Imported page input",
+                        "",
+                        st.session_state.imported_profile_text,
+                    )
+                    st.button(
+                        "Run profile analysis",
+                        type="primary",
+                        width="stretch",
+                        disabled=not bool(current_text),
+                        key="analyze_imported_profile",
+                        on_click=queue_profile_analysis,
+                        args=("imported_profile_text", "imported_profile_source"),
+                    )
 
-            word_count = len(st.session_state.resume_text.split())
-            st.caption(f"{word_count} words currently loaded.")
+                else:
+                    st.info(SAMPLE_RESUME_SOURCE_SUMMARY)
+                    with st.expander("Read more about sample resume generation"):
+                        st.markdown(SAMPLE_RESUME_SOURCE_HELP)
+                    if st.button("Load random sample resume", width="stretch"):
+                        sample_text, sample_source, sample_index = (
+                            random_premade_sample_resume(
+                                jobs,
+                                st.session_state.sample_resume_index,
+                            )
+                        )
+                        st.session_state.sample_resume_text = sample_text
+                        st.session_state.sample_resume_source = sample_source
+                        st.session_state.sample_resume_index = sample_index
+                        st.session_state.resume_text = sample_text
+                        st.session_state.resume_source = sample_source
+                        st.session_state.assessment = None
+                        st.rerun()
+                    st.text_area(
+                        "Random sample resume text",
+                        value=st.session_state.sample_resume_text,
+                        height=260,
+                        disabled=True,
+                        placeholder="Load a random sample resume to preview it here.",
+                    )
+                    current_text = st.session_state.sample_resume_text.strip()
+                    render_method_status(
+                        "Sample resume input",
+                        "",
+                        st.session_state.sample_resume_text,
+                    )
+                    st.button(
+                        "Run profile analysis",
+                        type="primary",
+                        width="stretch",
+                        disabled=not bool(current_text),
+                        key="analyze_sample_resume",
+                        on_click=queue_profile_analysis,
+                        args=("sample_resume_text", "sample_resume_source"),
+                    )
 
-        can_analyze = bool(current_text)
-        analyze_clicked = st.button(
-            "Run profile analysis",
-            type="primary",
-            width="stretch",
-            disabled=not can_analyze,
-        )
-        if not can_analyze:
-            st.info(
-                "Add resume text, import a public page, or load a sample resume to unlock analysis."
-            )
-        elif st.session_state.get("assessment") is None:
-            st.caption("Ready to analyze this profile.")
-        elif st.session_state.assessment.get("resume_text", "") != current_text:
-            st.warning(
-                "Resume text changed since the last analysis. Run profile analysis again to refresh the unlocked sections."
-            )
-        else:
-            st.success("Analysis is complete. Run again to refresh or continue below.")
-
+        analyze_clicked = bool(st.session_state.get("pending_analysis", False))
+        if analyze_clicked:
+            st.session_state.pending_analysis = False
+        current_text = st.session_state.resume_text.strip()
         if analyze_clicked and st.session_state.resume_text.strip():
             if not has_real_data:
                 st.error(
@@ -4990,7 +5552,7 @@ def render_demo_page(
                 )
                 return
 
-            resume_text_now = st.session_state.resume_text
+            resume_text_now = st.session_state.resume_text.strip()
             try:
                 with st.spinner("Reviewing resume content..."):
                     public_models = load_public_assessment_resource()
@@ -5143,13 +5705,6 @@ def render_demo_page(
         return
 
     if st.session_state.demo_stage == "snapshot":
-        render_panel_banner(
-            "Stage 2",
-            "Candidate snapshot",
-            "This view explains how the app reads the profile before it shows market outcomes.",
-        )
-        st.markdown("## Candidate snapshot")
-
         profile = assessment["profile"]
         structure = assessment["structure"]
         quality = assessment["quality"]
@@ -5157,130 +5712,130 @@ def render_demo_page(
         public_signals = assessment.get("public_signals")
         learned_quality = assessment.get("learned_quality")
 
-        render_quality_scorecard(quality, learned_quality)
-        render_public_model_card(public_signals)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            render_signal_card(
-                "Detected focus",
-                profile["track"],
-                "Inferred from resume language and market evidence.",
-            )
-        with col2:
-            render_signal_card(
-                "Seniority",
-                profile["seniority"],
-                profile.get("seniority_reason")
-                or "Derived from parsed employment history and titles.",
-            )
-        col3, col4, col5 = st.columns(3)
-        with col3:
-            effect = float(capability.get("salary_effect_pct", 0.0) or 0.0)
-            direction = "+" if effect > 0 else ""
-            render_signal_card(
-                "Capability tier",
-                f"{capability.get('tier', 'Competitive')} ({capability.get('score', 0)}/100)",
-                f"Within-level strength; salary effect {direction}{effect:.1f}%.",
-            )
-        with col4:
-            render_signal_card(
-                "Sections",
-                f"{len(structure['found_sections'])}/{len(SECTION_ALIASES)}",
-                "Structured resumes score better.",
-            )
-        with col5:
-            render_signal_card(
-                "Data mode",
-                "Live data" if has_real_data else "Sample data",
-                "Uses the local LinkedIn job catalog.",
-            )
-
         profile_track_html = escape(str(profile["track"]))
         profile_seniority_html = escape(str(profile["seniority"]))
         profile_confidence_html = escape(str(profile["confidence"]))
-        st.markdown(
-            f'<div class="metric-card" style="margin-top:0.75rem;"><div class="metric-label">Profile read</div><div class="signal-copy">This resume reads as a <strong>{profile_track_html}</strong> profile at the <strong>{profile_seniority_html}</strong> level with about <strong>{profile_confidence_html}%</strong> confidence.</div></div>',
-            unsafe_allow_html=True,
+        capability_tier_html = escape(str(capability.get("tier", "Competitive")))
+        capability_score_html = escape(str(capability.get("score", 0)))
+        effect = float(capability.get("salary_effect_pct", 0.0) or 0.0)
+        direction = "+" if effect > 0 else ""
+        effect_html = escape(f"{direction}{effect:.1f}%")
+        found_sections_count = len(structure["found_sections"])
+        total_sections_count = len(SECTION_ALIASES)
+        seniority_reason_html = escape(
+            str(
+                profile.get("seniority_reason")
+                or "Derived from parsed employment history and titles."
+            )
         )
-
-        resume_source_html = escape(str(assessment.get("resume_source", "")))
-        word_count_html = escape(str(structure["word_count"]))
-        bullet_count_html = escape(str(structure["bullet_count"]))
-        link_count_html = escape(str(structure["link_count"]))
         st.markdown(
             f"""
-            <div class="metric-card" style="margin-top:0.75rem;">
-                <div class="metric-label">Resume source</div>
-                <div class="signal-copy">
-                    <strong>{resume_source_html}</strong><br/>
-                    {word_count_html} words • {bullet_count_html} bullets • {link_count_html} links detected
+            <div class="snapshot-hero">
+                <h1 class="snapshot-title">Candidate Snapshot</h1>
+                <div class="snapshot-summary">
+                    This resume reads as a <strong>{profile_track_html}</strong> profile
+                    at the <strong>{profile_seniority_html}</strong> level with about
+                    <strong>{profile_confidence_html}%</strong> confidence. The cards
+                    below separate the model's interpretation from the resume evidence
+                    used to support it.
+                </div>
+            </div>
+            <div class="snapshot-highlight-grid">
+                <div class="snapshot-card primary">
+                    <div class="snapshot-label">Detected focus</div>
+                    <div class="snapshot-value">{profile_track_html}</div>
+                    <div class="snapshot-copy">Inferred from resume language and market evidence.</div>
+                </div>
+                <div class="snapshot-card primary">
+                    <div class="snapshot-label">Seniority</div>
+                    <div class="snapshot-value">{profile_seniority_html}</div>
+                    <div class="snapshot-copy">{seniority_reason_html}</div>
+                </div>
+                <div class="snapshot-card primary">
+                    <div class="snapshot-label">Capability tier</div>
+                    <div class="snapshot-value">{capability_tier_html} ({capability_score_html}/100)</div>
+                    <div class="snapshot-copy">Within-level strength; salary effect {effect_html}.</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+        render_quality_scorecard(quality, learned_quality)
+        render_public_model_card(public_signals)
+
+        resume_source_html = escape(str(assessment.get("resume_source", "")))
+        word_count_html = escape(str(structure["word_count"]))
+        bullet_count_html = escape(str(structure["bullet_count"]))
+        link_count_html = escape(str(structure["link_count"]))
+        data_mode_label = "LinkedIn job catalog" if has_real_data else "Sample role catalog"
+        data_mode_class = "ready" if has_real_data else "missing"
+        dataset_note_html = escape(linkedin_dataset_note(has_real_data))
         st.markdown(
-            '<div class="section-label" style="margin-top:0.9rem;">Detected strengths</div>',
+            f"""
+            <div class="snapshot-section-title">Evidence used in this snapshot</div>
+            <div class="snapshot-card snapshot-source-card">
+                <div>
+                    <div class="snapshot-label">Resume source</div>
+                    <div class="snapshot-value">{resume_source_html}</div>
+                    <div class="snapshot-stat-row">
+                        <span class="snapshot-stat">{word_count_html} words</span>
+                        <span class="snapshot-stat">{bullet_count_html} bullets</span>
+                        <span class="snapshot-stat">{link_count_html} links</span>
+                        <span class="snapshot-stat">{found_sections_count}/{total_sections_count} sections</span>
+                    </div>
+                    <div class="snapshot-copy">{dataset_note_html}</div>
+                </div>
+                <span class="snapshot-market-badge {data_mode_class}">{data_mode_label}</span>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
+
         present_skills = profile["skills_present"] or [
             "Generalist profile",
             "Cross-functional communication",
         ]
-        st.markdown(
-            '<div class="chip-cloud">'
-            + "".join(
-                f'<span class="mini-chip">{escape(str(skill))}</span>'
-                for skill in present_skills[:6]
-            )
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            '<div class="section-label" style="margin-top:0.9rem;">Resume organization</div>',
-            unsafe_allow_html=True,
-        )
         structure_chips = structure["found_sections"] or ["No formal sections detected"]
-        st.markdown(
-            '<div class="chip-cloud">'
-            + "".join(
-                f'<span class="mini-chip">{escape(str(section))}</span>'
-                for section in structure_chips
-            )
-            + "</div>",
-            unsafe_allow_html=True,
+        missing_sections = structure["missing_sections"]
+        missing_sections_html = (
+            '<div class="snapshot-copy">Missing sections: '
+            + escape(", ".join(missing_sections))
+            + "</div>"
+            if missing_sections
+            else '<div class="snapshot-copy">Core resume sections are represented.</div>'
         )
-        if structure["missing_sections"]:
-            st.caption("Missing sections: " + ", ".join(structure["missing_sections"]))
-
-        st.markdown(
-            '<div class="section-label" style="margin-top:0.9rem;">Market data</div>',
-            unsafe_allow_html=True,
+        skills_html = "".join(
+            f'<span class="mini-chip">{escape(str(skill))}</span>'
+            for skill in present_skills[:8]
+        )
+        sections_html = "".join(
+            f'<span class="mini-chip">{escape(str(section))}</span>'
+            for section in structure_chips
         )
         st.markdown(
             f"""
-            <span class="status-pill {"ready" if has_real_data else "missing"}">{"LinkedIn job catalog" if has_real_data else "Sample role catalog"}</span>
+            <div class="snapshot-evidence-grid">
+                <div class="snapshot-card">
+                    <div class="snapshot-label">Detected strengths</div>
+                    <div class="chip-cloud">{skills_html}</div>
+                </div>
+                <div class="snapshot-card">
+                    <div class="snapshot-label">Resume organization</div>
+                    <div class="chip-cloud">{sections_html}</div>
+                    {missing_sections_html}
+                </div>
+            </div>
             """,
             unsafe_allow_html=True,
         )
-        st.caption(linkedin_dataset_note(has_real_data))
 
-        nav_cols = st.columns([0.25, 0.4, 0.35], gap="small")
-        with nav_cols[0]:
-            if st.button("← Previous", width="stretch"):
-                st.session_state.demo_stage = "input"
-                st.rerun()
-        with nav_cols[1]:
-            if st.button("Start over with new resume/profile", width="stretch"):
-                restart_demo()
-                st.rerun()
-        with nav_cols[2]:
-            if st.button("Continue to market readout", type="primary", width="stretch"):
-                st.session_state.demo_stage = "market"
-                st.rerun()
+        render_demo_floating_nav(
+            previous_stage="input",
+            restart_demo=restart_demo,
+            next_label="Continue to market readout",
+            next_stage="market",
+        )
         return
 
     if st.session_state.demo_stage == "market":
@@ -5298,21 +5853,12 @@ def render_demo_page(
                     "No salary evidence is available from retrieved jobs, BLS, or the neural model."
                 )
 
-        nav_cols = st.columns([0.25, 0.4, 0.35], gap="small")
-        with nav_cols[0]:
-            if st.button("← Previous", width="stretch"):
-                st.session_state.demo_stage = "snapshot"
-                st.rerun()
-        with nav_cols[1]:
-            if st.button("Start over with new resume/profile", width="stretch"):
-                restart_demo()
-                st.rerun()
-        with nav_cols[2]:
-            if st.button(
-                "Continue to gaps and matching roles", type="primary", width="stretch"
-            ):
-                st.session_state.demo_stage = "gaps"
-                st.rerun()
+        render_demo_floating_nav(
+            previous_stage="snapshot",
+            restart_demo=restart_demo,
+            next_label="Continue to gaps and matching roles",
+            next_stage="gaps",
+        )
         return
 
     if st.session_state.demo_stage == "gaps":
@@ -5408,15 +5954,10 @@ def render_demo_page(
         else:
             render_job_results(matches)
 
-        nav_cols = st.columns([0.25, 0.4], gap="small")
-        with nav_cols[0]:
-            if st.button("← Previous", width="stretch"):
-                st.session_state.demo_stage = "market"
-                st.rerun()
-        with nav_cols[1]:
-            if st.button("Start over with new resume/profile", width="stretch"):
-                restart_demo()
-                st.rerun()
+        render_demo_floating_nav(
+            previous_stage="market",
+            restart_demo=restart_demo,
+        )
 
 
 def render_market_overview_page(
