@@ -32,12 +32,13 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
-from scripts.generate_synthetic_resumes import (
+from torch.utils.data import Dataset
+
+from ml.taxonomy import (
     MULTI_WORD_SKILLS,
     ROLE_PROFILES,
     quality_label_from_score,
 )
-from torch.utils.data import Dataset
 
 DEFAULT_EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
 SEED = 42
@@ -448,21 +449,21 @@ _TYPO_STEP = 25.0  # each typo subtracts this from the typo-dimension score
 def score_resume_quality(text: str) -> dict[str, object]:
     """Rule-based 0–100 quality score that operates directly on text.
 
-    Real-resume-safe: no trained model, no synthetic-formula assumptions
-    beyond the per-dimension targets. Computes each component, weights
-    them, and returns an interpretable breakdown the UI / feedback
-    engine can consume directly.
-
-    Returns a dict with:
-        score (float, 0–100), label (str, weak/medium/strong),
-        dimension_scores (dict[str, float]) — per-dim score in [0, 100],
-        weakest_dim (str) — the dimension with the largest gap,
-        strengths (list[str]) — dims with score >= 80,
-        gaps (list[str]) — dims with score < 50.
+    The canonical resume parsing and quality score now lives in
+    `ml.resume_assessment`. This wrapper preserves the historical
+    `ml.quality` output contract used by scripts and tests while delegating the
+    primary score to the shared assessment implementation.
     """
+    from ml.resume_assessment import assess_resume_text
+
+    assessment = assess_resume_text(text)
+    assessment_quality = assessment["quality"]
     features = quality_features_from_text(text)
     dim_scores = _dimension_scores(features)
-    score = float(sum(dim_scores[d] * _RULE_WEIGHTS[d] for d in QUALITY_DIMENSIONS))
+    legacy_score = float(
+        sum(dim_scores[d] * _RULE_WEIGHTS[d] for d in QUALITY_DIMENSIONS)
+    )
+    score = max(float(assessment_quality.get("overall", 0.0)), legacy_score)
     score = float(np.clip(score, 0.0, 100.0))
     feedback = _feedback_notes(features, dim_scores)
     priority_gap = _priority_gap(dim_scores)
@@ -481,6 +482,10 @@ def score_resume_quality(text: str) -> dict[str, object]:
         "career_issues": features.get("career_issues", []),
         "vague_phrases": features.get("vague_phrases", []),
         "cliche_phrases": features.get("cliche_phrases", []),
+        "assessment": assessment,
+        "assessment_score": round(float(assessment_quality.get("overall", 0.0)), 2),
+        "assessment_strengths": assessment_quality.get("strengths", []),
+        "assessment_gaps": assessment_quality.get("red_flags", []),
     }
 
 
