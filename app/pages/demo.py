@@ -619,23 +619,24 @@ def render_demo_page(
         )
         capability_evidence = capability_evidence_html(capability, quality)
         seniority_ladder = seniority_ladder_html(str(profile["seniority"]))
-        st.markdown(
-            f"""
-            <div class="snapshot-hero">
-                <div class="snapshot-title-row">
-                    <h1 class="snapshot-title">Candidate Snapshot</h1>
+        with st.container(key="candidate-snapshot-header"):
+            st.markdown(
+                f"""
+                <div class="snapshot-hero candidate-snapshot-hero">
+                    <div class="snapshot-title-row">
+                        <h1 class="snapshot-title">Candidate Snapshot</h1>
+                    </div>
+                    <div class="snapshot-summary">
+                        This resume reads as a <strong>{profile_track_html}</strong> profile
+                        at the <strong>{profile_seniority_html}</strong> level with about
+                        <strong>{profile_confidence_html}%</strong> confidence.
+                    </div>
                 </div>
-                <div class="snapshot-summary">
-                    This resume reads as a <strong>{profile_track_html}</strong> profile
-                    at the <strong>{profile_seniority_html}</strong> level with about
-                    <strong>{profile_confidence_html}%</strong> confidence.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        with st.expander("Read more about Candidate Snapshot"):
-            st.markdown(snapshot_info)
+                """,
+                unsafe_allow_html=True,
+            )
+            with st.expander("Read more about Candidate Snapshot"):
+                st.markdown(snapshot_info)
         st.markdown(
             f"""
             <div class="snapshot-highlight-grid">
