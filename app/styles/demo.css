@@ -1,4 +1,8 @@
     .demo-intake-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(8rem, 14rem);
+        align-items: center;
+        gap: 1.25rem;
         background:
             radial-gradient(circle at 88% 18%, rgba(14, 165, 233, 0.14), transparent 30%),
             linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,243,255,0.9));
@@ -23,6 +27,20 @@
         color: var(--muted);
         font-size: 1rem;
         line-height: 1.55;
+    }
+
+    .demo-intake-mascot {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .demo-intake-mascot img {
+        display: block;
+        width: min(100%, 13rem);
+        max-height: 10.5rem;
+        object-fit: contain;
     }
 
     .demo-flow-step {
@@ -71,6 +89,21 @@
         color: var(--muted);
         font-size: 0.92rem;
         line-height: 1.45;
+    }
+
+    @media (max-width: 720px) {
+        .demo-intake-hero {
+            grid-template-columns: 1fr;
+        }
+
+        .demo-intake-mascot {
+            justify-content: flex-start;
+        }
+
+        .demo-intake-mascot img {
+            width: min(46vw, 9rem);
+            max-height: 7.5rem;
+        }
     }
 
     [data-testid="stRadio"] {

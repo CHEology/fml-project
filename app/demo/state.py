@@ -36,3 +36,5 @@ def initialize_session_state() -> None:
         st.session_state.pending_analysis = False
     if "demo_stage" not in st.session_state:
         st.session_state.demo_stage = "input"
+    if "demo_scroll_to_top" not in st.session_state:
+        st.session_state.demo_scroll_to_top = False

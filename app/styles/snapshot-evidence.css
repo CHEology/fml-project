@@ -1,0 +1,61 @@
+    .focus-evidence-grid,
+    .seniority-evidence-grid,
+    .capability-evidence-grid {
+        display: grid;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .focus-evidence-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .seniority-evidence-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .capability-evidence-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .capability-evidence-grid .evidence-chip:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
+    .evidence-chip {
+        background: rgba(238, 242, 255, 0.68);
+        border: 1px solid rgba(79, 70, 229, 0.14);
+        border-radius: 10px;
+        min-width: 0;
+        padding: 0.5rem 0.55rem;
+    }
+
+    .evidence-chip-label {
+        align-items: center;
+        color: var(--muted);
+        display: flex;
+        font-size: 0.64rem;
+        font-weight: 850;
+        gap: 0.25rem;
+        letter-spacing: 0.07em;
+        line-height: 1.2;
+        margin-bottom: 0.18rem;
+        text-transform: uppercase;
+    }
+
+    .evidence-chip-label .info-dot {
+        height: 0.9rem;
+        width: 0.9rem;
+        font-size: 0.58rem;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+
+    .evidence-chip strong {
+        color: var(--ink);
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 800;
+        line-height: 1.25;
+        overflow-wrap: break-word;
+    }

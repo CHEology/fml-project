@@ -44,6 +44,7 @@ THEMES = {
 STYLE_FILES = (
     "foundation.css",
     "snapshot.css",
+    "snapshot-evidence.css",
     "demo.css",
     "home-sidebar.css",
     "quality-responsive.css",
