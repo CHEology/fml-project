@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 from ml.resume_assessment import (
     add_salary_evidence_note,
     apply_capability_adjustment,
@@ -20,7 +26,6 @@ from ml.resume_assessment import (
 from app.components.methodology import render_methodology_page
 from app.components.quality import render_public_model_card, render_quality_scorecard
 from app.components.sidebar import render_app_sidebar
-from app.config import PROJECT_ROOT
 from app.demo.state import initialize_session_state
 from app.pages.demo import render_demo_page
 from app.pages.home import render_home_page
