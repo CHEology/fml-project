@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from ml.clustering import KMeans
 

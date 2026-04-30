@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 
 # Ensure project root on path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 faiss = pytest.importorskip("faiss")
 
@@ -38,7 +38,7 @@ EMB_DIM = 16
 N_JOBS = 50
 SEED = 0
 
-FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
+FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
 
 def _read_faiss_index(path: Path):

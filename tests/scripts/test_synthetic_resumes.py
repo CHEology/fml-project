@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.generate_synthetic_resumes import (  # noqa: E402
     DEGREES_BY_FAMILY,

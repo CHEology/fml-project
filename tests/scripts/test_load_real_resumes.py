@@ -6,11 +6,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.load_real_resumes import load_real_resumes  # noqa: E402
 
-FIXTURE = Path(__file__).resolve().parent / "fixtures" / "sample_real_resumes.csv"
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "sample_real_resumes.csv"
 
 
 def test_load_real_resumes_from_fixture_normalises_columns() -> None:

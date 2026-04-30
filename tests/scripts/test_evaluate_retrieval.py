@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ml.retrieval import JobMatch  # noqa: E402
 from scripts.evaluate_retrieval import evaluate_retrieval  # noqa: E402

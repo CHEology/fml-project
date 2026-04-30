@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from scripts.load_bls_oews import build_wage_table  # noqa: E402
 from scripts.load_onet_skills import build_skill_lexicon  # noqa: E402

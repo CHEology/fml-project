@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ml.occupation_router import OccupationMatch  # noqa: E402
 from ml.retrieval import JobMatch  # noqa: E402

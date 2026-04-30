@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ml.quality import (  # noqa: E402
     QUALITY_DIMENSIONS,

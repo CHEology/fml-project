@@ -12,7 +12,7 @@ import pytest
 import torch
 
 # Ensure project root on path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ml.salary_model import (
     QUANTILES,
