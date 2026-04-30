@@ -112,6 +112,12 @@
             grid-template-columns: 1fr;
         }
 
+        .focus-evidence-grid,
+        .seniority-evidence-grid,
+        .capability-evidence-grid {
+            grid-template-columns: 1fr;
+        }
+
         .snapshot-source-card {
             grid-template-columns: 1fr;
         }
@@ -164,5 +170,17 @@
 
         .salary-step:first-child {
             border-top: 0;
+        }
+
+        .job-row {
+            grid-template-columns: 1fr;
+        }
+
+        .job-row-metrics {
+            align-items: flex-start;
+        }
+
+        .job-row-pay {
+            text-align: left;
         }
     }

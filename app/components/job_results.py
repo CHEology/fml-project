@@ -24,9 +24,9 @@ def fmt_money(value: float | int | None) -> str:
     return f"${int(value):,}"
 
 
-def render_job_card(row: pd.Series) -> None:
+def render_job_row(row: pd.Series) -> None:
     """
-    Render a single job match card with similarity score, title, company,
+    Render a single job match row with similarity score, title, company,
     location, salary, experience level, and a text snippet.
 
     Args:
@@ -52,12 +52,16 @@ def render_job_card(row: pd.Series) -> None:
 
     st.markdown(
         f"""
-        <div class="job-card">
-            <div class="score-chip">{score_label}</div>
-            <div class="job-title">{title}</div>
-            <div class="job-meta">{company} · {location} · {work_type}</div>
-            <div><strong>{salary}</strong> · {experience}</div>
-            <div class="mono" style="margin-top:0.6rem;">{summary}</div>
+        <div class="job-row">
+            <div class="job-row-main">
+                <div class="job-title">{title}</div>
+                <div class="job-meta">{company} · {location} · {work_type}</div>
+                <div class="job-row-summary">{summary}</div>
+            </div>
+            <div class="job-row-metrics">
+                <div class="score-chip">{score_label}</div>
+                <div class="job-row-pay"><strong>{salary}</strong> · {experience}</div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -66,7 +70,7 @@ def render_job_card(row: pd.Series) -> None:
 
 def render_job_results(matches: pd.DataFrame) -> None:
     """
-    Render a 2-column grid of job match cards from a DataFrame of results.
+    Render a row-based list of job matches from a DataFrame of results.
 
     Args:
         matches: DataFrame of job matches, each row passed to render_job_card.
@@ -77,10 +81,8 @@ def render_job_results(matches: pd.DataFrame) -> None:
         )
         return
 
-    card_cols = st.columns(2, gap="medium")
-    for index, (_, row) in enumerate(matches.iterrows()):
-        with card_cols[index % 2]:
-            render_job_card(row)
+    for _, row in matches.iterrows():
+        render_job_row(row)
 
 
 def render_metric_card(label: str, value: str, helper: str) -> None:
