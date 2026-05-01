@@ -11,12 +11,16 @@ Owner: @trp8625
 from __future__ import annotations
 
 import re
+import ssl
 from html import unescape
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+import certifi
 import streamlit as st
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 
 def extract_uploaded_text(uploaded_file) -> str:
@@ -96,7 +100,7 @@ def fetch_public_webpage_text(url: str) -> tuple[str, str]:
             )
         },
     )
-    with urlopen(request, timeout=12) as response:
+    with urlopen(request, timeout=12, context=_SSL_CONTEXT) as response:
         content_type = response.headers.get("Content-Type", "")
         if "text/html" not in content_type:
             raise ValueError("That URL did not return an HTML page.")
