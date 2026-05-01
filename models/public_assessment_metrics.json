@@ -17,7 +17,7 @@
       "source": "0xnbk/resume-ats-score-v1-en",
       "train_rows": 40,
       "val_rows": 10,
-      "val_mae": 52.8
+      "val_mae": 42.93
     },
     "entity": {
       "source": "DataTurks-Engg/Entity-Recognition-In-Resumes-SpaCy",
