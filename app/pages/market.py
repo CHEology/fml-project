@@ -106,11 +106,6 @@ def render_market_overview_page(
         <div class="market-section-heading">
             <div class="section-heading-kicker">Model dependencies</div>
             <h2>How this page connects to the rest of the demo</h2>
-            <p>
-                These views are not decoration. They show the evidence base
-                each model consumes or explains when the user runs a resume
-                through the demo.
-            </p>
         </div>
         """,
         unsafe_allow_html=True,
