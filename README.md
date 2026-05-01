@@ -37,9 +37,18 @@ uv run python scripts/preprocess_data.py
 uv run python scripts/build_index.py
 uv run python scripts/build_clusters.py
 uv run python scripts/train_resume_salary_model.py
+uv run python scripts/train_salary_model.py \
+    --embeddings models/job_embeddings.npy \
+    --salaries data/processed/salaries.npy \
+    --jobs-parquet data/processed/jobs.parquet
 uv run python scripts/train_quality_model.py
 uv run python scripts/train_public_assessment_models.py
 ```
+
+The Streamlit demo uses `models/resume_salary_model.pt` as the active neural
+salary checkpoint because it is trained on resume text. The older
+`models/salary_model.pt` is still useful as a job-embedding salary baseline and
+as a fallback if the resume-side checkpoint is absent.
 
 Optional public data loaders:
 

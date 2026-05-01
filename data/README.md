@@ -184,6 +184,50 @@ models/jobs.index
 models/jobs_meta.parquet
 ```
 
+## Salary Model Artifacts
+
+The app supports two salary checkpoints:
+
+- `models/resume_salary_model.pt` is the active Streamlit/demo salary model. It
+  is trained on synthetic resume text paired to source-job salaries, so it
+  matches the app's resume-inference input.
+- `models/salary_model.pt` is the older job-embedding salary model. It is useful
+  as a job-side baseline and remains a fallback if the resume-side checkpoint is
+  absent.
+
+Train the active resume-side checkpoint after generating
+`data/eval/synthetic_resumes.parquet`:
+
+```bash
+uv run python scripts/generate_synthetic_resumes.py \
+    --jobs data/processed/jobs.parquet \
+    --n 500 \
+    --out data/eval/synthetic_resumes.parquet
+
+uv run python scripts/train_resume_salary_model.py
+```
+
+Train the fallback job-side checkpoint from processed salaries and job
+embeddings:
+
+```bash
+uv run python scripts/train_salary_model.py \
+    --embeddings models/job_embeddings.npy \
+    --salaries data/processed/salaries.npy \
+    --jobs-parquet data/processed/jobs.parquet
+```
+
+Expected salary outputs:
+
+```text
+models/resume_salary_model.pt
+models/resume_salary_model.scaler.json
+models/resume_salary_model.features.json
+models/salary_model.pt
+models/salary_model.scaler.json
+models/salary_model.features.json
+```
+
 ## Optional External Data
 
 These files are also gitignored and can be regenerated locally:
