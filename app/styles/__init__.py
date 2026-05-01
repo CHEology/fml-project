@@ -43,6 +43,7 @@ THEMES = {
 
 STYLE_FILES = (
     "foundation.css",
+    "salary.css",
     "snapshot.css",
     "snapshot-evidence.css",
     "demo.css",
