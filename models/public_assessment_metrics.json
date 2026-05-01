@@ -4,78 +4,42 @@
   "datasets": {
     "domain": {
       "source": "Divyaamith/Kaggle-Resume Resume.csv",
-      "train_rows": 1987,
-      "val_rows": 496,
+      "train_rows": 16,
+      "val_rows": 4,
       "labels": [
-        "ACCOUNTANT",
-        "ADVOCATE",
-        "AGRICULTURE",
-        "APPAREL",
-        "ARTS",
-        "AUTOMOBILE",
-        "AVIATION",
-        "BANKING",
-        "BPO",
-        "BUSINESS-DEVELOPMENT",
-        "CHEF",
-        "CONSTRUCTION",
-        "CONSULTANT",
-        "DESIGNER",
-        "DIGITAL-MEDIA",
-        "ENGINEERING",
-        "FINANCE",
-        "FITNESS",
-        "HEALTHCARE",
-        "HR",
-        "INFORMATION-TECHNOLOGY",
-        "PUBLIC-RELATIONS",
-        "SALES",
-        "TEACHER"
+        "Finance",
+        "IT"
       ],
-      "val_accuracy": 0.504,
-      "n_labels": 24
+      "val_accuracy": 1.0,
+      "n_labels": 2
     },
     "ats_fit": {
       "source": "0xnbk/resume-ats-score-v1-en",
-      "train_rows": 5099,
-      "val_rows": 1275,
-      "val_mae": 18.85
+      "train_rows": 40,
+      "val_rows": 10,
+      "val_mae": 52.8
     },
     "entity": {
       "source": "DataTurks-Engg/Entity-Recognition-In-Resumes-SpaCy",
-      "train_rows": 3206,
-      "val_rows": 350,
+      "train_rows": 40,
+      "val_rows": 20,
       "labels": [
-        "College Name",
-        "Companies worked at",
-        "Degree",
-        "Designation",
-        "Email Address",
-        "Graduation Year",
-        "Location",
-        "Name",
-        "Skills",
-        "UNKNOWN",
-        "Years of Experience"
+        "Company",
+        "Location"
       ],
-      "val_accuracy": 0.46,
-      "n_labels": 11
+      "val_accuracy": 1.0,
+      "n_labels": 2
     },
     "section": {
       "source": "ganchengguang/resume_seven_class resume.txt",
-      "train_rows": 40000,
-      "val_rows": 10000,
+      "train_rows": 80,
+      "val_rows": 20,
       "labels": [
-        "Edu",
-        "Exp",
-        "Obj",
-        "PI",
-        "QC",
-        "Skill",
-        "Sum"
+        "Education",
+        "Experience"
       ],
-      "val_accuracy": 0.7876,
-      "n_labels": 7
+      "val_accuracy": 1.0,
+      "n_labels": 2
     }
   }
 }

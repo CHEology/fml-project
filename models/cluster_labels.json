@@ -24,7 +24,7 @@
   },
   "1": {
     "label": "Business / Data Analysis",
-    "size": 4400,
+    "size": 4401,
     "top_terms": [
       "business",
       "financial",
@@ -47,7 +47,7 @@
   },
   "2": {
     "label": "Operations / Logistics",
-    "size": 5224,
+    "size": 5230,
     "top_terms": [
       "work",
       "equipment",
@@ -64,13 +64,13 @@
       "Package Handler - Part Time (Warehouse like)",
       "Maintenance Technician",
       "Warehouse Associate",
-      "Auto Glass Installation Technician Trainee",
-      "Material Handler"
+      "Material Handler",
+      "Auto Glass Installation Technician Trainee"
     ]
   },
   "3": {
     "label": "Healthcare / Clinical",
-    "size": 3545,
+    "size": 3546,
     "top_terms": [
       "care",
       "patient",
@@ -93,7 +93,7 @@
   },
   "4": {
     "label": "Finance / Accounting",
-    "size": 2115,
+    "size": 2110,
     "top_terms": [
       "accounting",
       "financial",
@@ -110,13 +110,13 @@
       "Senior Accountant",
       "Staff Accountant",
       "Controller",
-      "Accounting Manager",
-      "Accountant"
+      "Accountant",
+      "Accounting Manager"
     ]
   },
   "5": {
     "label": "Healthcare / Clinical",
-    "size": 3038,
+    "size": 3037,
     "top_terms": [
       "clinical",
       "care",
@@ -132,14 +132,14 @@
     "common_titles": [
       "Behavior Technician",
       "Phlebotomist",
-      "Customer Service Rep",
       "Associate Veterinarian",
-      "Registered Behavior Technician"
+      "Customer Service Rep",
+      "Certified Veterinary Technician"
     ]
   },
   "6": {
     "label": "Sales / Customer Growth",
-    "size": 5173,
+    "size": 5167,
     "top_terms": [
       "sales",
       "marketing",
@@ -155,14 +155,14 @@
     "common_titles": [
       "Assistant Manager",
       "Sales Representative",
-      "General Manager",
       "Outside Sales Representative",
+      "General Manager",
       "Inside Sales Representative"
     ]
   },
   "7": {
     "label": "Administrative / HR",
-    "size": 5193,
+    "size": 5197,
     "top_terms": [
       "experience",
       "work",
@@ -179,8 +179,8 @@
       "Administrative Assistant",
       "Executive Assistant",
       "Customer Service Representative",
-      "Paralegal",
-      "Human Resources Manager"
+      "Human Resources Manager",
+      "Paralegal"
     ]
   }
 }
