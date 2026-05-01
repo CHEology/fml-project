@@ -55,26 +55,40 @@ def render_demo_floating_nav(
     next_label: str | None = None,
     next_stage: str | None = None,
 ) -> None:
+    def set_demo_stage(stage: str) -> None:
+        st.session_state.demo_stage = stage
+
     with st.container(key="demo-floating-nav"):
         if previous_stage is None and not (next_label and next_stage):
-            if st.button("Start over with new resume/profile", width="stretch"):
-                restart_demo()
-                st.rerun()
+            st.button(
+                "Start over with new resume/profile",
+                width="stretch",
+                on_click=restart_demo,
+            )
             return
 
         widths = [0.25, 0.4, 0.35] if next_label and next_stage else [0.3, 0.45]
         nav_cols = st.columns(widths, gap="small")
         if previous_stage is not None:
             with nav_cols[0]:
-                if st.button("← Previous", width="stretch"):
-                    st.session_state.demo_stage = previous_stage
-                    st.rerun()
+                st.button(
+                    "← Previous",
+                    width="stretch",
+                    on_click=set_demo_stage,
+                    args=(previous_stage,),
+                )
         with nav_cols[1]:
-            if st.button("Start over with new resume/profile", width="stretch"):
-                restart_demo()
-                st.rerun()
+            st.button(
+                "Start over with new resume/profile",
+                width="stretch",
+                on_click=restart_demo,
+            )
         if next_label and next_stage:
             with nav_cols[2]:
-                if st.button(f"{next_label} →", type="primary", width="stretch"):
-                    st.session_state.demo_stage = next_stage
-                    st.rerun()
+                st.button(
+                    f"{next_label} →",
+                    type="primary",
+                    width="stretch",
+                    on_click=set_demo_stage,
+                    args=(next_stage,),
+                )

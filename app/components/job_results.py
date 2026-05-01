@@ -24,7 +24,7 @@ def fmt_money(value: float | int | None) -> str:
     return f"${int(value):,}"
 
 
-def render_job_row(row: pd.Series) -> None:
+def render_job_row(row: pd.Series, profile_terms: list[str] | None = None) -> None:
     """
     Render a single job match row with similarity score, title, company,
     location, salary, experience level, and a text snippet.
@@ -34,7 +34,30 @@ def render_job_row(row: pd.Series) -> None:
              work_type, experience_level, salary_annual, text, similarity,
              and optionally public_ats_score.
     """
-    summary = escape(str(row.get("text", ""))[:190])
+    row_text = str(row.get("text", ""))
+    summary = escape(row_text[:190])
+    signal_terms = _matched_profile_terms(row, profile_terms or [])
+    signal_html = ""
+    if profile_terms is not None:
+        signal_body = (
+            '<div class="job-row-signal-chips">'
+            + "".join(
+                f'<span class="mini-chip">{escape(term)}</span>'
+                for term in signal_terms
+            )
+            + "</div>"
+        )
+        if not signal_terms:
+            signal_body = (
+                '<div class="job-row-signal-note">'
+                "No exact keyword overlap surfaced; this row came from the full profile embedding."
+                "</div>"
+            )
+        signal_html = (
+            '<div class="job-row-signals">'
+            "<span>Profile signals</span>"
+            f"{signal_body}</div>"
+        )
     similarity = row.get("similarity", np.nan)
     score_label = "Strong match"
     if not pd.isna(similarity):
@@ -57,6 +80,7 @@ def render_job_row(row: pd.Series) -> None:
                 <div class="job-title">{title}</div>
                 <div class="job-meta">{company} · {location} · {work_type}</div>
                 <div class="job-row-summary">{summary}</div>
+                {signal_html}
             </div>
             <div class="job-row-metrics">
                 <div class="score-chip">{score_label}</div>
@@ -68,7 +92,11 @@ def render_job_row(row: pd.Series) -> None:
     )
 
 
-def render_job_results(matches: pd.DataFrame) -> None:
+def render_job_results(
+    matches: pd.DataFrame,
+    *,
+    profile_terms: list[str] | None = None,
+) -> None:
     """
     Render a row-based list of job matches from a DataFrame of results.
 
@@ -82,7 +110,28 @@ def render_job_results(matches: pd.DataFrame) -> None:
         return
 
     for _, row in matches.iterrows():
-        render_job_row(row)
+        render_job_row(row, profile_terms=profile_terms)
+
+
+def _matched_profile_terms(row: pd.Series, profile_terms: list[str]) -> list[str]:
+    searchable = " ".join(
+        str(row.get(field, ""))
+        for field in ("title", "company_name", "location", "work_type", "text")
+    ).lower()
+    matches: list[str] = []
+    seen: set[str] = set()
+    for raw_term in profile_terms:
+        term = str(raw_term).strip()
+        if len(term) < 2:
+            continue
+        lowered = term.lower()
+        if lowered in seen or lowered not in searchable:
+            continue
+        seen.add(lowered)
+        matches.append(term)
+        if len(matches) >= 6:
+            break
+    return matches
 
 
 def render_metric_card(label: str, value: str, helper: str) -> None:

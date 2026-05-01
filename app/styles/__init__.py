@@ -46,6 +46,8 @@ STYLE_FILES = (
     "snapshot.css",
     "snapshot-evidence.css",
     "demo.css",
+    "demo-actions.css",
+    "job-results.css",
     "home-sidebar.css",
     "quality-responsive.css",
     "buttons-typography.css",

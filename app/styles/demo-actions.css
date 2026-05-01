@@ -1,0 +1,110 @@
+    .action-choice-heading {
+        color: var(--ink);
+        font-size: 1.35rem;
+        font-weight: 800;
+        line-height: 1.25;
+        margin: 1.15rem 0 0.65rem;
+    }
+
+    .action-advice-panel {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        background: #FFFFFF;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+        margin: 1rem 0 0.75rem;
+        padding: 1rem;
+    }
+
+    .action-advice-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+    }
+
+    .action-advice-header h2 {
+        color: var(--ink);
+        font-size: 1.2rem;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .action-advice-header p {
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.45;
+        margin: 0.3rem 0 0;
+    }
+
+    .action-summary-pill {
+        background: rgba(7, 148, 85, 0.1);
+        border: 1px solid rgba(7, 148, 85, 0.18);
+        border-radius: 999px;
+        color: #067647;
+        flex: 0 0 auto;
+        font-size: 0.82rem;
+        font-weight: 800;
+        padding: 0.42rem 0.65rem;
+        white-space: nowrap;
+    }
+
+    .action-list-card {
+        background: #FFFFFF;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+        margin-bottom: 0.75rem;
+        padding: 0.85rem 0.95rem;
+    }
+
+    .action-list-card ul {
+        color: var(--ink);
+        line-height: 1.48;
+        margin: 0.35rem 0 0 1.1rem;
+        padding: 0;
+    }
+
+    .action-list-card li + li {
+        margin-top: 0.32rem;
+    }
+
+    .action-job-list {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.5rem;
+    }
+
+    .action-job-row {
+        align-items: center;
+        border-top: 1px solid rgba(15, 23, 42, 0.06);
+        display: flex;
+        gap: 0.75rem;
+        justify-content: space-between;
+        padding-top: 0.45rem;
+    }
+
+    .action-job-row strong {
+        color: var(--ink);
+        font-size: 0.92rem;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .action-job-row span {
+        color: #175CD3;
+        flex: 0 0 auto;
+        font-size: 0.86rem;
+        font-weight: 800;
+    }
+
+    @media (max-width: 720px) {
+        .action-advice-header,
+        .action-job-row {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .action-summary-pill {
+            white-space: normal;
+        }
+    }

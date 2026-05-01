@@ -1,0 +1,27 @@
+    .job-row-signals {
+        border-top: 1px solid rgba(124, 58, 237, 0.12);
+        color: var(--muted);
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.7rem;
+        padding-top: 0.65rem;
+    }
+
+    .job-row-signals > span {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .job-row-signal-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .job-row-signal-note {
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.35;
+    }
