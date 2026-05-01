@@ -304,12 +304,6 @@ def render_profile_quality_section(
             gap_terms=missing_terms,
             detail_html=body,
         )
-        _render_resume_evidence(
-            resume_text=resume_text,
-            strengths=strengths,
-            missing_terms=missing_terms,
-            missing_sections=missing_sections,
-        )
 
 
 def _render_resume_evidence(
