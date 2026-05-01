@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from ml.resume_assessment.elite_signals import detect_elite_signals
 from ml.resume_assessment.taxonomy import (
     ACTION_VERBS,
     IMPACT_REGEX,
@@ -484,7 +485,10 @@ def assess_capability_tier(
             float(projects.get("mean_score", 0)) + 45.0,
         ),
     )
-    score = (
+    elite = detect_elite_signals(text, work_history, academic)
+    elite_score = float(elite["score"])
+
+    rule_score = (
         float(quality.get("impact_score", 0)) * 0.24
         + float(quality.get("specificity_score", 0)) * 0.18
         + float(quality.get("experience_score", 0)) * 0.16
@@ -493,9 +497,28 @@ def assess_capability_tier(
         + project_score * 0.08
         + public_score * 0.06
     )
+    # Elite signals (frontier employer, senior research title, prolific
+    # publications, elite PhD) should be able to lift the rule score
+    # past the "Competitive" ceiling on academic / research CVs that
+    # don't surface as much "quantified outcomes" / specificity as a
+    # typical industry resume but command top-of-market compensation.
+    score = max(rule_score, 0.65 * rule_score + 0.6 * elite_score)
     score = max(0.0, min(100.0, score))
 
-    if score >= 78:
+    if elite_score >= 85:
+        # PhD + frontier lab + senior title + prolific pubs all firing.
+        # Keep the multiplier conservative-relative to real frontier-lab
+        # comp ($500k+) — the LinkedIn band can't anchor that high, but
+        # 2.3x lifts a typical $120k anchor to ~$275k median, which is
+        # at least defensibly in-range for staff-level research.
+        tier = "Elite"
+        salary_multiplier = 2.30
+        summary = "frontier-lab + senior research evidence"
+    elif elite_score >= 70:
+        tier = "Elite"
+        salary_multiplier = 1.85
+        summary = "elite research evidence"
+    elif score >= 78:
         tier = "Standout"
         salary_multiplier = 1.10
         summary = "top-of-level evidence"
@@ -509,6 +532,22 @@ def assess_capability_tier(
         summary = "thin within-level evidence"
 
     notes: list[str] = []
+    if elite.get("has_frontier_employer") and elite.get("frontier_hits"):
+        notes.append(
+            "Frontier AI / ML employer detected: "
+            + ", ".join(elite["frontier_hits"]).title()
+            + "."
+        )
+    if elite.get("has_senior_research_title") and elite.get("senior_title_hits"):
+        notes.append(
+            "Senior research title detected — comp profile sits well above "
+            "the LinkedIn-typical band the retrieval is anchored on."
+        )
+    if elite.get("prolific_publications"):
+        notes.append(
+            f"Peer-reviewed publication count {elite['publication_count']} clears "
+            "the bar for a research scientist track at frontier labs."
+        )
     if skill_hits:
         notes.append(
             "Track-specific skills detected: " + ", ".join(skill_hits[:4]) + "."
