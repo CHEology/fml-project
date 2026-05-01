@@ -488,13 +488,6 @@ def test_profile_quality_section_renders_consolidated_content(monkeypatch) -> No
     assert "Market-language gaps" in html
     assert html.index("Public-data model checks") < html.index("Resume organization")
     assert html.index("Resume organization") < html.index("What stood out positively")
-    assert "Submitted resume/profile evidence" in html
-    assert "quality-highlight-good" in html
-    assert "quality-highlight-risk" in html
-    assert "Python" in html
-    assert "Responsible for" in html
-    assert "</ div>" not in html
-    assert "&lt;/ div&gt;" not in html
     assert "Add stronger evidence for client" in html
     assert '<div class="snapshot-label">Detected strengths</div>' not in html
     assert '<div class="snapshot-label">Gaps to close</div>' not in html

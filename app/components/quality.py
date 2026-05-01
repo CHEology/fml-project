@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from html import escape
 from typing import Any
 
@@ -304,111 +303,6 @@ def render_profile_quality_section(
             gap_terms=missing_terms,
             detail_html=body,
         )
-        _render_resume_evidence(
-            resume_text=resume_text,
-            strengths=strengths,
-            missing_terms=missing_terms,
-            missing_sections=missing_sections,
-        )
-
-
-def _render_resume_evidence(
-    *,
-    resume_text: str,
-    strengths: list[str],
-    missing_terms: list[str],
-    missing_sections: list[str],
-) -> None:
-    if not str(resume_text).strip():
-        return
-
-    display_text = _clean_resume_display_text(str(resume_text))
-    highlighted = _highlight_resume_text(
-        display_text,
-        good_terms=strengths,
-        risk_terms=[*RISK_PHRASES, *missing_terms],
-    )
-    structural_notes = []
-    if missing_sections:
-        structural_notes.append(
-            "Missing sections: "
-            + ", ".join(str(section) for section in missing_sections)
-        )
-    notes_html = ""
-    if structural_notes:
-        notes_html = (
-            '<div class="quality-evidence-notes">'
-            + "".join(f"<span>{escape(note)}</span>" for note in structural_notes)
-            + "</div>"
-        )
-    st.markdown(
-        f"""
-        <div class="quality-evidence-panel">
-            <div class="quality-evidence-header">
-                <div>
-                    <div class="snapshot-label">Submitted resume/profile evidence</div>
-                    <p>{escape(QUALITY_EVIDENCE_INFO)}</p>
-                </div>
-                <div class="quality-evidence-legend">
-                    <span class="legend-good"></span> Helps
-                    <span class="legend-risk"></span> Hurts
-                </div>
-            </div>
-            <pre class="quality-evidence-text">{highlighted}</pre>
-            {notes_html}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _highlight_resume_text(
-    resume_text: str,
-    *,
-    good_terms: list[str],
-    risk_terms: list[str],
-) -> str:
-    matches: list[tuple[int, int, str]] = []
-    occupied: list[tuple[int, int]] = []
-    for css_class, terms in (
-        ("quality-highlight-good", good_terms),
-        ("quality-highlight-risk", risk_terms),
-    ):
-        for term in terms:
-            pattern = str(term).strip()
-            if len(pattern) < 3:
-                continue
-            for match in re.finditer(re.escape(pattern), resume_text, re.IGNORECASE):
-                start, end = match.span()
-                if any(
-                    start < used_end and end > used_start
-                    for used_start, used_end in occupied
-                ):
-                    continue
-                matches.append((start, end, css_class))
-                occupied.append((start, end))
-                break
-    matches.sort(key=lambda item: item[0])
-    if not matches:
-        return escape(resume_text)
-
-    html = []
-    cursor = 0
-    for start, end, css_class in matches:
-        html.append(escape(resume_text[cursor:start]))
-        html.append(
-            f'<span class="{css_class}">{escape(resume_text[start:end])}</span>'
-        )
-        cursor = end
-    html.append(escape(resume_text[cursor:]))
-    return "".join(html)
-
-
-def _clean_resume_display_text(resume_text: str) -> str:
-    cleaned = re.sub(r"</\s*[a-z][a-z0-9-]*\s*>", "", resume_text, flags=re.IGNORECASE)
-    cleaned = re.sub(r"<\s*/\s*[a-z][a-z0-9-]*\s*>", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned.strip()
 
 
 def render_public_model_card(public_signals: dict[str, Any] | None) -> None:
