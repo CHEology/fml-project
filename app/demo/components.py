@@ -62,7 +62,7 @@ def render_demo_floating_nav(
     with st.container(key="demo-floating-nav"):
         if previous_stage is None and not (next_label and next_stage):
             st.button(
-                "Start over with new resume/profile",
+                "Start over with new résumé / CV",
                 width="stretch",
                 on_click=restart_demo,
             )
@@ -80,7 +80,7 @@ def render_demo_floating_nav(
                 )
         with nav_cols[1]:
             st.button(
-                "Start over with new resume/profile",
+                "Start over with new résumé / CV",
                 width="stretch",
                 on_click=restart_demo,
             )

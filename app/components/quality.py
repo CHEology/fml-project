@@ -9,7 +9,7 @@ import streamlit as st
 from app.demo.components import info_dot
 
 PROFILE_QUALITY_INFO = (
-    "Profile Quality is the explainable resume-quality readout from "
+    "Résumé Quality is the explainable resume-quality readout from "
     "ml.resume_assessment.assess_quality(). It combines experience depth, "
     "quantified impact, specificity, and structure into a 0-100 score. The "
     "positive and work-needed notes are selected from parsed work history, "
@@ -22,7 +22,7 @@ PROFILE_QUALITY_INFO = (
 LEARNED_CHECK_INFO = (
     "This is an advisory neural cross-check from the public resume-style model. "
     "It is useful for sanity checking the rule-based score, but it does not "
-    "drive strengths, gaps, salary adjustments, or the final profile quality score."
+    "drive strengths, gaps, salary adjustments, or the final résumé quality score."
 )
 
 FEEDBACK_INFO = (
@@ -40,8 +40,8 @@ PUBLIC_CHECKS_INFO = (
 )
 
 EVIDENCE_TAGS_INFO = (
-    "These tags come from profile detection rather than the quality scorer. "
-    "They summarize skills and domain terms found in the resume text, so they "
+    "These tags come from résumé content detection rather than the quality scorer. "
+    "They summarize skills and domain terms found in the résumé text, so they "
     "support the positive readout but are not the same as the written quality notes."
 )
 
@@ -52,8 +52,8 @@ MARKET_GAPS_INFO = (
 )
 
 QUALITY_EVIDENCE_INFO = (
-    "Green highlights are resume/profile phrases that support the quality score. "
-    "Red highlights are visible wording patterns that weaken the profile readout. "
+    "Green highlights are résumé phrases that support the quality score. "
+    "Red highlights are visible wording patterns that weaken the résumé readout. "
     "Some issues, such as missing sections or lack of bullets, are structural and "
     "are summarized below the text rather than highlighted inline."
 )
@@ -255,14 +255,14 @@ def render_profile_quality_section(
             f"""
             <div class="profile-quality-hero">
                 <div class="profile-quality-title-row">
-                    <h1 class="snapshot-title">Profile Quality</h1>
+                    <h1 class="snapshot-title">Résumé Quality</h1>
                     <div class="snapshot-stat-row profile-quality-stats">{stats_html}</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        with st.expander("Read more about Profile Quality"):
+        with st.expander("Read more about Résumé Quality"):
             st.markdown(PROFILE_QUALITY_INFO)
 
         public_chips = _public_model_chips(public_signals)
@@ -346,7 +346,7 @@ def _render_resume_evidence(
         <div class="quality-evidence-panel">
             <div class="quality-evidence-header">
                 <div>
-                    <div class="snapshot-label">Submitted resume/profile evidence</div>
+                    <div class="snapshot-label">Submitted résumé / CV evidence</div>
                     <p>{escape(QUALITY_EVIDENCE_INFO)}</p>
                 </div>
                 <div class="quality-evidence-legend">

@@ -50,12 +50,12 @@ def render_job_row(row: pd.Series, profile_terms: list[str] | None = None) -> No
         if not signal_terms:
             signal_body = (
                 '<div class="job-row-signal-note">'
-                "No exact keyword overlap surfaced; this row came from the full profile embedding."
+                "No exact keyword overlap surfaced; this row came from the full résumé embedding."
                 "</div>"
             )
         signal_html = (
             '<div class="job-row-signals">'
-            "<span>Profile signals</span>"
+            "<span>Résumé signals</span>"
             f"{signal_body}</div>"
         )
     similarity = row.get("similarity", np.nan)

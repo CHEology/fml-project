@@ -117,7 +117,7 @@ def render_demo_page(
         st.session_state.uploaded_resume_source = "Uploaded resume"
         st.session_state.pasted_resume_text = ""
         st.session_state.imported_profile_text = ""
-        st.session_state.imported_profile_source = "Imported public webpage"
+        st.session_state.imported_profile_source = "Imported résumé / CV page"
         st.session_state.sample_resume_text = ""
         st.session_state.sample_resume_source = "Sample resume"
         st.session_state.demo_input_method = "Upload a PDF or TXT resume"
@@ -164,7 +164,7 @@ def render_demo_page(
         ) -> None:
             st.session_state.resume_text = st.session_state.get(text_key, "")
             if source_key is None:
-                st.session_state.resume_source = "Pasted resume/profile text"
+                st.session_state.resume_source = "Pasted resume / CV text"
             else:
                 st.session_state.resume_source = st.session_state.get(source_key, "")
             st.session_state.pending_analysis = True
@@ -173,10 +173,11 @@ def render_demo_page(
             f"""
             <div class="demo-intake-hero">
                 <div>
-                    <h1>Add a resume or profile</h1>
+                    <h1>Add a resume or CV</h1>
                     <p class="demo-intake-copy">
-                        Choose between uploading a resume, pasting profile text,
-                        importing a public portfolio page, or using a sample to see the analysis flow.
+                        Upload a resume / CV file, paste the text, import a
+                        public résumé page, or use a sample to see the
+                        analysis flow.
                     </p>
                 </div>
                 <div class="demo-intake-mascot">
@@ -189,8 +190,8 @@ def render_demo_page(
         with st.container():
             input_methods = [
                 "Upload a PDF or TXT resume",
-                "Paste resume/profile text",
-                "Import a public portfolio or resume page",
+                "Paste resume / CV text",
+                "Import a public resume / CV page",
                 "Use a random sample resume",
             ]
             st.markdown(
@@ -244,7 +245,7 @@ def render_demo_page(
                         st.session_state.uploaded_resume_text,
                     )
                     st.button(
-                        "Run profile analysis",
+                        "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
@@ -253,12 +254,12 @@ def render_demo_page(
                         args=("uploaded_resume_text", "uploaded_resume_source"),
                     )
 
-                elif selected_method == "Paste resume/profile text":
+                elif selected_method == "Paste resume / CV text":
                     st.session_state.pasted_resume_text = st.text_area(
-                        "Paste or edit resume/profile text",
+                        "Paste or edit resume / CV text",
                         value=st.session_state.pasted_resume_text,
                         height=260,
-                        placeholder="Paste a resume, portfolio bio, or achievement summary here...",
+                        placeholder="Paste your resume / CV text here...",
                     )
                     current_text = st.session_state.pasted_resume_text.strip()
                     render_method_status(
@@ -267,7 +268,7 @@ def render_demo_page(
                         st.session_state.pasted_resume_text,
                     )
                     st.button(
-                        "Run profile analysis",
+                        "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
@@ -276,22 +277,22 @@ def render_demo_page(
                         args=("pasted_resume_text", None),
                     )
 
-                elif selected_method == "Import a public portfolio or resume page":
+                elif selected_method == "Import a public resume / CV page":
                     st.markdown(
-                        '<p class="demo-method-note">Import a public portfolio, personal site, or resume page. Private sites and LinkedIn pages are not imported.</p>',
+                        '<p class="demo-method-note">Import a public résumé / CV page. Private sites and LinkedIn pages are not supported.</p>',
                         unsafe_allow_html=True,
                     )
                     public_profile_url = st.text_input(
-                        "Public profile or portfolio URL",
+                        "Public résumé / CV URL",
                         value=st.session_state.public_profile_url,
-                        placeholder="https://portfolio.example.com/about",
+                        placeholder="https://example.com/resume",
                     )
                     st.session_state.public_profile_url = public_profile_url
                     import_clicked = st.button("Import page", width="stretch")
 
                     if import_clicked:
                         try:
-                            with st.spinner("Importing public page text..."):
+                            with st.spinner("Importing résumé page text..."):
                                 imported_text, imported_host = (
                                     fetch_public_webpage_text(
                                         st.session_state.public_profile_url
@@ -299,48 +300,48 @@ def render_demo_page(
                                 )
                             st.session_state.imported_profile_text = imported_text
                             st.session_state.imported_profile_source = (
-                                f"Imported public webpage: {imported_host}"
+                                f"Imported résumé / CV page: {imported_host}"
                             )
                             st.rerun()
                         except ValueError as exc:
                             st.warning(str(exc))
                         except Exception:
                             st.warning(
-                                "Could not import that page. Try another public URL or paste the resume text directly."
+                                "Could not import that page. Try another public résumé / CV URL or paste the resume text directly."
                             )
                     st.text_area(
-                        "Imported page text",
+                        "Imported résumé / CV text",
                         value=st.session_state.imported_profile_text,
                         height=260,
                         disabled=True,
-                        placeholder="Import a public portfolio or resume page to preview the extracted text here.",
+                        placeholder="Import a public résumé / CV page to preview the extracted text here.",
                     )
                     current_text = st.session_state.imported_profile_text.strip()
                     # Inline check: imported web pages are the most common
                     # source of non-resume text. Show the user immediately if
-                    # what we extracted doesn't look like a CV, so they don't
-                    # waste a click on Analyze and get blocked there.
+                    # what we extracted doesn't look like a résumé / CV, so
+                    # they don't waste a click on Analyze and get blocked.
                     if current_text:
                         imp_validation = validate_resume(None, current_text)
                         imp_conf = imp_validation.get("confidence", "low")
                         if imp_conf == "low":
                             st.error(
-                                "The imported text doesn't look like a resume. "
+                                "The imported text doesn't look like a résumé / CV. "
                                 "Try a different URL (a public résumé / CV page) "
-                                "or paste your resume text directly."
+                                "or paste your résumé / CV text directly."
                             )
                         elif imp_conf == "medium":
                             st.warning(
-                                "The imported text is thin for a resume — analysis "
-                                "may be unreliable. You can still proceed."
+                                "The imported text is thin for a résumé / CV — "
+                                "analysis may be unreliable. You can still proceed."
                             )
                     render_method_status(
-                        "Imported page input",
+                        "Imported résumé / CV input",
                         "",
                         st.session_state.imported_profile_text,
                     )
                     st.button(
-                        "Run profile analysis",
+                        "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
@@ -381,7 +382,7 @@ def render_demo_page(
                         st.session_state.sample_resume_text,
                     )
                     st.button(
-                        "Run profile analysis",
+                        "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
@@ -411,36 +412,35 @@ def render_demo_page(
                 with st.spinner("Reviewing resume content..."):
                     public_models = load_public_assessment_resource()
 
-                    # Tiered validation. The app is scoped to resumes / CVs;
-                    # portfolio pages, blog posts, social bios, and code dumps
-                    # produce useless analyses. We block the clearly-not-a-resume
+                    # Tiered validation. The app is scoped to résumés / CVs;
+                    # other text (web pages, articles, code, short bios)
+                    # produces useless analyses. We block the clearly-not-a-CV
                     # case but always allow an override so a poor-but-real CV
                     # the validator under-reads is never permanently locked out.
                     validation = validate_resume(public_models, resume_text_now)
                     confidence = validation.get("confidence", "low")
                     override = bool(st.session_state.get("validation_override", False))
                     if confidence == "empty":
-                        st.error("Add some resume text first.")
+                        st.error("Add your résumé / CV text first.")
                         return
                     if confidence == "low" and not override:
                         reasons = validation.get("reasons", [])
                         signals = validation.get("signals", [])
                         bullets = "\n".join(f"- {r}" for r in reasons[:4])
                         positives = (
-                            "\n\nResume signals we *did* find: "
+                            "\n\nRésumé signals we *did* find: "
                             + ", ".join(signals[:4])
                             + "."
                             if signals
                             else ""
                         )
                         st.error(
-                            "This input doesn't look like a resume / CV. ResuMatch "
-                            "is scoped to resumes — portfolio pages, blog posts, "
-                            "social bios, and code don't produce a useful analysis."
+                            "This input doesn't look like a résumé / CV. "
+                            "ResuMatch only analyzes résumés / CVs."
                             f"\n\n{bullets}{positives}"
                         )
                         st.checkbox(
-                            "I'm sure this is a resume — analyze anyway",
+                            "I'm sure this is a résumé / CV — analyze anyway",
                             key="validation_override",
                         )
                         return
@@ -448,7 +448,7 @@ def render_demo_page(
                         reasons = validation.get("reasons", [])
                         if reasons:
                             st.warning(
-                                "Heads up: this looks thin for a resume. The "
+                                "Heads up: this looks thin for a résumé / CV. The "
                                 "analysis may be unreliable.\n\n- "
                                 + "\n- ".join(reasons[:3])
                             )
@@ -624,7 +624,7 @@ def render_demo_page(
             "uses resume wording, detected skills, section structure, job-title "
             "signals, quantified-impact language, and optional public-resume models "
             "from ml/public_assessment.py. Assumption: the uploaded or pasted text is "
-            "a truthful candidate profile; this is an evidence summary, not a hiring decision."
+            "a truthful candidate résumé / CV; this is an evidence summary, not a hiring decision."
         )
         focus_info = (
             "Detected focus comes from ml.resume_assessment.detect_profile(), which scores "
@@ -732,7 +732,7 @@ def render_demo_page(
             )
 
         present_skills = profile["skills_present"] or [
-            "Generalist profile",
+            "Generalist résumé",
             "Cross-functional communication",
         ]
         structure_chips = structure["found_sections"] or ["No formal sections detected"]
