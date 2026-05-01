@@ -167,13 +167,55 @@ _DATE_RANGE_RE = re.compile(
     r"\d{4})",
     re.IGNORECASE,
 )
-_YEAR_RANGE_RE = re.compile(r"\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present|current|now)\b", re.IGNORECASE)
+_YEAR_RANGE_RE = re.compile(
+    r"\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present|current|now)\b",
+    re.IGNORECASE,
+)
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 _PHONE_RE = re.compile(r"\b(?:\+?\d{1,3}[\s\-.])?\(?\d{3}\)?[\s\-.]\d{3}[\s\-.]\d{4}\b")
 _DEGREE_RE = re.compile(
     r"\b(?:b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?|m\.?b\.?a\.?|ph\.?d\.?|"
     r"bachelor(?:'s)?|master(?:'s)?|doctorate|doctor of philosophy)\b",
     re.IGNORECASE,
+)
+_RESUME_SECTION_HEADER_RE = re.compile(
+    r"(?im)^\s*(?:professional\s+summary|summary|objective|profile|experience|"
+    r"work\s+experience|professional\s+experience|employment|employment\s+history|"
+    r"work\s+history|education|skills|technical\s+skills|projects|certifications|"
+    r"publications|awards|honors|research\s+experience|leadership|service)\s*:?\s*$"
+)
+_INLINE_SECTION_RE = re.compile(
+    r"(?im)^\s*(?:education|skills|experience|projects|certifications|publications)\s*:"
+)
+_ROLE_DATE_LINE_RE = re.compile(
+    r"(?im)^(?=.*(?:\b(?:19|20)\d{2}\b|present|current))"
+    r"(?=.*\b(?:engineer|scientist|developer|analyst|manager|researcher|intern|"
+    r"director|assistant|consultant|designer|professor|staff|lead|specialist|"
+    r"coordinator|officer|founder|teacher|associate)\b).{12,220}$"
+)
+_SKILL_LINE_RE = re.compile(
+    r"(?im)^\s*(?:technical\s+skills|skills|technologies|tools)\s*:\s*[^.\n]+[,;][^.\n]+"
+)
+_ACTION_BULLET_RE = re.compile(
+    r"(?im)^\s*(?:[-*•·▪◦]\s*)?"
+    r"(?:built|created|designed|developed|implemented|led|owned|managed|improved|"
+    r"launched|trained|analyzed|optimized|reduced|increased|delivered|published)\b"
+)
+_BIO_PROFILE_RE = re.compile(
+    r"\b(?:about me|bio|biography|portfolio|personal website|speaker|writer|creator|"
+    r"newsletter|my work|my research|i am|i'm|i’ve|i have|he is|she is|they are|"
+    r"based in|coffee lover|tweets are my own|building things)\b",
+    re.IGNORECASE,
+)
+_SOCIAL_PROFILE_RE = re.compile(
+    r"\b(?:followers|following|connections|connect with me|posts|likes|tweets|"
+    r"instagram|twitter|x\.com|medium\.com|substack|github profile|linkedin profile)\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_BIO_LABEL_RE = re.compile(r"(?im)^\s*(?:bio|biography|about)\s*:")
+_WORK_EXPERIENCE_HEADER_RE = re.compile(
+    r"(?im)^\s*(?:experience|work\s+experience|professional\s+experience|"
+    r"employment|employment\s+history|work\s+history|research\s+experience)\s*:?\s*$"
 )
 
 # Patterns typical of websites / blogs / social bios but NOT resumes.
@@ -203,7 +245,9 @@ _WEB_NAV_TOKENS = (
     "load more",
     "view all posts",
 )
-_HTML_RESIDUE_RE = re.compile(r"</[a-z]+>|<[a-z]+\s|&nbsp;|&amp;|&lt;|&gt;|&#\d+;", re.IGNORECASE)
+_HTML_RESIDUE_RE = re.compile(
+    r"</[a-z]+>|<[a-z]+\s|&nbsp;|&amp;|&lt;|&gt;|&#\d+;", re.IGNORECASE
+)
 _CODE_RESIDUE_RE = re.compile(
     r"^\s*(?:def |class |function |import |const |let |var |#include|public class|"
     r"\{|\}|//|/\*|\*/)",
@@ -218,6 +262,7 @@ def _count_resume_section_keywords(lower_text: str) -> int:
         "skills",
         "projects",
         "employment",
+        "work",
         "work history",
         "summary",
         "objective",
@@ -226,6 +271,33 @@ def _count_resume_section_keywords(lower_text: str) -> int:
         "certifications",
     )
     return sum(1 for k in keywords if k in lower_text)
+
+
+def _count_resume_section_headers(text: str) -> int:
+    matches = set(
+        match.group(0).strip().lower().rstrip(":")
+        for match in _RESUME_SECTION_HEADER_RE.finditer(text)
+    )
+    inline = set(
+        match.group(0).strip().lower().rstrip(":")
+        for match in _INLINE_SECTION_RE.finditer(text)
+    )
+    return len(matches | inline)
+
+
+def _paragraph_profile_shape(text: str) -> bool:
+    paragraphs = [
+        paragraph.strip()
+        for paragraph in re.split(r"\n\s*\n", text)
+        if paragraph.strip()
+    ]
+    if not paragraphs:
+        return False
+    long_paragraphs = [
+        paragraph for paragraph in paragraphs if len(paragraph.split()) >= 45
+    ]
+    short_lines = [line for line in text.splitlines() if line.strip()]
+    return bool(long_paragraphs) and len(short_lines) <= 8
 
 
 def validate_resume_quality(
@@ -266,22 +338,27 @@ def validate_resume_quality(
 
     date_hits = len(_DATE_RANGE_RE.findall(text)) + len(_YEAR_RANGE_RE.findall(text))
     if date_hits >= 2:
-        pos_score += 0.30
+        pos_score += 0.25
         positive.append(f"{date_hits} employment / education date range(s)")
     elif date_hits == 1:
-        pos_score += 0.15
+        pos_score += 0.12
         positive.append("1 date range")
 
-    section_hits = _count_resume_section_keywords(lower)
-    if section_hits >= 3:
-        pos_score += 0.25
-        positive.append(f"{section_hits} resume section headers")
-    elif section_hits == 2:
-        pos_score += 0.15
-        positive.append("2 resume section headers")
-    elif section_hits == 1:
-        pos_score += 0.05
-        positive.append("1 resume section header")
+    section_header_hits = _count_resume_section_headers(text)
+    section_keyword_hits = _count_resume_section_keywords(lower)
+    section_hits = max(section_header_hits, min(section_keyword_hits, 3))
+    if section_header_hits >= 3:
+        pos_score += 0.30
+        positive.append(f"{section_header_hits} explicit resume section headers")
+    elif section_header_hits == 2:
+        pos_score += 0.20
+        positive.append("2 explicit resume section headers")
+    elif section_header_hits == 1:
+        pos_score += 0.08
+        positive.append("1 explicit resume section header")
+    elif section_keyword_hits >= 3:
+        pos_score += 0.12
+        positive.append(f"{section_keyword_hits} resume section keywords")
 
     if _EMAIL_RE.search(text) or _PHONE_RE.search(text):
         pos_score += 0.10
@@ -291,7 +368,11 @@ def validate_resume_quality(
         pos_score += 0.10
         positive.append("degree mentioned")
 
-    bullet_lines = sum(1 for ln in text.splitlines() if ln.lstrip().startswith(("-", "*", "•", "·", "▪", "◦")))
+    bullet_lines = sum(
+        1
+        for ln in text.splitlines()
+        if ln.lstrip().startswith(("-", "*", "•", "·", "▪", "◦"))
+    )
     if bullet_lines >= 5:
         pos_score += 0.15
         positive.append(f"{bullet_lines} bullet lines")
@@ -299,30 +380,87 @@ def validate_resume_quality(
         pos_score += 0.08
         positive.append(f"{bullet_lines} bullet lines")
 
+    role_date_lines = len(_ROLE_DATE_LINE_RE.findall(text))
+    if role_date_lines >= 2:
+        pos_score += 0.18
+        positive.append(f"{role_date_lines} dated role / education lines")
+    elif role_date_lines == 1:
+        pos_score += 0.08
+        positive.append("dated role / education line")
+
+    skill_lines = len(_SKILL_LINE_RE.findall(text))
+    if skill_lines >= 1:
+        pos_score += 0.08
+        positive.append("structured skill list")
+
+    action_lines = len(_ACTION_BULLET_RE.findall(text))
+    if action_lines >= 3:
+        pos_score += 0.08
+        positive.append(f"{action_lines} accomplishment-style lines")
+
     # ---------- Negative signals ----------
     reasons: list[str] = []
     neg_score = 0.0
+    resume_marker_count = sum(
+        [
+            section_header_hits >= 2,
+            date_hits >= 1,
+            bullet_lines >= 2,
+            role_date_lines >= 1,
+            skill_lines >= 1,
+            _DEGREE_RE.search(text) is not None,
+            _EMAIL_RE.search(text) is not None or _PHONE_RE.search(text) is not None,
+        ]
+    )
 
     # Length penalties intentionally fire only on really thin text — a
     # one-page resume can be ~120-200 words. We don't want to false-reject
     # entry-level / minimal CVs.
     if char_count < 100:
-        reasons.append(f"Very short ({char_count} characters) — most resumes have more.")
+        reasons.append(
+            f"Very short ({char_count} characters) — most resumes have more."
+        )
         neg_score += 0.35
     if word_count < 25:
         reasons.append(f"Very few words ({word_count}).")
         neg_score += 0.25
 
     web_nav_hits = sum(1 for token in _WEB_NAV_TOKENS if token in lower)
-    if web_nav_hits >= 3:
+    if web_nav_hits >= 3 and resume_marker_count < 2:
         reasons.append(
             f"{web_nav_hits} website / nav phrases detected (Subscribe, Read more, "
-            "Privacy Policy, ...). This looks like a webpage, not a resume."
+            "Privacy Policy, ...), with little resume structure."
         )
         neg_score += 0.45
-    elif web_nav_hits == 2:
-        reasons.append("Website / nav phrases detected — may be a portfolio page, not a resume.")
+    elif web_nav_hits == 2 and resume_marker_count < 2:
+        reasons.append("Website / nav phrases detected, with little resume structure.")
         neg_score += 0.20
+
+    explicit_bio = _EXPLICIT_BIO_LABEL_RE.search(text) is not None
+    has_work_experience_header = _WORK_EXPERIENCE_HEADER_RE.search(text) is not None
+    bio_hits = len(_BIO_PROFILE_RE.findall(text))
+    social_hits = len(_SOCIAL_PROFILE_RE.findall(text))
+    if explicit_bio and not has_work_experience_header and bullet_lines < 2:
+        reasons.append(
+            "Contains an explicit bio section and lacks structured work-experience entries or bullets."
+        )
+        neg_score += 0.55
+    elif bio_hits >= 2 and resume_marker_count < 2:
+        reasons.append(
+            "Reads like a profile / bio: narrative self-description without enough resume sections, dates, or role entries."
+        )
+        neg_score += 0.40
+    elif bio_hits >= 1 and social_hits >= 1 and resume_marker_count < 2:
+        reasons.append(
+            "Reads like a social profile / bio rather than a structured resume."
+        )
+        neg_score += 0.30
+
+    if _paragraph_profile_shape(text) and resume_marker_count < 2:
+        reasons.append(
+            "Mostly narrative paragraphs; resumes usually have sectioned experience, education, skills, or dated entries."
+        )
+        neg_score += 0.30
 
     html_hits = len(_HTML_RESIDUE_RE.findall(text))
     if html_hits >= 3:
@@ -335,9 +473,7 @@ def validate_resume_quality(
 
     # Article / blog-text smell: long uniform paragraphs without bullets / dates.
     long_paragraphs = sum(
-        1
-        for paragraph in re.split(r"\n\s*\n", text)
-        if len(paragraph.split()) > 80
+        1 for paragraph in re.split(r"\n\s*\n", text) if len(paragraph.split()) > 80
     )
     if (
         long_paragraphs >= 2
@@ -381,13 +517,10 @@ def validate_resume_quality(
     # date range + section header), we hold the score at >= 0.30 ("medium")
     # so the UI soft-warns instead of blocking.
     has_degree = _DEGREE_RE.search(text) is not None
-    if (
-        score < 0.30
-        and (
-            (has_degree and section_hits >= 1)
-            or (date_hits >= 1 and section_hits >= 1)
-            or section_hits >= 3
-        )
+    if score < 0.30 and (
+        (has_degree and section_hits >= 1)
+        or (date_hits >= 1 and section_hits >= 1)
+        or section_hits >= 3
     ):
         score = 0.30
 
@@ -409,7 +542,9 @@ def validate_resume_quality(
             "word_count": word_count,
             "date_hits": date_hits,
             "section_hits": section_hits,
+            "section_header_hits": section_header_hits,
             "bullet_lines": bullet_lines,
+            "resume_marker_count": resume_marker_count,
         },
     }
 

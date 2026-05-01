@@ -118,6 +118,11 @@ def test_enrich_retrieval_matches_preserves_faiss_order_and_similarity() -> None
             "state": ["NY", "TX", "WA"],
             "experience_level": ["Associate", "Mid-Senior level", "Director"],
             "work_type": ["Remote", "Hybrid", "On-site"],
+            "job_posting_url": [
+                "https://www.linkedin.com/jobs/view/10",
+                "https://www.linkedin.com/jobs/view/20",
+                "https://www.linkedin.com/jobs/view/30",
+            ],
             "text": [
                 "python python python sql sql",
                 "ordinary posting",
@@ -147,6 +152,7 @@ def test_enrich_retrieval_matches_preserves_faiss_order_and_similarity() -> None
     assert enriched["match_score"].tolist() == [83.0, 21.0]
     assert enriched["similarity"].tolist() == [0.83, 0.21]
     assert enriched.loc[0, "text"] == "semantic nearest neighbor"
+    assert enriched.loc[0, "job_posting_url"] == "https://www.linkedin.com/jobs/view/30"
 
 
 def test_enrich_retrieval_matches_applies_location_and_remote_filters() -> None:

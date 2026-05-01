@@ -63,6 +63,7 @@ class JobMatch:
     location: str
     experience_level: str | None
     similarity: float
+    job_posting_url: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-safe dict — casts numpy scalars to native Python types."""
@@ -169,6 +170,11 @@ def _row_to_jobmatch(row: pd.Series, *, similarity: float) -> JobMatch:
         location=str(row["location"]),
         experience_level=_optional_str(row["experience_level"]),
         similarity=similarity,
+        job_posting_url=(
+            _optional_str(row["job_posting_url"])
+            if "job_posting_url" in row.index
+            else None
+        ),
     )
 
 

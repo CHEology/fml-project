@@ -25,3 +25,52 @@
         font-size: 0.82rem;
         line-height: 1.35;
     }
+
+    .live-job-note {
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.45;
+        margin: 0.2rem 0 0.9rem;
+    }
+
+    .live-job-row .job-row-summary {
+        color: var(--muted);
+    }
+
+    .job-row-link {
+        align-self: flex-end;
+        background: var(--pill-bg);
+        border: 1px solid rgba(124, 58, 237, 0.14);
+        border-radius: 999px;
+        color: var(--pill-ink) !important;
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 800;
+        justify-content: center;
+        line-height: 1;
+        padding: 0.55rem 0.72rem;
+        text-decoration: none !important;
+        white-space: nowrap;
+    }
+
+    .job-row-link:hover {
+        border-color: rgba(124, 58, 237, 0.28);
+        filter: brightness(0.98);
+    }
+
+    .live-job-status {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 10px 24px var(--shadow);
+        margin-top: 0.8rem;
+        padding: 1rem;
+    }
+
+    .live-job-status-query {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.78rem;
+        margin-top: 0.45rem;
+        overflow-wrap: anywhere;
+    }

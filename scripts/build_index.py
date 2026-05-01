@@ -143,6 +143,8 @@ def write_meta(df, out_path: str | Path) -> None:
             "experience_level": df["experience_level"].astype(str).to_numpy(),
         }
     )
+    if "job_posting_url" in df.columns:
+        meta["job_posting_url"] = df["job_posting_url"].fillna("").astype(str)
     meta.to_parquet(out_path, index=False)
 
 
@@ -170,6 +172,7 @@ def _make_smoke_data(n: int, dim: int, seed: int):
             "location": ["NYC, NY"] * n,
             "experience_level": ["mid"] * n,
             "text": [f"Synthetic job description {i}" for i in range(n)],
+            "job_posting_url": [""] * n,
         }
     )
     return vecs, df

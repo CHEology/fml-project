@@ -4,6 +4,9 @@ Runtime modules bridge the Streamlit UI to local artifacts and ML modules.
 
 - `ml.py` loads model artifacts, FAISS indexes, wage tables, public assessment
   models, salary signals, and clustering helpers.
+- `live_jobs.py` builds compact live-job queries, fetches public no-key job
+  feeds plus optional Serpdog LinkedIn results, and reranks them with the
+  existing embedding model.
 - `cache.py` wraps runtime calls in Streamlit caching decorators and provides
   fallback sample data when local artifacts are missing.
 

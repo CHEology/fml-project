@@ -14,6 +14,15 @@ uv sync
 uv run streamlit run app/app.py
 ```
 
+Live job links use public no-key job feeds by default. Optional LinkedIn
+enrichment uses Serpdog:
+
+```bash
+export SERPDOG_API_KEY=your_key
+export LINKEDIN_GEO_ID=103644278
+uv run streamlit run app/app.py
+```
+
 ## Data And Models
 
 Place Kaggle's LinkedIn Job Postings 2023-2024 dataset under `data/raw/`.
