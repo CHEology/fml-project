@@ -32,14 +32,14 @@
         "SALES",
         "TEACHER"
       ],
-      "val_accuracy": 0.504,
+      "val_accuracy": 0.4698,
       "n_labels": 24
     },
     "ats_fit": {
       "source": "0xnbk/resume-ats-score-v1-en",
       "train_rows": 5099,
       "val_rows": 1275,
-      "val_mae": 18.85
+      "val_mae": 18.78
     },
     "entity": {
       "source": "DataTurks-Engg/Entity-Recognition-In-Resumes-SpaCy",
@@ -58,7 +58,7 @@
         "UNKNOWN",
         "Years of Experience"
       ],
-      "val_accuracy": 0.46,
+      "val_accuracy": 0.4143,
       "n_labels": 11
     },
     "section": {
@@ -74,7 +74,7 @@
         "Skill",
         "Sum"
       ],
-      "val_accuracy": 0.7876,
+      "val_accuracy": 0.7883,
       "n_labels": 7
     }
   }
