@@ -165,7 +165,6 @@ tests/                  Pytest suite grouped by app/ml/scripts
 data/                   Local raw/processed/eval/external data, gitignored except .gitkeep
 models/                 Local trained models, embeddings, indexes, gitignored except .gitkeep
 notebooks/              Exploration and experiment notebooks
-docs/history/           Archived historical plan/progress documents
 ```
 
 ## Team
