@@ -26,7 +26,9 @@ uv run streamlit run app/app.py
 ## Data And Models
 
 Place Kaggle's LinkedIn Job Postings 2023-2024 dataset under `data/raw/`.
-See `data/README.md` for the expected file layout.
+The public assessment trainer also needs several public resume datasets under
+`data/raw/public_hf/` and `data/raw/public_dataturks/`. See
+`data/README.md` for exact download commands and expected file layouts.
 
 Build the main artifacts in this order:
 
