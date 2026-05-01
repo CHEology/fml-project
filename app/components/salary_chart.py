@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from app.plot_backgrounds import get_plot_graph_background_uris
+
 try:
     import plotly.graph_objects as go
 
@@ -360,27 +362,9 @@ def render_salary_band(band: dict[str, Any]) -> None:
     midpoint = fmt_money(band["q50"])
     high = fmt_money(band["q90"])
     source_badge = escape(f"{primary} · {confidence}")
-
-    st.markdown(
-        f"""
-        <div class="section-label">Matched-market salary range</div>
-        <div class="salary-headline">
-            <div>
-                <div class="salary-main">{midpoint}</div>
-                <div class="salary-range">{low} to {high} expected market range</div>
-            </div>
-            <div class="salary-source">{source_badge}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div class="salary-band">
-            <div class="salary-fill" style="width:100%;"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    _, salary_bg_uri = get_plot_graph_background_uris()
+    salary_card_style = (
+        f" style=\"--salary-graph-bg:url('{salary_bg_uri}');\"" if salary_bg_uri else ""
     )
 
     quantile_labels = {
@@ -397,7 +381,27 @@ def render_salary_band(band: dict[str, Any]) -> None:
         "</div>"
         for key in ("q10", "q25", "q50", "q75", "q90")
     )
-    st.markdown(f'<div class="salary-strip">{cells}</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div class="salary-hero-card"{salary_card_style}>
+            <div class="section-label">Matched-market salary range</div>
+            <div class="salary-headline">
+                <div>
+                    <div class="salary-main">{midpoint}</div>
+                    <div class="salary-range">{low} to {high} expected market range</div>
+                </div>
+                <div class="salary-source">{source_badge}</div>
+            </div>
+            <div class="salary-gross-note">Estimated gross annual salary before taxes</div>
+            <div class="salary-band">
+                <div class="salary-fill" style="width:100%;"></div>
+            </div>
+            <div class="salary-strip">{cells}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Evidence footnote
     pieces = [f"Source: {primary}", f"Confidence: {confidence}"]
