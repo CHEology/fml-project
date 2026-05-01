@@ -13,6 +13,7 @@ from app.ml_runtime import (
     hybrid_salary_band,
     learned_quality_signal,
     load_quality_artifacts,
+    pipeline_readiness,
     salary_artifacts_ready,
     salary_band_from_model,
 )
@@ -24,6 +25,8 @@ from ml.salary_model import SalaryScaler
 def test_artifact_status_tracks_salary_and_cluster_outputs(tmp_path: Path) -> None:
     status_by_path = {item["path"]: item for item in artifact_status(tmp_path)}
 
+    assert "data/raw/postings.csv" in status_by_path
+    assert "data/raw/public_hf/Resume.csv" in status_by_path
     assert "models/salary_model.pt" in status_by_path
     assert "models/salary_model.scaler.json" in status_by_path
     assert "models/salary_model.features.json" in status_by_path
@@ -36,6 +39,46 @@ def test_artifact_status_tracks_salary_and_cluster_outputs(tmp_path: Path) -> No
     assert "models/kmeans_k8.pkl" in status_by_path
     assert "models/cluster_assignments.npy" in status_by_path
     assert "models/cluster_labels.json" in status_by_path
+
+
+def test_artifact_status_includes_timestamps_and_sizes(tmp_path: Path) -> None:
+    path = tmp_path / "models" / "quality_model.pt"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"model")
+
+    status_by_path = {item["path"]: item for item in artifact_status(tmp_path)}
+    item = status_by_path["models/quality_model.pt"]
+
+    assert item["ready"] is True
+    assert item["size_bytes"] == 5
+    assert item["modified_at"] is not None
+    assert "Created" in item["modified_label"]
+
+
+def test_pipeline_readiness_reports_missing_commands(tmp_path: Path) -> None:
+    summary = pipeline_readiness(artifact_status(tmp_path))
+
+    assert summary["fully_established"] is False
+    assert summary["ready_groups"] < summary["total_groups"]
+    assert any("data/README.md" in command for command in summary["setup_commands"])
+    assert any(
+        "scripts/train_public_assessment_models.py" in command
+        for command in summary["setup_commands"]
+    )
+
+
+def test_pipeline_readiness_reports_full_setup(tmp_path: Path) -> None:
+    status = artifact_status(tmp_path)
+    for item in status:
+        path = tmp_path / str(item["path"])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+
+    summary = pipeline_readiness(artifact_status(tmp_path))
+
+    assert summary["fully_established"] is True
+    assert summary["setup_commands"] == []
+    assert summary["ready_groups"] == summary["total_groups"]
 
 
 def test_salary_artifacts_ready_accepts_resume_model_with_embedding_dim(
