@@ -216,7 +216,13 @@ jobs = pd.DataFrame(
 status = [{"label": "retrieval", "path": "", "ready": True, "required_for": "retrieval"}]
 
 demo.load_public_assessment_resource = lambda: None
-demo.validate_resume = lambda public_models, text: {"is_resume": True, "reasons": []}
+demo.validate_resume = lambda public_models, text: {
+    "is_resume": True,
+    "confidence": "high",
+    "score": 1.0,
+    "reasons": [],
+    "signals": [],
+}
 demo.public_resume_signals = lambda public_models, text: None
 demo.load_retriever_resource = lambda: ("retriever", "encoder")
 demo.encode_resume = lambda encoder, text: np.zeros(4, dtype=np.float32)

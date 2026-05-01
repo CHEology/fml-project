@@ -126,6 +126,7 @@ def render_demo_page(
         st.session_state.demo_scroll_to_top = False
         st.session_state.demo_selected_action = "Improve my salary"
         st.session_state.demo_target_cluster_id = None
+        st.session_state.validation_override = False
         st.session_state.demo_stage = "input"
 
     current_text = st.session_state.resume_text.strip()
@@ -315,6 +316,24 @@ def render_demo_page(
                         placeholder="Import a public portfolio or resume page to preview the extracted text here.",
                     )
                     current_text = st.session_state.imported_profile_text.strip()
+                    # Inline check: imported web pages are the most common
+                    # source of non-resume text. Show the user immediately if
+                    # what we extracted doesn't look like a CV, so they don't
+                    # waste a click on Analyze and get blocked there.
+                    if current_text:
+                        imp_validation = validate_resume(None, current_text)
+                        imp_conf = imp_validation.get("confidence", "low")
+                        if imp_conf == "low":
+                            st.error(
+                                "The imported text doesn't look like a resume. "
+                                "Try a different URL (a public résumé / CV page) "
+                                "or paste your resume text directly."
+                            )
+                        elif imp_conf == "medium":
+                            st.warning(
+                                "The imported text is thin for a resume — analysis "
+                                "may be unreliable. You can still proceed."
+                            )
                     render_method_status(
                         "Imported page input",
                         "",
@@ -392,14 +411,47 @@ def render_demo_page(
                 with st.spinner("Reviewing resume content..."):
                     public_models = load_public_assessment_resource()
 
-                    # Validation check
+                    # Tiered validation. The app is scoped to resumes / CVs;
+                    # portfolio pages, blog posts, social bios, and code dumps
+                    # produce useless analyses. We block the clearly-not-a-resume
+                    # case but always allow an override so a poor-but-real CV
+                    # the validator under-reads is never permanently locked out.
                     validation = validate_resume(public_models, resume_text_now)
-                    if not validation["is_resume"]:
-                        reasons_str = ", ".join(validation["reasons"])
+                    confidence = validation.get("confidence", "low")
+                    override = bool(st.session_state.get("validation_override", False))
+                    if confidence == "empty":
+                        st.error("Add some resume text first.")
+                        return
+                    if confidence == "low" and not override:
+                        reasons = validation.get("reasons", [])
+                        signals = validation.get("signals", [])
+                        bullets = "\n".join(f"- {r}" for r in reasons[:4])
+                        positives = (
+                            "\n\nResume signals we *did* find: "
+                            + ", ".join(signals[:4])
+                            + "."
+                            if signals
+                            else ""
+                        )
                         st.error(
-                            f"This text does not appear to be a valid resume: {reasons_str}"
+                            "This input doesn't look like a resume / CV. ResuMatch "
+                            "is scoped to resumes — portfolio pages, blog posts, "
+                            "social bios, and code don't produce a useful analysis."
+                            f"\n\n{bullets}{positives}"
+                        )
+                        st.checkbox(
+                            "I'm sure this is a resume — analyze anyway",
+                            key="validation_override",
                         )
                         return
+                    if confidence == "medium":
+                        reasons = validation.get("reasons", [])
+                        if reasons:
+                            st.warning(
+                                "Heads up: this looks thin for a resume. The "
+                                "analysis may be unreliable.\n\n- "
+                                + "\n- ".join(reasons[:3])
+                            )
 
                     public_signals = public_resume_signals(
                         public_models, resume_text_now

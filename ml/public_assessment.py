@@ -155,100 +155,261 @@ def resume_public_signals(
     }
 
 
+# Patterns that strongly indicate a resume (date ranges, contact info,
+# section headers). Each match adds positive evidence.
+_DATE_RANGE_RE = re.compile(
+    r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|"
+    r"january|february|march|april|june|july|august|september|october|november|december)\.?"
+    r"\s+\d{4}\s*[-–—to]+\s*"
+    r"(?:present|current|now|"
+    r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|"
+    r"january|february|march|april|june|july|august|september|october|november|december)\.?\s+\d{4}|"
+    r"\d{4})",
+    re.IGNORECASE,
+)
+_YEAR_RANGE_RE = re.compile(r"\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present|current|now)\b", re.IGNORECASE)
+_EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
+_PHONE_RE = re.compile(r"\b(?:\+?\d{1,3}[\s\-.])?\(?\d{3}\)?[\s\-.]\d{3}[\s\-.]\d{4}\b")
+_DEGREE_RE = re.compile(
+    r"\b(?:b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?|m\.?b\.?a\.?|ph\.?d\.?|"
+    r"bachelor(?:'s)?|master(?:'s)?|doctorate|doctor of philosophy)\b",
+    re.IGNORECASE,
+)
+
+# Patterns typical of websites / blogs / social bios but NOT resumes.
+_WEB_NAV_TOKENS = (
+    "subscribe",
+    "sign up",
+    "log in",
+    "sign in",
+    "read more",
+    "privacy policy",
+    "terms of service",
+    "cookie",
+    "all rights reserved",
+    "newsletter",
+    "follow me on",
+    "follow us on",
+    "buy now",
+    "add to cart",
+    "shopping cart",
+    "checkout",
+    "© ",
+    "powered by",
+    "back to top",
+    "skip to content",
+    "menu",
+    "search...",
+    "load more",
+    "view all posts",
+)
+_HTML_RESIDUE_RE = re.compile(r"</[a-z]+>|<[a-z]+\s|&nbsp;|&amp;|&lt;|&gt;|&#\d+;", re.IGNORECASE)
+_CODE_RESIDUE_RE = re.compile(
+    r"^\s*(?:def |class |function |import |const |let |var |#include|public class|"
+    r"\{|\}|//|/\*|\*/)",
+    re.MULTILINE,
+)
+
+
+def _count_resume_section_keywords(lower_text: str) -> int:
+    keywords = (
+        "education",
+        "experience",
+        "skills",
+        "projects",
+        "employment",
+        "work history",
+        "summary",
+        "objective",
+        "publications",
+        "awards",
+        "certifications",
+    )
+    return sum(1 for k in keywords if k in lower_text)
+
+
 def validate_resume_quality(
     models: PublicAssessmentModels | None,
     text: str,
 ) -> dict[str, Any]:
-    """Determines if a piece of text looks like a valid resume.
+    """Score whether `text` looks like a resume / CV.
 
-    Returns:
-        A dictionary with 'is_resume' (bool), 'score' (float), and 'reasons' (list).
+    Returns a tiered judgment:
+      - confidence: "high" | "medium" | "low" | "empty"
+      - is_resume: True for high/medium, False for low/empty (back-compat)
+      - score: 0.0–1.0 blended score
+      - reasons: brief negative findings (always populated when non-high)
+      - signals: positive evidence found, surfaced for UI explainability
+
+    Tiers are tuned so a clear CV — even a poor one — lands in
+    high/medium, while portfolio pages, social bios, blog posts, code
+    dumps, and short bios drop to low. Borderline cases (medium) should
+    be soft-warned in the UI rather than hard-rejected, with an override.
     """
     text = str(text or "").strip()
     if not text:
-        return {"is_resume": False, "score": 0.0, "reasons": ["Empty text"]}
+        return {
+            "is_resume": False,
+            "confidence": "empty",
+            "score": 0.0,
+            "reasons": ["No text provided."],
+            "signals": [],
+        }
 
-    reasons = []
-    scores = []
-
-    # 1. Length checks
+    lower = text.lower()
     char_count = len(text)
     word_count = len(text.split())
-    if char_count < 150:
-        reasons.append(f"Too short ({char_count} characters)")
-        scores.append(0.1)
-    elif char_count < 400:
-        scores.append(0.5)
-    else:
-        scores.append(1.0)
 
-    if word_count < 30:
-        reasons.append(f"Too few words ({word_count})")
-        scores.append(0.1)
-    else:
-        scores.append(1.0)
+    # ---------- Positive signals ----------
+    positive: list[str] = []
+    pos_score = 0.0
 
-    # 2. Section and Entity signals (if models are ready)
+    date_hits = len(_DATE_RANGE_RE.findall(text)) + len(_YEAR_RANGE_RE.findall(text))
+    if date_hits >= 2:
+        pos_score += 0.30
+        positive.append(f"{date_hits} employment / education date range(s)")
+    elif date_hits == 1:
+        pos_score += 0.15
+        positive.append("1 date range")
+
+    section_hits = _count_resume_section_keywords(lower)
+    if section_hits >= 3:
+        pos_score += 0.25
+        positive.append(f"{section_hits} resume section headers")
+    elif section_hits == 2:
+        pos_score += 0.15
+        positive.append("2 resume section headers")
+    elif section_hits == 1:
+        pos_score += 0.05
+        positive.append("1 resume section header")
+
+    if _EMAIL_RE.search(text) or _PHONE_RE.search(text):
+        pos_score += 0.10
+        positive.append("contact details")
+
+    if _DEGREE_RE.search(text):
+        pos_score += 0.10
+        positive.append("degree mentioned")
+
+    bullet_lines = sum(1 for ln in text.splitlines() if ln.lstrip().startswith(("-", "*", "•", "·", "▪", "◦")))
+    if bullet_lines >= 5:
+        pos_score += 0.15
+        positive.append(f"{bullet_lines} bullet lines")
+    elif bullet_lines >= 2:
+        pos_score += 0.08
+        positive.append(f"{bullet_lines} bullet lines")
+
+    # ---------- Negative signals ----------
+    reasons: list[str] = []
+    neg_score = 0.0
+
+    # Length penalties intentionally fire only on really thin text — a
+    # one-page resume can be ~120-200 words. We don't want to false-reject
+    # entry-level / minimal CVs.
+    if char_count < 100:
+        reasons.append(f"Very short ({char_count} characters) — most resumes have more.")
+        neg_score += 0.35
+    if word_count < 25:
+        reasons.append(f"Very few words ({word_count}).")
+        neg_score += 0.25
+
+    web_nav_hits = sum(1 for token in _WEB_NAV_TOKENS if token in lower)
+    if web_nav_hits >= 3:
+        reasons.append(
+            f"{web_nav_hits} website / nav phrases detected (Subscribe, Read more, "
+            "Privacy Policy, ...). This looks like a webpage, not a resume."
+        )
+        neg_score += 0.45
+    elif web_nav_hits == 2:
+        reasons.append("Website / nav phrases detected — may be a portfolio page, not a resume.")
+        neg_score += 0.20
+
+    html_hits = len(_HTML_RESIDUE_RE.findall(text))
+    if html_hits >= 3:
+        reasons.append("Raw HTML / markup residue detected. Paste plain text instead.")
+        neg_score += 0.25
+
+    if _CODE_RESIDUE_RE.search(text):
+        reasons.append("Looks like source code rather than a resume.")
+        neg_score += 0.30
+
+    # Article / blog-text smell: long uniform paragraphs without bullets / dates.
+    long_paragraphs = sum(
+        1
+        for paragraph in re.split(r"\n\s*\n", text)
+        if len(paragraph.split()) > 80
+    )
+    if (
+        long_paragraphs >= 2
+        and bullet_lines == 0
+        and date_hits == 0
+        and section_hits <= 1
+    ):
+        reasons.append(
+            "Reads like an article / essay (long paragraphs, no bullets or dates)."
+        )
+        neg_score += 0.30
+
+    # Lexical diversity sanity (catches generated repetition / lorem-ipsum).
+    long_words = [w for w in lower.split() if len(w) > 3]
+    if len(long_words) > 20:
+        unique_ratio = len(set(long_words)) / len(long_words)
+        if unique_ratio < 0.30:
+            reasons.append("Highly repetitive content.")
+            neg_score += 0.20
+
+    # ---------- Optional ML signals (advisory) ----------
     if models is not None:
         sections = predict_sections(models, text)
         entities = predict_entities(models, text)
-
         section_count = len(sections.get("counts", {}))
         entity_count = sum(entities.get("counts", {}).values())
+        if section_count >= 2:
+            pos_score += 0.10
+            positive.append(f"{section_count} learned section types")
+        if entity_count >= 3:
+            pos_score += 0.10
+            positive.append(f"{entity_count} learned resume entities")
 
-        if section_count < 2:
-            reasons.append("Few standard resume sections found")
-            scores.append(0.3)
-        else:
-            scores.append(1.0)
+    # ---------- Combine ----------
+    pos_score = min(1.0, pos_score)
+    neg_score = min(1.0, neg_score)
+    score = max(0.0, min(1.0, pos_score - 0.6 * neg_score))
 
-        if entity_count < 3:
-            reasons.append("Few professional entities (skills/titles) found")
-            scores.append(0.3)
-        else:
-            scores.append(min(1.0, entity_count / 8.0 + 0.5))
+    # Strong-resume-signal floor: don't false-reject minimal real CVs.
+    # If two clear resume markers co-occur (degree + section header, or a
+    # date range + section header), we hold the score at >= 0.30 ("medium")
+    # so the UI soft-warns instead of blocking.
+    has_degree = _DEGREE_RE.search(text) is not None
+    if (
+        score < 0.30
+        and (
+            (has_degree and section_hits >= 1)
+            or (date_hits >= 1 and section_hits >= 1)
+            or section_hits >= 3
+        )
+    ):
+        score = 0.30
+
+    if score >= 0.55:
+        confidence = "high"
+    elif score >= 0.30:
+        confidence = "medium"
     else:
-        # Fallback to keyword-based section check if models are missing
-        resume_keywords = {
-            "education",
-            "experience",
-            "skills",
-            "projects",
-            "employment",
-            "work",
-            "history",
-            "summary",
-            "objective",
-            "contact",
-        }
-        lower_text = text.lower()
-        found_keywords = [k for k in resume_keywords if k in lower_text]
-        if len(found_keywords) < 2:
-            reasons.append("Missing standard resume section headers")
-            scores.append(0.4)
-        else:
-            scores.append(1.0)
-
-    # 3. Diversity check (avoid repeated words)
-    words = [w for w in text.lower().split() if len(w) > 3]
-    if len(words) > 10:
-        unique_ratio = len(set(words)) / len(words)
-        if unique_ratio < 0.35:
-            reasons.append("Repetitive content detected")
-            scores.append(0.2)
-        else:
-            scores.append(1.0)
-
-    final_score = float(np.mean(scores)) if scores else 0.0
-    is_resume = final_score >= 0.55
+        confidence = "low"
 
     return {
-        "is_resume": is_resume,
-        "score": round(final_score, 2),
-        "reasons": reasons if not is_resume else [],
+        "is_resume": confidence in {"high", "medium"},
+        "confidence": confidence,
+        "score": round(score, 2),
+        "reasons": reasons,
+        "signals": positive,
         "metadata": {
             "char_count": char_count,
             "word_count": word_count,
+            "date_hits": date_hits,
+            "section_hits": section_hits,
+            "bullet_lines": bullet_lines,
         },
     }
 

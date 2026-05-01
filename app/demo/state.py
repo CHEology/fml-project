@@ -42,3 +42,5 @@ def initialize_session_state() -> None:
         st.session_state.demo_selected_action = "Improve my salary"
     if "demo_target_cluster_id" not in st.session_state:
         st.session_state.demo_target_cluster_id = None
+    if "validation_override" not in st.session_state:
+        st.session_state.validation_override = False
