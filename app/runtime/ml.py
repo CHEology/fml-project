@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +11,12 @@ from ml.embeddings import Encoder
 from ml.feedback import compute_gap_analysis
 from ml.retrieval import JobMatch, Retriever
 
+from app.runtime import artifacts as artifact_runtime
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+artifact_status = artifact_runtime.artifact_status
+artifacts_ready = artifact_runtime.artifacts_ready
+pipeline_readiness = artifact_runtime.pipeline_readiness
 
 
 def load_model(path: str, *, embedding_dim: int, n_extra_features: int = 0) -> Any:
@@ -35,93 +39,10 @@ def predict_salary(
     return _predict_salary(model, embedding, extra_features, scaler=scaler)
 
 
-@dataclass(frozen=True)
-class ArtifactSpec:
-    label: str
-    path: str
-    required_for: str
-
-
 QUANTILE_KEYS = ("q10", "q25", "q50", "q75", "q90")
 MIN_RETRIEVED_SALARIES = 3
 HIGH_CONFIDENCE_SIMILARITY = 0.45
 DISAGREEMENT_RATIO = 0.25
-
-
-ARTIFACT_SPECS = (
-    ArtifactSpec("Processed jobs", "data/processed/jobs.parquet", "data"),
-    ArtifactSpec("Salary targets", "data/processed/salaries.npy", "training"),
-    ArtifactSpec("Job embeddings", "models/job_embeddings.npy", "retrieval"),
-    ArtifactSpec("FAISS index", "models/jobs.index", "retrieval"),
-    ArtifactSpec("Retrieval metadata", "models/jobs_meta.parquet", "retrieval"),
-    ArtifactSpec(
-        "Resume salary model",
-        "models/resume_salary_model.pt",
-        "salary_optional",
-    ),
-    ArtifactSpec(
-        "Resume salary scaler",
-        "models/resume_salary_model.scaler.json",
-        "salary_optional",
-    ),
-    ArtifactSpec(
-        "Resume salary features",
-        "models/resume_salary_model.features.json",
-        "salary_optional",
-    ),
-    ArtifactSpec("Quality model", "models/quality_model.pt", "quality"),
-    ArtifactSpec("Quality scaler", "models/quality_model.scaler.json", "quality"),
-    ArtifactSpec("Salary model", "models/salary_model.pt", "salary"),
-    ArtifactSpec("Salary scaler", "models/salary_model.scaler.json", "salary"),
-    ArtifactSpec("Salary features", "models/salary_model.features.json", "salary"),
-    ArtifactSpec("O*NET skills", "data/external/onet_skills.parquet", "occupation"),
-    ArtifactSpec("BLS wage bands", "data/external/bls_wages.parquet", "wage"),
-    ArtifactSpec("KMeans model", "models/kmeans_k8.pkl", "clustering"),
-    ArtifactSpec("Cluster centroids", "models/cluster_centroids.npy", "clustering"),
-    ArtifactSpec("Cluster assignments", "models/cluster_assignments.npy", "clustering"),
-    ArtifactSpec("Cluster labels", "models/cluster_labels.json", "clustering"),
-    ArtifactSpec(
-        "Public assessment metrics",
-        "models/public_assessment_metrics.json",
-        "public_assessment",
-    ),
-    ArtifactSpec(
-        "Public domain model", "models/public_domain_model.pt", "public_assessment"
-    ),
-    ArtifactSpec(
-        "Public ATS fit model", "models/public_ats_fit_model.pt", "public_assessment"
-    ),
-    ArtifactSpec(
-        "Public entity model", "models/public_entity_model.pt", "public_assessment"
-    ),
-    ArtifactSpec(
-        "Public section model", "models/public_section_model.pt", "public_assessment"
-    ),
-)
-
-
-def artifact_status(project_root: Path = PROJECT_ROOT) -> list[dict[str, Any]]:
-    root = Path(project_root)
-    return [
-        {
-            "label": spec.label,
-            "path": spec.path,
-            "ready": (root / spec.path).exists(),
-            "required_for": spec.required_for,
-        }
-        for spec in ARTIFACT_SPECS
-    ]
-
-
-def artifacts_ready(
-    status: list[dict[str, Any]], required_for: str | None = None
-) -> bool:
-    relevant = [
-        item
-        for item in status
-        if required_for is None or item["required_for"] == required_for
-    ]
-    return bool(relevant) and all(item["ready"] for item in relevant)
 
 
 def load_jobs(project_root: Path = PROJECT_ROOT) -> pd.DataFrame:

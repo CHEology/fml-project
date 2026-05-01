@@ -10,6 +10,7 @@ import streamlit as st
 
 from app.config import PROJECT_ROOT
 from app.demo.samples import linkedin_dataset_note
+from app.runtime.artifacts import pipeline_readiness
 
 
 def format_count(value: int | float | None) -> str:
@@ -42,20 +43,25 @@ def project_data_path(data_source: str) -> Path | None:
 
 
 def artifact_readiness_summary(status: list[dict[str, Any]]) -> tuple[str, list[str]]:
-    groups: dict[str, list[dict[str, Any]]] = {}
-    for item in status:
-        groups.setdefault(str(item.get("required_for", "other")), []).append(item)
+    summary = pipeline_readiness(status)
+    details: list[str] = []
+    for group in summary["groups"]:
+        line = f"{group['label']}: {group['ready_count']}/{group['total_count']} ready"
+        if not group["ready"] and group.get("setup_command"):
+            line = f"{line} | Next: {group['setup_command']}"
+        details.append(line)
 
-    ready_groups = 0
-    details = []
-    for group, items in sorted(groups.items()):
-        ready_count = sum(1 for item in items if item.get("ready"))
-        if ready_count == len(items):
-            ready_groups += 1
-        label = group.replace("_", " ").title()
-        details.append(f"{label}: {ready_count}/{len(items)} ready")
+    important = summary.get("important_artifacts", [])
+    if important:
+        details.append("Important artifact timestamps:")
+        details.extend(
+            f"{item['label']}: {item.get('modified_label', 'N/A')}"
+            for item in important[:8]
+        )
 
-    return f"{ready_groups}/{len(groups)} groups ready", details
+    if summary["fully_established"]:
+        return "Full pipeline established", details
+    return "Pipeline needs setup", details
 
 
 def render_data_source_card(
@@ -83,6 +89,8 @@ def render_data_source_card(
         int(jobs["location"].nunique(dropna=True)) if "location" in jobs else 0
     )
     artifact_summary, artifact_details = artifact_readiness_summary(status)
+    pipeline_ready = artifact_summary == "Full pipeline established"
+    pipeline_class = "pipeline-ready" if pipeline_ready else "pipeline-missing"
     card_class = f"sidebar-info {extra_class}".strip()
 
     st.markdown(
@@ -117,8 +125,8 @@ def render_data_source_card(
                     <div class="sidebar-stat-value">{escape(format_file_size(data_path))} · {escape(format_modified_date(data_path))}</div>
                 </div>
                 <div class="sidebar-stat">
-                    <div class="sidebar-stat-label">Artifacts</div>
-                    <div class="sidebar-stat-value">{escape(artifact_summary)}</div>
+                    <div class="sidebar-stat-label">Pipeline</div>
+                    <div class="sidebar-stat-value {pipeline_class}">{escape(artifact_summary)}</div>
                 </div>
             </div>
         </div>

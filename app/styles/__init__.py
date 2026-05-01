@@ -50,6 +50,7 @@ STYLE_FILES = (
     "demo-actions.css",
     "job-results.css",
     "market.css",
+    "methodology.css",
     "home-sidebar.css",
     "quality-responsive.css",
     "buttons-typography.css",

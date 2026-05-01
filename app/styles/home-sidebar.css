@@ -36,6 +36,14 @@
         margin-top: 0.1rem;
     }
 
+    .sidebar-stat-value.pipeline-ready {
+        color: #047857;
+    }
+
+    .sidebar-stat-value.pipeline-missing {
+        color: #B45309;
+    }
+
     .sidebar-nav-label {
         color: var(--muted);
         font-size: 0.72rem;
