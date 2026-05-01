@@ -615,9 +615,13 @@ st.session_state.demo_stage = "actions"
 st.session_state.resume_text = "Python engineer"
 st.session_state.assessment = {
     "resume_text": "Python engineer",
+    "profile": {
+        "track": "Software Engineering",
+        "seniority": "Mid",
+    },
     "cluster": {
         "cluster_id": 0,
-        "label": "Software / Engineering",
+        "label": "Business / Data Analysis",
         "top_terms": ["python"],
         "next_best_cluster_id": 1,
     },
@@ -645,7 +649,11 @@ demo.render_demo_page(jobs, True, [])
     assert action_radios[0].value == "Improve my salary"
     assert len(at.selectbox) == 0
     assert any(
-        "Improve salary within Software / Engineering" in markdown.value
+        "Improve salary within Software Engineering" in markdown.value
+        for markdown in at.markdown
+    )
+    assert not any(
+        "Improve salary within Business / Data Analysis" in markdown.value
         for markdown in at.markdown
     )
     assert not any(

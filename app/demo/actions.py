@@ -63,6 +63,7 @@ def render_actions_page(
         return
 
     if selected_action == "Improve my salary":
+        current_focus_label = _current_focus_label(assessment, cluster)
         advice = salary_growth_advice(
             jobs,
             assignments,
@@ -71,10 +72,10 @@ def render_actions_page(
             resume_text=resume_text,
         )
         _render_advice(
-            f"Improve salary within {str(cluster.get('label') or 'current cluster')}",
+            f"Improve salary within {current_focus_label}",
             (
                 "High-salary evidence comes from q75+ postings inside "
-                f"{escape(str(cluster.get('label') or 'the current cluster'))}."
+                f"{escape(current_focus_label)}."
             ),
             advice,
         )
@@ -129,6 +130,15 @@ def _target_cluster_id(options: list[dict[str, Any]], cluster: dict[str, Any]) -
     if next_best in option_ids:
         return int(next_best)
     return option_ids[0]
+
+
+def _current_focus_label(assessment: dict[str, Any], cluster: dict[str, Any]) -> str:
+    profile = assessment.get("profile")
+    if isinstance(profile, dict):
+        track = str(profile.get("track") or "").strip()
+        if track:
+            return track
+    return str(cluster.get("label") or "current cluster")
 
 
 def _cluster_option_label(
