@@ -704,7 +704,7 @@ def render_demo_page(
                 )
 
             st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-            signal_cols = st.columns(4, gap="small")
+            signal_cols = st.columns(2, gap="small")
             with signal_cols[0]:
                 if cluster is not None:
                     render_demo_signal_card(
@@ -738,37 +738,19 @@ def render_demo_page(
                         "Build segment data first.",
                         "Alignment requires cluster distance from app/ml_runtime.py::cluster_position().",
                     )
-            with signal_cols[2]:
-                if matches is None or matches.empty:
-                    render_demo_signal_card(
-                        "Top similarity",
-                        "N/A",
-                        "No matching roles surfaced.",
-                        "Top similarity requires at least one retrieved role from the FAISS index.",
-                    )
-                else:
-                    render_demo_signal_card(
-                        "Top similarity",
-                        f"{matches.iloc[0]['similarity'] * 100:.0f}%",
-                        "Best role match for this resume.",
-                        "Top similarity is the first retrieved role's embedding similarity returned by app/ml_runtime.py::retrieve_matches() using ml/retrieval.py and the local FAISS index.",
-                    )
-            with signal_cols[3]:
-                count = 0 if matches is None else len(matches)
-                render_demo_signal_card(
-                    "Retrieved roles",
-                    f"{count:,}",
-                    "Roles surfaced for this resume.",
-                    "Retrieved roles is the count of top-k matches retained after vector search, metadata join, and seniority-aware filtering in app/ml_runtime.py.",
-                )
             if cluster is not None:
                 st.markdown(
+                    '<div class="cluster-evidence-block">'
+                    '<div class="cluster-evidence-label">Terms driving this segment</div>'
+                    '<div class="cluster-evidence-copy">'
+                    "These words are common in the nearest market cluster and help explain "
+                    "why the resume is positioned near this segment.</div>"
                     '<div class="chip-cloud">'
                     + "".join(
                         f'<span class="mini-chip">{escape(str(term))}</span>'
                         for term in cluster["top_terms"][:8]
                     )
-                    + "</div>",
+                    + "</div></div>",
                     unsafe_allow_html=True,
                 )
 
@@ -783,6 +765,25 @@ def render_demo_page(
                     "No matching roles surfaced for this resume. Try expanding the resume text with more domain terms."
                 )
             else:
+                match_cols = st.columns(2, gap="small")
+                with match_cols[0]:
+                    render_demo_signal_card(
+                        "Top similarity",
+                        f"{matches.iloc[0]['similarity'] * 100:.0f}%",
+                        "Best role match for this resume.",
+                        "Top similarity is the first retrieved role's embedding similarity returned by app/ml_runtime.py::retrieve_matches() using ml/retrieval.py and the local FAISS index.",
+                    )
+                with match_cols[1]:
+                    render_demo_signal_card(
+                        "Retrieved roles",
+                        f"{len(matches):,}",
+                        "Roles surfaced for this resume.",
+                        "Retrieved roles is the count of top-k matches retained after vector search, metadata join, and seniority-aware filtering in app/ml_runtime.py.",
+                    )
+                st.markdown(
+                    '<div class="section-divider compact"></div>',
+                    unsafe_allow_html=True,
+                )
                 render_job_results(matches)
 
         render_demo_floating_nav(
