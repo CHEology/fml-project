@@ -256,8 +256,11 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
+    n_extra = int(extra_features.shape[1]) if extra_features is not None else 0
     model = SalaryQuantileNet(
-        embedding_dim=args.embedding_dim, dropout=args.dropout
+        embedding_dim=args.embedding_dim,
+        n_extra_features=n_extra,
+        dropout=args.dropout,
     ).to(device)
     print(f"Model params: {sum(p.numel() for p in model.parameters()):,}")
 

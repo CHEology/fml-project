@@ -451,7 +451,7 @@ def render_salary_band(band: dict[str, Any]) -> None:
         st.markdown(
             f"""
             <div class="salary-adjustment-note">
-                <div class="salary-adjustment-label">Profile adjustment</div>
+                <div class="salary-adjustment-label">Résumé adjustment</div>
                 <div>{notes_html}</div>
             </div>
             """,

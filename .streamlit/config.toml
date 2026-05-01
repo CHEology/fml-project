@@ -5,3 +5,13 @@
 # WinError 1114. "poll" still picks up file edits but does not poke
 # torch internals.
 fileWatcherType = "poll"
+
+[theme]
+# Pin the Streamlit chrome (header bar, toolbar, default widgets) to light so
+# it doesn't inherit the user's system dark mode and produce the dark band at
+# the top of the app while the custom Lavender CSS renders the body in light.
+base = "light"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FAF9FF"
+textColor = "#111827"
+primaryColor = "#7C3AED"

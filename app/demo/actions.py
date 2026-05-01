@@ -23,12 +23,12 @@ def render_actions_page(
     restart_demo,
 ) -> None:
     if assessment is None:
-        st.warning("Run profile analysis before choosing improvement actions.")
+        st.warning("Run résumé analysis before choosing improvement actions.")
         render_demo_floating_nav(previous_stage="input", restart_demo=restart_demo)
         return
 
     render_demo_section_header(
-        "Profile Actions",
+        "Résumé Actions",
         "Choose the career moves you want to explore from the current analysis.",
         (
             "This page uses local cluster assignments, salary evidence, job text, and "
@@ -38,11 +38,11 @@ def render_actions_page(
     )
 
     st.markdown(
-        '<h2 class="action-choice-heading">Action to improve your profile</h2>',
+        '<h2 class="action-choice-heading">Action to improve your résumé</h2>',
         unsafe_allow_html=True,
     )
     selected_action = st.radio(
-        "Action to improve your profile",
+        "Action to improve your résumé",
         ACTION_OPTIONS,
         key="demo_selected_action",
         horizontal=True,

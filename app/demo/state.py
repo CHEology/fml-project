@@ -17,7 +17,7 @@ def initialize_session_state() -> None:
     if "imported_profile_text" not in st.session_state:
         st.session_state.imported_profile_text = ""
     if "imported_profile_source" not in st.session_state:
-        st.session_state.imported_profile_source = "Imported public webpage"
+        st.session_state.imported_profile_source = "Imported résumé / CV page"
     if "sample_resume_text" not in st.session_state:
         st.session_state.sample_resume_text = ""
     if "sample_resume_source" not in st.session_state:
@@ -42,3 +42,5 @@ def initialize_session_state() -> None:
         st.session_state.demo_selected_action = "Improve my salary"
     if "demo_target_cluster_id" not in st.session_state:
         st.session_state.demo_target_cluster_id = None
+    if "validation_override" not in st.session_state:
+        st.session_state.validation_override = False

@@ -11,12 +11,16 @@ Owner: @trp8625
 from __future__ import annotations
 
 import re
+import ssl
 from html import unescape
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+import certifi
 import streamlit as st
+
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 
 def extract_uploaded_text(uploaded_file) -> str:
@@ -83,7 +87,7 @@ def fetch_public_webpage_text(url: str) -> tuple[str, str]:
         raise ValueError("Enter a valid public http or https URL.")
     if "linkedin.com" in parsed.netloc.lower():
         raise ValueError(
-            "LinkedIn pages are not imported here. Paste profile text directly."
+            "LinkedIn pages are not supported. Paste your résumé / CV text directly."
         )
 
     request = Request(
@@ -96,7 +100,7 @@ def fetch_public_webpage_text(url: str) -> tuple[str, str]:
             )
         },
     )
-    with urlopen(request, timeout=12) as response:
+    with urlopen(request, timeout=12, context=_SSL_CONTEXT) as response:
         content_type = response.headers.get("Content-Type", "")
         if "text/html" not in content_type:
             raise ValueError("That URL did not return an HTML page.")
@@ -113,7 +117,7 @@ def fetch_public_webpage_text(url: str) -> tuple[str, str]:
     cleaned = text.strip()
     if len(cleaned) < 120:
         raise ValueError(
-            "The page did not expose enough public text to use as a resume input."
+            "The page did not expose enough public text to use as a résumé / CV input."
         )
     return cleaned[:8000], parsed.netloc.lower()
 
@@ -148,9 +152,9 @@ def resume_input_widget(key_prefix: str = "") -> None:
     url_col, import_col = st.columns([0.76, 0.24], gap="small")
     with url_col:
         url_val = st.text_input(
-            "Public profile or portfolio URL",
+            "Public résumé / CV URL",
             value=st.session_state.get("public_profile_url", ""),
-            placeholder="https://portfolio.example.com/about",
+            placeholder="https://example.com/resume",
             label_visibility="collapsed",
             key=f"{key_prefix}url_input",
         )
@@ -162,31 +166,33 @@ def resume_input_widget(key_prefix: str = "") -> None:
 
     if import_clicked:
         try:
-            with st.spinner("Importing public page text..."):
+            with st.spinner("Importing résumé page text..."):
                 imported_text, imported_host = fetch_public_webpage_text(
                     st.session_state.public_profile_url
                 )
             st.session_state.resume_text = imported_text
-            st.session_state.resume_source = f"Imported public webpage: {imported_host}"
+            st.session_state.resume_source = (
+                f"Imported résumé / CV page: {imported_host}"
+            )
             st.rerun()
         except ValueError as exc:
             st.warning(str(exc))
         except Exception:
             st.warning(
-                "Could not import that page. Try another public URL or paste the resume text directly."
+                "Could not import that page. Try another public résumé / CV URL or paste the resume text directly."
             )
 
     st.caption(
-        "Public webpage import is for generic portfolio or resume pages. "
-        "LinkedIn pages are not imported here."
+        "Public webpage import is for résumé / CV pages only. "
+        "LinkedIn pages are not supported."
     )
 
     # Text area
     st.session_state.resume_text = st.text_area(
-        "Paste resume text",
+        "Paste résumé / CV text",
         value=st.session_state.get("resume_text", ""),
         height=340,
-        placeholder="Paste a resume, portfolio bio, or achievement summary here...",
+        placeholder="Paste your résumé / CV text here...",
         key=f"{key_prefix}text_area",
     )
 
