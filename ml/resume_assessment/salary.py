@@ -44,135 +44,38 @@ def apply_quality_discount(
     return adjusted
 
 
-_BAND_ANCHORS = (
-    (10.0, "q10"),
-    (25.0, "q25"),
-    (50.0, "q50"),
-    (75.0, "q75"),
-    (90.0, "q90"),
-)
-
-
-def _interp_band_at_percentile(band: dict[str, Any], target_pct: float) -> float | None:
-    """Linearly interpolate a salary band at an arbitrary percentile.
-
-    Outside [10, 90] we extrapolate from the nearest two anchors so that very
-    strong / very weak candidates can land above q90 or below q10 — capped
-    later by the new band's own q10/q90.
-    """
-    points: list[tuple[float, float]] = []
-    for pct, key in _BAND_ANCHORS:
-        value = band.get(key)
-        if value is None:
-            continue
-        try:
-            points.append((pct, float(value)))
-        except (TypeError, ValueError):
-            continue
-    if len(points) < 2:
-        return None
-    target_pct = max(0.0, min(100.0, float(target_pct)))
-    pairs = list(zip(points, points[1:], strict=False))
-    if target_pct <= points[0][0]:
-        lower, upper = points[0], points[1]
-    elif target_pct >= points[-1][0]:
-        lower, upper = points[-2], points[-1]
-    else:
-        lower, upper = next(
-            (lo, hi) for lo, hi in pairs if lo[0] <= target_pct <= hi[0]
-        )
-    p0, v0 = lower
-    p1, v1 = upper
-    if p1 == p0:
-        return v0
-    return v0 + (v1 - v0) * (target_pct - p0) / (p1 - p0)
-
-
 def apply_capability_adjustment(
     band: dict[str, Any] | None,
     capability: dict[str, Any],
-    learned_quality: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Shift the role-band by the candidate's percentile within the band.
-
-    Conditional-quantile calibration: instead of multiplying the role's
-    median by ±10%, we use the capability score (0-100) to pick the
-    candidate's percentile inside the retrieved role band. Strong evidence
-    moves the candidate toward q75-q90; thin evidence pulls them down to
-    q10-q25. The new band is narrowed (~±12 percentile points around the
-    target) to reflect the tighter within-candidate uncertainty.
-
-    When the learned quality model (trained end-to-end on resume quality
-    labels) is available, we blend its 0-100 score with the rule-based
-    capability score. The neural signal is more robust to resumes whose
-    work-history dates the regex parser cannot extract — e.g. dense CVs
-    where ft_months is computed as 0 and capability collapses to
-    "Developing" regardless of the actual content.
-    """
     if band is None:
         return None
-
-    rule_score = float(capability.get("score", 50.0))
-    rule_score = max(0.0, min(100.0, rule_score))
-    if learned_quality is not None:
-        try:
-            learned = float(learned_quality.get("score", rule_score))
-        except (TypeError, ValueError):
-            learned = rule_score
-        learned = max(0.0, min(100.0, learned))
-        # Trust the neural quality model more when it disagrees strongly
-        # with the rule scorer — the rule scorer is brittle to date and
-        # work-history parsing failures.
-        score = 0.65 * learned + 0.35 * rule_score
+    multiplier = float(capability.get("salary_multiplier", 1.0))
+    if abs(multiplier - 1.0) < 0.001:
+        adjusted = dict(band)
     else:
-        score = rule_score
-    score = max(0.0, min(100.0, score))
-    # Map capability score -> target percentile inside the role band.
-    # 0 -> p10, 50 -> p50, 100 -> p90 (linear).
-    target_pct = 10.0 + (score / 100.0) * 80.0
+        adjusted = dict(band)
+        for key in ("q10", "q25", "q50", "q75", "q90"):
+            value = adjusted.get(key)
+            if value is None:
+                continue
+            try:
+                adjusted[key] = int(round(float(value) * multiplier, -3))
+            except (TypeError, ValueError):
+                continue
 
-    new_q50 = _interp_band_at_percentile(band, target_pct)
-    if new_q50 is None:
-        return band
-
-    spread = (
-        ("q10", target_pct - 25.0),
-        ("q25", target_pct - 12.5),
-        ("q50", target_pct),
-        ("q75", target_pct + 12.5),
-        ("q90", target_pct + 25.0),
-    )
-    adjusted = dict(band)
-    for key, pct in spread:
-        value = _interp_band_at_percentile(band, pct)
-        if value is None:
-            continue
-        adjusted[key] = int(round(float(value), -3))
-
-    # Enforce monotonic q10 <= q25 <= q50 <= q75 <= q90 after rounding.
-    keys = ["q10", "q25", "q50", "q75", "q90"]
-    last = -float("inf")
-    for key in keys:
-        v = adjusted.get(key)
-        if v is None:
-            continue
-        if v < last:
-            adjusted[key] = int(last)
-        last = adjusted[key]
-
-    tier = capability.get("tier", "Competitive")
-    delta_pct = target_pct - 50.0
-    direction = "+" if delta_pct > 0 else ""
-    note = (
-        f"Capability tier {tier}: positioned at p{target_pct:.0f} of role band "
-        f"({direction}{delta_pct:.0f} percentile vs median)."
-    )
-    adjusted["adjustment_notes"] = [
-        *(adjusted.get("adjustment_notes") or []),
-        note,
-    ][:3]
+    effect = float(capability.get("salary_effect_pct", 0.0))
+    if abs(effect) >= 0.1:
+        direction = "+" if effect > 0 else ""
+        note = (
+            f"Capability tier adjustment: {capability.get('tier', 'Competitive')} "
+            f"({direction}{effect:.1f}% within level)."
+        )
+        adjusted["adjustment_notes"] = [
+            *(adjusted.get("adjustment_notes") or []),
+            note,
+        ][:3]
     adjusted["capability_tier"] = capability
-    adjusted["capability_target_percentile"] = round(target_pct, 1)
     return adjusted
 
 

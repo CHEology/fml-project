@@ -229,7 +229,7 @@ demo.seniority_filtered_salary_matches = lambda matches: (pd.DataFrame(), None)
 demo.hybrid_salary_band = lambda salary_matches, neural_band=None, bls_band=None, occupation_match=None: None
 demo.add_salary_evidence_note = lambda band, note: band
 demo.apply_quality_discount = lambda band, quality: band
-demo.apply_capability_adjustment = lambda band, capability, learned_quality=None: band
+demo.apply_capability_adjustment = lambda band, capability: band
 demo.feedback_terms = lambda resume_text, matches, cluster: []
 
 demo.render_demo_page(jobs, True, status)

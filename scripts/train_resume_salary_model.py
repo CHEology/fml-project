@@ -191,37 +191,22 @@ def main() -> None:
 
     print(f"Loading resumes from {args.resumes}")
     df = pd.read_parquet(args.resumes)
-    if "resume_text" not in df.columns:
+    if "resume_text" not in df.columns or "source_salary_annual" not in df.columns:
         raise ValueError(
-            "resume parquet must contain 'resume_text'. "
+            "resume parquet must contain 'resume_text' and 'source_salary_annual'. "
             "Regenerate with the latest scripts/generate_synthetic_resumes.py."
         )
 
-    # Prefer the quality-adjusted target so the model learns to differentiate
-    # strong vs weak candidates within the same role. Fall back to the raw
-    # source job salary only if the new column is absent (older parquets).
-    target_column = (
-        "expected_salary_annual"
-        if "expected_salary_annual" in df.columns
-        else "source_salary_annual"
-    )
-    if target_column not in df.columns:
-        raise ValueError(
-            "resume parquet must contain 'expected_salary_annual' or "
-            "'source_salary_annual'. Regenerate the synthetic resumes."
-        )
-    print(f"Training target column: {target_column}")
-
-    df = df.dropna(subset=[target_column]).reset_index(drop=True)
-    df = df[df[target_column] > 0].reset_index(drop=True)
+    df = df.dropna(subset=["source_salary_annual"]).reset_index(drop=True)
+    df = df[df["source_salary_annual"] > 0].reset_index(drop=True)
     if len(df) < 20:
         raise ValueError(
-            f"only {len(df)} resumes have a positive {target_column}; "
+            f"only {len(df)} resumes have a positive source_salary_annual; "
             "regenerate with --jobs pointing at a salary-bearing dataset."
         )
 
     texts = df["resume_text"].astype(str).tolist()
-    salaries = df[target_column].to_numpy(dtype=np.float32)
+    salaries = df["source_salary_annual"].to_numpy(dtype=np.float32)
     stratify_labels = (
         pd.to_numeric(df.get("experience_level_ordinal", 0), errors="coerce")
         .fillna(0.0)
