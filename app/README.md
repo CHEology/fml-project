@@ -12,6 +12,11 @@ Current layout:
 - `styles/`: CSS and theme injection.
 - `assets/`: static app assets.
 
+The Methodology page is rendered from `components/methodology.py`, with static
+Plotly figure builders in `components/methodology_figures.py`. Keep it as an
+explanatory UI layer: model logic, scoring, training, and artifact loading stay
+in `ml/`, `scripts/`, and `app/runtime/`.
+
 The Market Overview page is the model-context layer for the demo. It can
 explain catalog shape, salary distributions, geography/work-mode mix, and
 cluster labels, but runtime artifact access and model-loading glue still belong
