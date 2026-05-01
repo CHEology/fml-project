@@ -160,13 +160,16 @@ def render_cluster_salary_distribution(
 
     st.markdown(
         f"""
-        <div class="section-label" style="margin-top:1rem;">2D market cluster map</div>
-        <div class="evidence-line">
-            Jobs are embedded as sentence-transformer vectors, grouped with K-Means,
-            and projected into two PCA-reduced embedding components. Nearby dots
-            are semantically similar postings, colors identify cluster names in the
-            legend, and the diamond shows the resume in the same 2D space. The dots are
-            {escape(sample_context)}; {escape(salary_context)}.
+        <div class="section-heading" style="margin-top:1rem;">
+            <div>
+                <div class="section-heading-kicker">Embedding view</div>
+                <h2>2D market cluster map</h2>
+            </div>
+        </div>
+        <div class="evidence-line cluster-map-explainer">
+            Nearby dots are semantically similar postings. Colors identify market
+            clusters, and the diamond marks this resume in the same projected space.
+            The dots are {escape(sample_context)}; {escape(salary_context)}.
         </div>
         """,
         unsafe_allow_html=True,
@@ -413,9 +416,14 @@ def render_salary_band(band: dict[str, Any]) -> None:
     if seniority_filter:
         pieces.append(str(seniority_filter))
 
-    evidence_html = escape(" · ".join(pieces))
+    evidence_items_html = "".join(f"<span>{escape(piece)}</span>" for piece in pieces)
     st.markdown(
-        f'<div class="evidence-line">{evidence_html}</div>',
+        f"""
+        <div class="salary-evidence-card">
+            <div class="salary-evidence-label">Salary evidence</div>
+            <div class="salary-evidence-items">{evidence_items_html}</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -423,7 +431,12 @@ def render_salary_band(band: dict[str, Any]) -> None:
     if adjustment_notes:
         notes_html = escape(" ".join(str(note) for note in adjustment_notes))
         st.markdown(
-            f'<div class="evidence-line" style="color: var(--warning);">{notes_html}</div>',
+            f"""
+            <div class="salary-adjustment-note">
+                <div class="salary-adjustment-label">Profile adjustment</div>
+                <div>{notes_html}</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 

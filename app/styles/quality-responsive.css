@@ -54,6 +54,10 @@
         margin: 1rem 0;
     }
 
+    .section-divider.compact {
+        margin: 0.85rem 0;
+    }
+
     .profile-quality-hero {
         margin-bottom: 0.85rem;
     }

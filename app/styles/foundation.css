@@ -328,6 +328,88 @@
         margin-top: 0.7rem;
     }
 
+    .salary-evidence-card,
+    .salary-adjustment-note,
+    .cluster-evidence-block {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.62);
+        margin-top: 0.8rem;
+        padding: 0.75rem 0.85rem;
+    }
+
+    .salary-evidence-label,
+    .salary-adjustment-label,
+    .cluster-evidence-label {
+        color: var(--ink);
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.45rem;
+        text-transform: uppercase;
+    }
+
+    .salary-evidence-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.38rem;
+    }
+
+    .salary-evidence-items span {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.25;
+        padding: 0.28rem 0.52rem;
+    }
+
+    .salary-adjustment-note {
+        background: rgba(250, 176, 5, 0.08);
+        border-color: rgba(180, 83, 9, 0.16);
+        color: #92400e;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .cluster-evidence-copy {
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.4;
+        margin-bottom: 0.55rem;
+    }
+
+    .cluster-map-explainer {
+        max-width: 58rem;
+    }
+
+    .section-heading {
+        align-items: flex-end;
+        border-top: 1px solid rgba(15, 23, 42, 0.08);
+        display: flex;
+        justify-content: space-between;
+        padding-top: 1rem;
+    }
+
+    .section-heading h2 {
+        color: var(--ink);
+        font-size: 1.08rem;
+        font-weight: 750;
+        letter-spacing: 0;
+        line-height: 1.25;
+        margin: 0;
+        text-transform: none;
+    }
+
+    .section-heading-kicker {
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        margin-bottom: 0.14rem;
+        text-transform: uppercase;
+    }
+
     .section-label {
         font-size: 0.84rem;
         text-transform: uppercase;
