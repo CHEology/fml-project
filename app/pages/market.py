@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
-from app.components.job_results import (
-    fmt_money,
-    render_metric_card,
-    render_panel_banner,
+from app.components.market_overview import (
+    build_cluster_distribution_figure,
+    build_market_mix_figure,
+    build_salary_distribution_figure,
+    compute_market_summary,
+    normalize_market_jobs,
+    render_market_exemplars,
+    render_market_hero,
+    render_model_dependency_grid,
+    render_summary_metrics,
+    summarize_clusters,
 )
 from app.runtime.cache import artifacts_ready, load_cluster_resource
 
@@ -16,65 +23,131 @@ def render_market_overview_page(
     has_real_data: bool,
     status: list[dict[str, str | bool]],
 ) -> None:
-    metric_cols = st.columns(2)
-    with metric_cols[0]:
-        render_metric_card("Jobs loaded", f"{len(jobs):,}", "local catalog size")
-    with metric_cols[1]:
-        median_salary = pd.to_numeric(
-            jobs.get("salary_annual"), errors="coerce"
-        ).dropna()
-        render_metric_card(
-            "Median salary",
-            fmt_money(median_salary.median() if len(median_salary) else None),
-            "from current dataset",
-        )
-
-    st.write("")
-    render_panel_banner(
-        "Market Radar",
-        "Where the current feed is concentrated",
-        "A quick view of geography, seniority, and salary distribution in the available job catalog.",
-    )
-    display_jobs = jobs.copy()
-    display_jobs["salary_annual"] = pd.to_numeric(
-        display_jobs.get("salary_annual"), errors="coerce"
+    display_jobs = normalize_market_jobs(jobs)
+    cluster_summary = _load_cluster_summary(display_jobs, status)
+    summary = compute_market_summary(
+        display_jobs,
+        has_real_data=has_real_data,
+        cluster_summary=cluster_summary,
     )
 
-    left, right = st.columns([0.52, 0.48], gap="large")
-    with left, st.container(border=True):
-        st.markdown("**Top locations**")
-        location_counts = (
-            display_jobs["location"].fillna("Unknown").value_counts().head(8)
+    render_market_hero(data_source, has_real_data)
+    render_summary_metrics(summary)
+
+    st.markdown(
+        """
+        <div class="market-section-heading">
+            <div class="section-heading-kicker">Compensation landscape</div>
+            <h2>Salary is the distribution the model is trying to explain</h2>
+            <p>
+                The demo's salary output uses q10/q25/q50/q75/q90 bands because
+                similar roles do not pay a single number. Seniority, work type,
+                and catalog coverage shape the evidence before quality and
+                capability adjustments are applied.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.plotly_chart(
+        build_salary_distribution_figure(display_jobs),
+        width="stretch",
+    )
+
+    mix_col, segment_col = st.columns([0.52, 0.48], gap="large")
+    with mix_col:
+        st.markdown(
+            """
+            <div class="market-section-heading">
+                <div class="section-heading-kicker">Catalog shape</div>
+                <h2>Geography and work mode set the retrieval context</h2>
+                <p>
+                    If the catalog is concentrated in certain cities or work
+                    modes, matched roles and salary evidence will reflect that
+                    market mix. This is why the demo treats retrieved postings
+                    as contextual evidence rather than universal truth.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        st.bar_chart(location_counts)
+        st.plotly_chart(build_market_mix_figure(display_jobs), width="stretch")
 
-        st.markdown("**Experience mix**")
-        exp_counts = (
-            display_jobs["experience_level"].fillna("Unknown").value_counts().head(8)
+    with segment_col:
+        st.markdown(
+            """
+            <div class="market-section-heading">
+                <div class="section-heading-kicker">Semantic structure</div>
+                <h2>Clusters turn postings into role families</h2>
+                <p>
+                    K-Means clusters define the market neighborhoods used for
+                    candidate positioning and gap terms. A resume lands near a
+                    centroid, then the demo explains the segment with common
+                    terms and titles from that neighborhood.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        st.bar_chart(exp_counts)
-
-        if artifacts_ready(status, "clustering"):
-            _, assignments, cluster_labels = load_cluster_resource()
-            cluster_names = [
-                cluster_labels.get(str(cluster_id), {}).get(
-                    "label", f"Cluster {cluster_id}"
-                )
-                for cluster_id in assignments
-            ]
-            st.markdown("**Market segments**")
-            st.bar_chart(pd.Series(cluster_names).value_counts())
-
-    with right, st.container(border=True):
-        st.markdown("**Salary sample**")
-        salary_view = display_jobs[
-            ["title", "company_name", "location", "salary_annual"]
-        ].copy()
-        salary_view = salary_view.sort_values("salary_annual", ascending=False).head(12)
-        st.dataframe(salary_view, width="stretch", hide_index=True)
-
-        st.markdown("**Dataset notes**")
-        if has_real_data:
-            st.success(f"Loaded real project data from `{data_source}`.")
+        if cluster_summary.available:
+            st.plotly_chart(
+                build_cluster_distribution_figure(cluster_summary.frame),
+                width="stretch",
+            )
+            _render_cluster_terms(cluster_summary.frame)
         else:
-            st.info("Using sample roles until the local job catalog is prepared.")
+            st.info(cluster_summary.unavailable_reason)
+            st.caption(
+                "Build the clustering artifacts to enable segment counts, top terms, and centroid-based positioning."
+            )
+
+    st.markdown(
+        """
+        <div class="market-section-heading">
+            <div class="section-heading-kicker">Model dependencies</div>
+            <h2>How this page connects to the rest of the demo</h2>
+            <p>
+                These views are not decoration. They show the evidence base
+                each model consumes or explains when the user runs a resume
+                through the demo.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    render_model_dependency_grid()
+    render_market_exemplars(display_jobs)
+
+
+def _load_cluster_summary(
+    jobs: pd.DataFrame,
+    status: list[dict[str, str | bool]],
+):
+    assignments = None
+    cluster_labels = None
+    if artifacts_ready(status, "clustering"):
+        try:
+            _, assignments, cluster_labels = load_cluster_resource()
+        except (FileNotFoundError, ValueError, OSError):
+            assignments = None
+            cluster_labels = None
+    return summarize_clusters(
+        job_count=len(jobs),
+        assignments=assignments,
+        cluster_labels=cluster_labels,
+    )
+
+
+def _render_cluster_terms(cluster_frame: pd.DataFrame) -> None:
+    for _, row in cluster_frame.head(4).iterrows():
+        st.markdown(
+            f"""
+            <div class="market-cluster-card">
+                <div class="market-cluster-title">{row["label"]}</div>
+                <div class="market-cluster-meta">{int(row["job_count"]):,} roles</div>
+                <div class="market-cluster-copy">Top terms: {row["top_terms"] or "N/A"}</div>
+                <div class="market-cluster-copy">Common titles: {row["common_titles"] or "N/A"}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )

@@ -48,6 +48,7 @@ STYLE_FILES = (
     "demo.css",
     "demo-actions.css",
     "job-results.css",
+    "market.css",
     "home-sidebar.css",
     "quality-responsive.css",
     "buttons-typography.css",
