@@ -373,20 +373,32 @@ def hybrid_salary_band(
     bls_band: Any | None = None,
     occupation_match: Any | None = None,
 ) -> dict[str, Any] | None:
-    """Combine retrieved, BLS, and neural salary signals into one evidence band."""
+    # Blend neural (candidate-conditioned) with retrieved (role anchor)
+    # when both are available; pure retrieval collapses strong vs weak
+    # resumes for the same role to the same median.
     retrieved = _retrieved_salary_signal(matches)
     bls = _band_from_bls(bls_band)
     neural = _normalized_band(neural_band)
 
-    if retrieved is not None and retrieved["salary_count"] >= MIN_RETRIEVED_SALARIES:
+    band: dict[str, int]
+    if (
+        retrieved is not None
+        and retrieved["salary_count"] >= MIN_RETRIEVED_SALARIES
+        and neural is not None
+    ):
+        from app.runtime.salary_blend import blend_neural_with_retrieved
+
+        primary_source = "neural_in_role_band"
+        band = blend_neural_with_retrieved(neural, retrieved["band"])
+    elif retrieved is not None and retrieved["salary_count"] >= MIN_RETRIEVED_SALARIES:
         primary_source = "retrieved_jobs"
         band = retrieved["band"]
-    elif bls is not None:
-        primary_source = "bls"
-        band = bls
     elif neural is not None:
         primary_source = "neural_model"
         band = neural
+    elif bls is not None:
+        primary_source = "bls"
+        band = bls
     else:
         return None
 
@@ -663,6 +675,19 @@ def _salary_confidence(
     median_similarity: float | None,
     disagreement: bool,
 ) -> str:
+    if primary_source == "neural_in_role_band":
+        # Blend of retrieved (role) and neural (candidate). Reuse the
+        # retrieved-jobs gate but downgrade if the two signals disagree
+        # sharply, since the blend's reliability depends on both inputs
+        # being plausible.
+        if (
+            salary_count >= 5
+            and median_similarity is not None
+            and median_similarity >= HIGH_CONFIDENCE_SIMILARITY
+            and not disagreement
+        ):
+            return "high"
+        return "medium" if not disagreement else "low"
     if primary_source == "retrieved_jobs":
         if (
             salary_count >= 5

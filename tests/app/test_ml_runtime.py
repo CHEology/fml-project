@@ -359,7 +359,7 @@ def test_salary_band_from_model_supports_feature_metadata() -> None:
     assert band["q50"] == 130_000
 
 
-def test_hybrid_salary_band_prefers_retrieved_salary_evidence() -> None:
+def test_hybrid_salary_band_blends_neural_with_retrieved_role_band() -> None:
     matches = pd.DataFrame(
         {
             "salary_annual": [100_000, 120_000, 140_000, 160_000, 180_000],
@@ -379,10 +379,15 @@ def test_hybrid_salary_band_prefers_retrieved_salary_evidence() -> None:
     )
 
     assert band is not None
-    assert band["primary_source"] == "retrieved_jobs"
+    # When both candidate-conditioned neural and role retrieval are available,
+    # blend them so strong vs weak resumes targeting the same role do not
+    # collapse to the same retrieved median.
+    assert band["primary_source"] == "neural_in_role_band"
     assert band["confidence"] == "high"
-    assert band["q50"] == 140_000
+    # Blended q50 sits between neural q50 (130k) and retrieved q50 (140k).
+    assert 125_000 <= band["q50"] <= 145_000
     assert band["evidence"]["salary_count"] == 5
+    assert band["evidence"]["neural_band"]["q50"] == 130_000
 
 
 class FakeWageBand:
@@ -435,7 +440,7 @@ def test_hybrid_salary_band_falls_back_to_neural_model_at_low_confidence() -> No
     assert band["q10"] <= band["q25"] <= band["q50"] <= band["q75"] <= band["q90"]
 
 
-def test_hybrid_salary_band_marks_medium_confidence_for_disagreement() -> None:
+def test_hybrid_salary_band_marks_low_confidence_for_disagreement() -> None:
     matches = pd.DataFrame(
         {
             "salary_annual": [100_000, 120_000, 140_000, 160_000, 180_000],
@@ -455,8 +460,10 @@ def test_hybrid_salary_band_marks_medium_confidence_for_disagreement() -> None:
     )
 
     assert band is not None
-    assert band["primary_source"] == "retrieved_jobs"
-    assert band["confidence"] == "medium"
+    assert band["primary_source"] == "neural_in_role_band"
+    # The neural signal is far above the role band; disagreement downgrades
+    # the blended confidence even though retrieval has plenty of evidence.
+    assert band["confidence"] == "low"
     assert band["evidence"]["model_bls_disagreement"]
 
 

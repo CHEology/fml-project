@@ -499,7 +499,7 @@ def render_demo_page(
                 )
                 band = add_salary_evidence_note(band, seniority_salary_note)
                 band = apply_quality_discount(band, quality)
-                band = apply_capability_adjustment(band, capability)
+                band = apply_capability_adjustment(band, capability, learned_quality)
 
                 cluster = None
                 cluster_assignments = None
