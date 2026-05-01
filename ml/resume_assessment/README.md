@@ -11,6 +11,8 @@ assessment.
 - `quality.py`: explainable quality and capability-tier scoring.
 - `salary.py`: quality/capability salary adjustments and seniority salary
   filtering helpers.
+- `career_actions.py`: deterministic salary-growth and cluster-transition
+  advice derived from local job, salary, and cluster evidence.
 - `taxonomy.py`: local role, skill, title, and evidence lexicons.
 
 Streamlit pages and scripts should call this package instead of duplicating

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from html import escape
 from typing import Any
 
@@ -50,6 +51,28 @@ MARKET_GAPS_INFO = (
     "they are shown as related work-on items rather than additional quality red flags."
 )
 
+QUALITY_EVIDENCE_INFO = (
+    "Green highlights are resume/profile phrases that support the quality score. "
+    "Red highlights are visible wording patterns that weaken the profile readout. "
+    "Some issues, such as missing sections or lack of bullets, are structural and "
+    "are summarized below the text rather than highlighted inline."
+)
+
+RISK_PHRASES = (
+    "responsible for",
+    "worked on",
+    "helped",
+    "assisted",
+    "various",
+    "some",
+    "many",
+    "several",
+    "team player",
+    "hard worker",
+    "detail-oriented",
+    "passionate",
+)
+
 
 def _chips_html(items: list[str]) -> str:
     if not items:
@@ -97,6 +120,7 @@ def render_quality_scorecard(
     learned_quality: dict[str, Any] | None = None,
     evidence_tags: list[str] | None = None,
     gap_terms: list[str] | None = None,
+    detail_html: str = "",
 ) -> None:
     overall = int(quality.get("overall", 0))
     band_label = str(quality.get("band_label", "Mixed"))
@@ -193,6 +217,7 @@ def render_quality_scorecard(
         '<div class="quality-card">'
         + headline
         + f'<div class="quality-subscores">{sub_html}</div>'
+        + detail_html
         + f'<div class="quality-feedback-grid">{strengths_html}{flags_html}</div>'
         + "</div>"
     )
@@ -209,6 +234,7 @@ def render_profile_quality_section(
     sections: list[str],
     missing_sections: list[str],
     missing_terms: list[str],
+    resume_text: str = "",
 ) -> None:
     word_count = int(resume_stats.get("word_count", 0))
     bullet_count = int(resume_stats.get("bullet_count", 0))
@@ -238,13 +264,6 @@ def render_profile_quality_section(
         )
         with st.expander("Read more about Profile Quality"):
             st.markdown(PROFILE_QUALITY_INFO)
-
-        render_quality_scorecard(
-            quality,
-            learned_quality,
-            evidence_tags=strengths,
-            gap_terms=missing_terms,
-        )
 
         public_chips = _public_model_chips(public_signals)
         public_html = ""
@@ -278,7 +297,118 @@ def render_profile_quality_section(
             f'<div class="chip-cloud">{_chips_html(sections)}</div>'
             f"{missing_sections_html}</div>" + "</div>"
         )
-        st.markdown(body, unsafe_allow_html=True)
+        render_quality_scorecard(
+            quality,
+            learned_quality,
+            evidence_tags=strengths,
+            gap_terms=missing_terms,
+            detail_html=body,
+        )
+        _render_resume_evidence(
+            resume_text=resume_text,
+            strengths=strengths,
+            missing_terms=missing_terms,
+            missing_sections=missing_sections,
+        )
+
+
+def _render_resume_evidence(
+    *,
+    resume_text: str,
+    strengths: list[str],
+    missing_terms: list[str],
+    missing_sections: list[str],
+) -> None:
+    if not str(resume_text).strip():
+        return
+
+    display_text = _clean_resume_display_text(str(resume_text))
+    highlighted = _highlight_resume_text(
+        display_text,
+        good_terms=strengths,
+        risk_terms=[*RISK_PHRASES, *missing_terms],
+    )
+    structural_notes = []
+    if missing_sections:
+        structural_notes.append(
+            "Missing sections: "
+            + ", ".join(str(section) for section in missing_sections)
+        )
+    notes_html = ""
+    if structural_notes:
+        notes_html = (
+            '<div class="quality-evidence-notes">'
+            + "".join(f"<span>{escape(note)}</span>" for note in structural_notes)
+            + "</div>"
+        )
+    st.markdown(
+        f"""
+        <div class="quality-evidence-panel">
+            <div class="quality-evidence-header">
+                <div>
+                    <div class="snapshot-label">Submitted resume/profile evidence</div>
+                    <p>{escape(QUALITY_EVIDENCE_INFO)}</p>
+                </div>
+                <div class="quality-evidence-legend">
+                    <span class="legend-good"></span> Helps
+                    <span class="legend-risk"></span> Hurts
+                </div>
+            </div>
+            <pre class="quality-evidence-text">{highlighted}</pre>
+            {notes_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _highlight_resume_text(
+    resume_text: str,
+    *,
+    good_terms: list[str],
+    risk_terms: list[str],
+) -> str:
+    matches: list[tuple[int, int, str]] = []
+    occupied: list[tuple[int, int]] = []
+    for css_class, terms in (
+        ("quality-highlight-good", good_terms),
+        ("quality-highlight-risk", risk_terms),
+    ):
+        for term in terms:
+            pattern = str(term).strip()
+            if len(pattern) < 3:
+                continue
+            for match in re.finditer(re.escape(pattern), resume_text, re.IGNORECASE):
+                start, end = match.span()
+                if any(
+                    start < used_end and end > used_start
+                    for used_start, used_end in occupied
+                ):
+                    continue
+                matches.append((start, end, css_class))
+                occupied.append((start, end))
+                break
+    matches.sort(key=lambda item: item[0])
+    if not matches:
+        return escape(resume_text)
+
+    html = []
+    cursor = 0
+    for start, end, css_class in matches:
+        html.append(escape(resume_text[cursor:start]))
+        html.append(
+            f'<span class="{css_class}">{escape(resume_text[start:end])}</span>'
+        )
+        cursor = end
+    html.append(escape(resume_text[cursor:]))
+    return "".join(html)
+
+
+def _clean_resume_display_text(resume_text: str) -> str:
+    cleaned = re.sub(r"</\s*[a-z][a-z0-9-]*\s*>", "", resume_text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<\s*/\s*[a-z][a-z0-9-]*\s*>", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
 
 
 def render_public_model_card(public_signals: dict[str, Any] | None) -> None:

@@ -15,6 +15,7 @@ from app.components.salary_chart import (
     render_salary_band,
 )
 from app.config import MASCOT_PATH, PROJECT_ROOT
+from app.demo.actions import render_actions_page
 from app.demo.components import (
     info_dot,
     render_demo_floating_nav,
@@ -70,12 +71,41 @@ from ml.resume_assessment import (
 from ml.resume_assessment.taxonomy import SECTION_ALIASES
 
 
+def _profile_match_terms(assessment: dict[str, object]) -> list[str]:
+    profile = assessment.get("profile")
+    cluster = assessment.get("cluster")
+    resume_text = str(assessment.get("resume_text") or "").lower()
+
+    terms: list[str] = []
+    if isinstance(profile, dict):
+        terms.extend(str(term) for term in profile.get("skills_present", []) or [])
+        for key in ("track", "seniority"):
+            value = str(profile.get(key) or "").strip()
+            if value:
+                terms.append(value)
+    if isinstance(cluster, dict):
+        for term in cluster.get("top_terms", []) or []:
+            term_text = str(term).strip()
+            if term_text and term_text.lower() in resume_text:
+                terms.append(term_text)
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        normalized = term.strip().lower()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(term.strip())
+    return deduped
+
+
 def render_demo_page(
     jobs: pd.DataFrame,
     has_real_data: bool,
     status: list[dict[str, str | bool]],
 ) -> None:
-    valid_stages = {"input", "results"}
+    valid_stages = {"input", "results", "actions"}
     if st.session_state.demo_stage not in valid_stages:
         st.session_state.demo_stage = "input"
 
@@ -94,6 +124,8 @@ def render_demo_page(
         st.session_state.assessment = None
         st.session_state.pending_analysis = False
         st.session_state.demo_scroll_to_top = False
+        st.session_state.demo_selected_action = "Improve my salary"
+        st.session_state.demo_target_cluster_id = None
         st.session_state.demo_stage = "input"
 
     current_text = st.session_state.resume_text.strip()
@@ -566,8 +598,8 @@ def render_demo_page(
             "and ml/wage_bands.py, then ml.resume_assessment applies quality and capability adjustments. "
             "For the 2D cluster map, jobs are embedded as sentence-transformer vectors; "
             "K-Means groups job embeddings into 8 role-family clusters; cluster labels come from "
-            "TF-IDF top terms and common titles; PCA-reduced embedding components are used as "
-            "the x/y axes; and the resume is embedded and placed in the nearest centroid cluster. "
+            "TF-IDF top terms and common titles; a fast deterministic random projection is used "
+            "for the visualization x/y axes; and the resume is embedded and placed in the nearest centroid cluster. "
             "To keep the app responsive, the plotted job dots are a deterministic random visualization sample "
             "from the projected dataset rather than every posting. "
             "The plotted user marker uses the hybrid band q50 median estimate in hover text for "
@@ -669,6 +701,7 @@ def render_demo_page(
             sections=[str(section) for section in structure_chips],
             missing_sections=[str(section) for section in missing_sections],
             missing_terms=[str(term) for term in missing_terms],
+            resume_text=str(assessment.get("resume_text") or ""),
         )
 
         band = assessment.get("band")
@@ -784,8 +817,23 @@ def render_demo_page(
                     '<div class="section-divider compact"></div>',
                     unsafe_allow_html=True,
                 )
-                render_job_results(matches)
+                render_job_results(
+                    matches, profile_terms=_profile_match_terms(assessment)
+                )
 
         render_demo_floating_nav(
             restart_demo=restart_demo,
+            next_label="Choose actions",
+            next_stage="actions",
         )
+        return
+
+    if st.session_state.demo_stage == "actions":
+        if st.session_state.get("demo_scroll_to_top", False):
+            st.markdown(
+                '<div id="candidate-snapshot-top"></div>', unsafe_allow_html=True
+            )
+            render_scroll_to_top()
+            st.session_state.demo_scroll_to_top = False
+        render_actions_page(jobs, assessment, restart_demo=restart_demo)
+        return

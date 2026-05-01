@@ -6,6 +6,8 @@ This package owns the interactive resume demo flow.
 - `samples.py` renders random sample resumes from the local job catalog context.
 - `state.py` initializes Streamlit session state for the demo.
 - `components.py` contains small demo-only UI helpers.
+- `actions.py` renders the post-analysis action planner for salary growth and
+  cluster-transition recommendations.
 
 Keep this package focused on demo input and presentation workflow. Reusable UI
 belongs in `app/components/`; resume scoring and seniority logic belongs in

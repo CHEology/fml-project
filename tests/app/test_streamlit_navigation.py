@@ -92,6 +92,41 @@ def test_demo_snapshot_evidence_helpers_render_specific_reasons() -> None:
     assert "Why this tier" in capability_html
 
 
+def test_job_rows_show_profile_signals(monkeypatch) -> None:
+    import pandas as pd
+    import streamlit as st
+    from app.components.job_results import render_job_row
+
+    rendered: list[str] = []
+
+    def capture_markdown(body: str, *args, **kwargs) -> None:
+        rendered.append(body)
+
+    monkeypatch.setattr(st, "markdown", capture_markdown)
+
+    render_job_row(
+        pd.Series(
+            {
+                "title": "Data Scientist",
+                "company_name": "Example Co",
+                "location": "New York, NY",
+                "work_type": "FULL_TIME",
+                "experience_level": "Mid",
+                "salary_annual": 130000,
+                "text": "Build Python dashboards and SQL models for analytics teams.",
+                "similarity": 0.42,
+            }
+        ),
+        profile_terms=["Python", "SQL", "Salesforce"],
+    )
+
+    html = "\n".join(rendered)
+    assert "Profile signals" in html
+    assert "Python" in html
+    assert "SQL" in html
+    assert "Salesforce" not in html
+
+
 def test_stylesheet_keeps_demo_navigation_and_input_method_rules() -> None:
     css = "\n".join(
         path.read_text(encoding="utf-8")
@@ -267,6 +302,11 @@ def test_profile_quality_section_renders_consolidated_content(monkeypatch) -> No
         sections=["Experience", "Education", "Skills", "Summary"],
         missing_sections=["Projects"],
         missing_terms=["client", "conversion"],
+        resume_text=(
+            "Summary\nPython analyst with SQL experience.\n"
+            "Experience\nResponsible for client reporting and various trading projects.\n"
+            "</ div>"
+        ),
     )
 
     html = "\n".join(rendered)
@@ -279,6 +319,15 @@ def test_profile_quality_section_renders_consolidated_content(monkeypatch) -> No
     assert "Evidence tags" in html
     assert "Resume organization" in html
     assert "Market-language gaps" in html
+    assert html.index("Public-data model checks") < html.index("Resume organization")
+    assert html.index("Resume organization") < html.index("What stood out positively")
+    assert "Submitted resume/profile evidence" in html
+    assert "quality-highlight-good" in html
+    assert "quality-highlight-risk" in html
+    assert "Python" in html
+    assert "Responsible for" in html
+    assert "</ div>" not in html
+    assert "&lt;/ div&gt;" not in html
     assert "Add stronger evidence for client" in html
     assert '<div class="snapshot-label">Detected strengths</div>' not in html
     assert '<div class="snapshot-label">Gaps to close</div>' not in html
@@ -298,3 +347,105 @@ def test_demo_results_composition_removes_obsolete_profile_quality_sections() ->
     assert "Evidence used in this snapshot" not in results_source
     assert "Uploaded file:" not in results_source
     assert '"Gaps to close",' not in results_source
+
+
+def test_demo_results_can_advance_to_actions_stage() -> None:
+    demo_source = (PROJECT_ROOT / "app" / "pages" / "demo.py").read_text(
+        encoding="utf-8"
+    )
+    nav_source = (PROJECT_ROOT / "app" / "demo" / "components.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'valid_stages = {"input", "results", "actions"}' in demo_source
+    assert 'next_label="Choose actions"' in demo_source
+    assert 'next_stage="actions"' in demo_source
+    assert "st.session_state.demo_scroll_to_top = True" in nav_source
+    assert 'if st.session_state.demo_stage == "actions":' in demo_source
+    assert (
+        "render_scroll_to_top()"
+        in demo_source.split('if st.session_state.demo_stage == "actions":')[1]
+    )
+    assert "open_profile_actions_bottom" not in demo_source
+
+
+def test_demo_actions_stage_renders_action_options_and_cluster_selector() -> None:
+    script = """
+import numpy as np
+import pandas as pd
+
+from app.demo.state import initialize_session_state
+from app.styles import inject_styles
+import app.pages.demo as demo
+
+initialize_session_state()
+inject_styles("Lavender")
+
+jobs = pd.DataFrame(
+    [
+        {
+            "title": "Software Engineer",
+            "salary_annual": 120000,
+            "text": "python apis",
+        },
+        {
+            "title": "Principal Software Engineer",
+            "salary_annual": 220000,
+            "text": "python kubernetes platform ownership ms degree 8+ years of software engineering experience",
+        },
+        {
+            "title": "Business Analyst",
+            "salary_annual": 130000,
+            "text": "sql dashboards",
+        },
+    ]
+)
+st = __import__("streamlit")
+st.session_state.demo_stage = "actions"
+st.session_state.resume_text = "Python engineer"
+st.session_state.assessment = {
+    "resume_text": "Python engineer",
+    "cluster": {
+        "cluster_id": 0,
+        "label": "Software / Engineering",
+        "top_terms": ["python"],
+        "next_best_cluster_id": 1,
+    },
+    "cluster_assignments": np.array([0, 0, 1]),
+    "cluster_labels": {
+        "0": {"label": "Software / Engineering", "top_terms": ["python"]},
+        "1": {"label": "Business / Data Analysis", "top_terms": ["sql"]},
+    },
+}
+
+demo.render_demo_page(jobs, True, [])
+"""
+    at = AppTest.from_string(script, default_timeout=10).run()
+
+    assert not at.error
+    assert not at.exception
+    action_radios = [
+        radio for radio in at.radio if radio.label == "Action to improve your profile"
+    ]
+    assert len(action_radios) == 1
+    assert action_radios[0].options == [
+        "Improve my salary",
+        "Move to a different cluster",
+    ]
+    assert action_radios[0].value == "Improve my salary"
+    assert len(at.selectbox) == 0
+    assert any(
+        "Improve salary within Software / Engineering" in markdown.value
+        for markdown in at.markdown
+    )
+    assert not any(
+        "Future-state resume/profile draft" in markdown.value
+        for markdown in at.markdown
+    )
+    assert any("Recommended actions" in markdown.value for markdown in at.markdown)
+
+    action_radios[0].set_value("Move to a different cluster").run()
+
+    assert len(at.selectbox) == 1
+    assert at.selectbox[0].options == ["Business / Data Analysis (Cluster 1)"]
+    assert "Software / Engineering (Cluster 0)" not in at.selectbox[0].options

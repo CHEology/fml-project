@@ -38,3 +38,7 @@ def initialize_session_state() -> None:
         st.session_state.demo_stage = "input"
     if "demo_scroll_to_top" not in st.session_state:
         st.session_state.demo_scroll_to_top = False
+    if "demo_selected_action" not in st.session_state:
+        st.session_state.demo_selected_action = "Improve my salary"
+    if "demo_target_cluster_id" not in st.session_state:
+        st.session_state.demo_target_cluster_id = None

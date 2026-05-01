@@ -227,11 +227,116 @@
         grid-column: 1 / -1;
     }
 
+    .quality-evidence-panel {
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,250,252,0.9));
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 14px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        margin-top: 0.9rem;
+        padding: 0.95rem;
+    }
+
+    .quality-evidence-header {
+        align-items: flex-start;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+    }
+
+    .quality-evidence-header p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
+        margin: 0.35rem 0 0.8rem;
+        max-width: 64rem;
+    }
+
+    .quality-evidence-legend {
+        align-items: center;
+        color: var(--muted);
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        font-size: 0.8rem;
+        font-weight: 750;
+        gap: 0.4rem;
+    }
+
+    .quality-evidence-legend span {
+        border-radius: 4px;
+        display: inline-block;
+        height: 0.78rem;
+        width: 0.78rem;
+    }
+
+    .legend-good {
+        background: #DCFCE7;
+        border: 1px solid #22C55E;
+    }
+
+    .legend-risk {
+        background: #FEE2E2;
+        border: 1px solid #EF4444;
+    }
+
+    .quality-evidence-text {
+        background: #FFFFFF;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 12px;
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 0.88rem;
+        line-height: 1.55;
+        margin: 0;
+        max-height: 28rem;
+        overflow: auto;
+        padding: 0.95rem;
+        white-space: pre-wrap;
+    }
+
+    .quality-highlight-good,
+    .quality-highlight-risk {
+        border-radius: 4px;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+        font-weight: 750;
+        padding: 0.04rem 0.16rem;
+    }
+
+    .quality-highlight-good {
+        background: #DCFCE7;
+        color: #166534;
+    }
+
+    .quality-highlight-risk {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .quality-evidence-notes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.75rem;
+    }
+
+    .quality-evidence-notes span {
+        background: #FFF7ED;
+        border: 1px solid #FED7AA;
+        border-radius: 999px;
+        color: #9A3412;
+        font-size: 0.82rem;
+        font-weight: 750;
+        padding: 0.35rem 0.55rem;
+    }
+
     @media (max-width: 900px) {
         .quality-feedback-grid {
             grid-template-columns: 1fr;
         }
 
+        .quality-evidence-header,
         .quality-headline,
         .quality-score-row {
             display: grid;

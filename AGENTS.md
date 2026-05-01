@@ -47,5 +47,3 @@ uv run pytest
 
 - Update the relevant package README when moving files or changing ownership.
 - Keep root `README.md` aligned with the actual run/test/data commands.
-- Historical plan/progress documents live in `docs/history/`; do not treat them
-  as active implementation instructions.

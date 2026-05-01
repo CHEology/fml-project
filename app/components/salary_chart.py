@@ -77,13 +77,12 @@ def render_cluster_salary_distribution(
         )
         return
 
-    projection = _embedding_projection(job_embeddings, resume_embedding, len(jobs))
-    if projection is None:
+    jobs_matrix = _embedding_matrix(job_embeddings, len(jobs))
+    if jobs_matrix is None:
         st.info(
             "2D cluster map is unavailable because embeddings do not match the job catalog."
         )
         return
-    job_points, user_point = projection
 
     if "salary_annual" in jobs:
         salary_source = jobs["salary_annual"]
@@ -94,20 +93,17 @@ def render_cluster_salary_distribution(
         {
             "salary_annual": salaries,
             "cluster_id": assignment_list,
-            "component_1": job_points[:, 0],
-            "component_2": job_points[:, 1],
         }
     )
-    chart_frame = chart_frame.dropna(
-        subset=["cluster_id", "component_1", "component_2"]
-    ).copy()
+    chart_frame = chart_frame.dropna(subset=["cluster_id"]).copy()
     if chart_frame.empty:
-        st.info(
-            "2D cluster map is unavailable because no projected job points are available."
-        )
+        st.info("2D cluster map is unavailable because no job points are available.")
         return
 
     chart_frame["cluster_id"] = chart_frame["cluster_id"].astype(int)
+    total_projected_jobs = len(chart_frame)
+    chart_frame = _sample_chart_points(chart_frame, sample_size=sample_size)
+    plotted_jobs = len(chart_frame)
     chart_frame["cluster_label"] = chart_frame["cluster_id"].map(
         lambda value: _cluster_name(value, cluster_labels)
     )
@@ -125,13 +121,21 @@ def render_cluster_salary_distribution(
         ("work_type", "Work type TBD"),
     ):
         if column in jobs:
-            chart_frame[column] = jobs[column].fillna(fallback).astype(str)
+            chart_frame[column] = (
+                jobs.loc[chart_frame.index, column].fillna(fallback).astype(str)
+            )
         else:
             chart_frame[column] = fallback
-
-    total_projected_jobs = len(chart_frame)
-    chart_frame = _sample_chart_points(chart_frame, sample_size=sample_size)
-    plotted_jobs = len(chart_frame)
+    sampled_embeddings = jobs_matrix[chart_frame.index.to_numpy()]
+    projection = _embedding_projection(sampled_embeddings, resume_embedding)
+    if projection is None:
+        st.info(
+            "2D cluster map is unavailable because embeddings do not match the job catalog."
+        )
+        return
+    job_points, user_point = projection
+    chart_frame["component_1"] = job_points[:, 0]
+    chart_frame["component_2"] = job_points[:, 1]
 
     if chart_frame["salary_annual"].notna().sum() == 0:
         salary_context = "salary values are unavailable in this catalog"
@@ -170,7 +174,8 @@ def render_cluster_salary_distribution(
         </div>
         <div class="evidence-line cluster-map-explainer">
             Nearby dots are semantically similar postings. Colors identify market
-            clusters, and the diamond marks this resume in the same projected space.
+            clusters, and the diamond marks this resume in a fast deterministic
+            projection of the same embedding space.
             The dots are {escape(sample_context)}; {escape(salary_context)}.
         </div>
         """,
@@ -276,32 +281,41 @@ def _sample_chart_points(
     return frame.sample(n=sample_size, random_state=42).sort_index()
 
 
-def _embedding_projection(
+def _embedding_matrix(
     job_embeddings: np.ndarray,
-    resume_embedding: np.ndarray,
     expected_jobs: int,
-) -> tuple[np.ndarray, np.ndarray] | None:
+) -> np.ndarray | None:
     jobs_matrix = np.asarray(job_embeddings, dtype=np.float32)
-    resume_vector = np.asarray(resume_embedding, dtype=np.float32).reshape(-1)
     if jobs_matrix.ndim != 2 or len(jobs_matrix) != expected_jobs:
         return None
+    return jobs_matrix
+
+
+def _embedding_projection(
+    jobs_matrix: np.ndarray,
+    resume_embedding: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    resume_vector = np.asarray(resume_embedding, dtype=np.float32).reshape(-1)
     if jobs_matrix.shape[1] != resume_vector.shape[0]:
         return None
 
     centered = jobs_matrix - jobs_matrix.mean(axis=0, keepdims=True)
-    if centered.shape[0] < 2 or centered.shape[1] < 2:
-        components = np.eye(jobs_matrix.shape[1], 2, dtype=np.float32)
-    else:
-        _, _, vt = np.linalg.svd(centered, full_matrices=False)
-        components = vt[:2].T.astype(np.float32, copy=False)
-        if components.shape[1] < 2:
-            components = np.pad(components, ((0, 0), (0, 2 - components.shape[1])))
+    components = _projection_components(jobs_matrix.shape[1])
 
     job_points = centered @ components
     user_point = (resume_vector - jobs_matrix.mean(axis=0)) @ components
     return np.asarray(job_points, dtype=np.float32), np.asarray(
         user_point, dtype=np.float32
     )
+
+
+def _projection_components(embedding_dim: int) -> np.ndarray:
+    if embedding_dim < 2:
+        return np.eye(embedding_dim, 2, dtype=np.float32)
+    rng = np.random.default_rng(42)
+    components = rng.normal(size=(embedding_dim, 2)).astype(np.float32)
+    norms = np.linalg.norm(components, axis=0, keepdims=True)
+    return components / np.maximum(norms, 1e-12)
 
 
 def _cluster_name(
