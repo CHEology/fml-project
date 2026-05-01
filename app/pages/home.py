@@ -10,6 +10,7 @@ import streamlit as st
 from app.components.sidebar import render_data_source_card
 from app.components.team import TEAM_MEMBERS, TEAM_NAME
 from app.config import MASCOT_PATH
+from app.plot_backgrounds import get_plot_graph_background_uris
 
 
 def encoded_image_data_uri(path: Path) -> str:
@@ -27,9 +28,15 @@ def render_home_page(
     status: list[dict[str, Any]],
 ) -> None:
     mascot_uri = encoded_image_data_uri(MASCOT_PATH)
+    market_bg_uri, _ = get_plot_graph_background_uris()
     mascot_html = (
         f'<img src="{mascot_uri}" alt="ResuMatch hamster mascot wearing sunglasses and an NYU shirt while holding a money bag" />'
         if mascot_uri
+        else ""
+    )
+    hero_copy_style = (
+        f" style=\"--home-hero-graph-image:url('{market_bg_uri}');\""
+        if market_bg_uri
         else ""
     )
     team_line = " | ".join(
@@ -39,7 +46,7 @@ def render_home_page(
     st.markdown(
         f"""
         <section class="home-hero">
-            <div>
+            <div class="home-hero-copy"{hero_copy_style}>
                 <h1>ResuMatch</h1>
                 <div class="home-subtitle">A machine learning project by the {escape(TEAM_NAME)}</div>
                 <div class="home-team-line">{team_line}</div>
