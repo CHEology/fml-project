@@ -7,6 +7,7 @@ import streamlit as st
 
 from app.config import DATA_PATH, PROJECT_ROOT
 from app.demo.sample_data import SYNTHETIC_JOBS
+from app.runtime import live_jobs
 from app.runtime import ml as runtime
 
 runtime_artifact_status = runtime.artifact_status
@@ -31,6 +32,11 @@ salary_band_from_model = runtime.salary_band_from_model
 salary_artifacts_ready = runtime.salary_artifacts_ready
 apply_public_ats_fit = runtime.apply_public_ats_fit
 validate_resume = runtime.validate_resume
+build_live_job_query = live_jobs.build_live_job_query
+exp_level_for_seniority = live_jobs.exp_level_for_seniority
+linkedin_geo_id = live_jobs.linkedin_geo_id
+rank_live_jobs = live_jobs.rank_live_jobs
+serpdog_api_key = live_jobs.serpdog_api_key
 
 
 @st.cache_data(show_spinner=False)
@@ -89,3 +95,35 @@ def load_public_assessment_resource():
     if not artifacts_ready(artifact_status(), "public_assessment"):
         return None
     return load_public_assessment_artifacts(PROJECT_ROOT)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_live_jobs_resource(
+    query: str,
+    exp_level: str | None,
+    api_key: str,
+) -> pd.DataFrame:
+    return live_jobs.fetch_live_jobs(
+        query,
+        serpdog_key=api_key,
+        geo_id=linkedin_geo_id(),
+        exp_level=exp_level,
+        sort_by="week",
+    )
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_live_linkedin_jobs_resource(
+    query: str,
+    geo_id: str,
+    exp_level: str | None,
+    sort_by: str,
+    api_key: str,
+) -> pd.DataFrame:
+    return live_jobs.fetch_serpdog_linkedin_jobs(
+        query,
+        api_key=api_key,
+        geo_id=geo_id,
+        exp_level=exp_level,
+        sort_by=sort_by,
+    )

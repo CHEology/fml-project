@@ -11,6 +11,7 @@ Owner: @trp8625
 from __future__ import annotations
 
 from html import escape
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -55,7 +56,7 @@ def render_job_row(row: pd.Series, profile_terms: list[str] | None = None) -> No
             )
         signal_html = (
             '<div class="job-row-signals">'
-            "<span>Résumé signals</span>"
+            "<span>Profile signals</span>"
             f"{signal_body}</div>"
         )
     similarity = row.get("similarity", np.nan)
@@ -113,6 +114,86 @@ def render_job_results(
         render_job_row(row, profile_terms=profile_terms)
 
 
+def render_live_job_row(row: pd.Series) -> None:
+    title = escape(str(row.get("title", "Untitled role")))
+    company = escape(str(row.get("company_name", "Unknown company")))
+    location = escape(str(row.get("location", "Unknown location")))
+    source = escape(str(row.get("source", "Live job feed") or "Live job feed"))
+    posting_date = escape(
+        str(row.get("posting_date", "Recent posting") or "Recent posting")
+    )
+    score = row.get("live_match_score", np.nan)
+    score_label = "Live match"
+    if not pd.isna(score):
+        score_label = f"{float(score):.0f}% live fit"
+
+    link = str(row.get("job_link") or "").strip()
+    link_html = ""
+    if _is_http_url(link):
+        link_html = (
+            f'<a class="job-row-link" href="{escape(link, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer">View posting</a>'
+        )
+
+    st.markdown(
+        f"""
+        <div class="job-row live-job-row">
+            <div class="job-row-main">
+                <div class="job-title">{title}</div>
+                <div class="job-meta">{company} · {location}</div>
+                <div class="job-row-summary">Current listing from {source}.</div>
+            </div>
+            <div class="job-row-metrics">
+                <div class="score-chip">{score_label}</div>
+                <div class="job-row-pay"><strong>{posting_date}</strong></div>
+                {link_html}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_live_job_results(live_matches: pd.DataFrame | None) -> None:
+    if live_matches is None or live_matches.empty:
+        return
+
+    st.markdown(
+        """
+        <div class="live-job-note">
+            Live results are fetched from public job feeds and may change or expire.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    for _, row in live_matches.iterrows():
+        render_live_job_row(row)
+
+
+def render_live_job_status(status: dict[str, object] | None) -> None:
+    if not status:
+        return
+    reason = str(status.get("reason") or "").strip()
+    if not reason:
+        return
+    query = str(status.get("query") or "").strip()
+    query_html = (
+        f'<div class="live-job-status-query">Query: {escape(query)}</div>'
+        if query
+        else ""
+    )
+    st.markdown(
+        f"""
+        <div class="live-job-status">
+            <div class="snapshot-label">Live job status</div>
+            <div class="snapshot-copy">{escape(reason)}</div>
+            {query_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _matched_profile_terms(row: pd.Series, profile_terms: list[str]) -> list[str]:
     searchable = " ".join(
         str(row.get(field, ""))
@@ -132,6 +213,14 @@ def _matched_profile_terms(row: pd.Series, profile_terms: list[str]) -> list[str
         if len(matches) >= 6:
             break
     return matches
+
+
+def _is_http_url(link: str) -> bool:
+    try:
+        parsed = urlparse(link)
+    except ValueError:
+        return False
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
 def render_metric_card(label: str, value: str, helper: str) -> None:

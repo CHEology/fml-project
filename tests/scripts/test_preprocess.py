@@ -41,6 +41,12 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
                 "Posting Acme",
             ],
             "title": ["Data Scientist", "ML Engineer", "Analyst", "Missing Salary"],
+            "job_posting_url": [
+                "https://www.linkedin.com/jobs/view/1",
+                "https://www.linkedin.com/jobs/view/2",
+                "https://www.linkedin.com/jobs/view/3",
+                "https://www.linkedin.com/jobs/view/4",
+            ],
             "description": [
                 "<p>Build models</p>",
                 "Train <b>systems</b>",
@@ -102,6 +108,11 @@ def test_preprocess_jobs_builds_expected_processed_frame(tmp_path) -> None:
 
     assert len(frame) == 3
     assert list(frame["job_id"]) == [1, 2, 4]
+    assert frame["job_posting_url"].tolist() == [
+        "https://www.linkedin.com/jobs/view/1",
+        "https://www.linkedin.com/jobs/view/2",
+        "https://www.linkedin.com/jobs/view/4",
+    ]
     assert frame["salary_annual"].tolist() == [104000.0, 120000.0, 90000.0]
     assert frame["company_name"].tolist() == [
         "Posting Acme",

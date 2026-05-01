@@ -165,8 +165,6 @@ def _word_token_in(token: str, lowered_text: str) -> bool:
     "Google DeepMind" matches both "google deepmind" and "google-deepmind".
     """
     pattern = (
-        r"(?<![a-z0-9])"
-        + re.escape(token).replace(r"\ ", r"[\s\-]+")
-        + r"(?![a-z0-9])"
+        r"(?<![a-z0-9])" + re.escape(token).replace(r"\ ", r"[\s\-]+") + r"(?![a-z0-9])"
     )
     return re.search(pattern, lowered_text) is not None

@@ -38,11 +38,11 @@ def render_actions_page(
     )
 
     st.markdown(
-        '<h2 class="action-choice-heading">Action to improve your résumé</h2>',
+        '<h2 class="action-choice-heading">Action to improve your profile</h2>',
         unsafe_allow_html=True,
     )
     selected_action = st.radio(
-        "Action to improve your résumé",
+        "Action to improve your profile",
         ACTION_OPTIONS,
         key="demo_selected_action",
         horizontal=True,

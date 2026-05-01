@@ -420,6 +420,7 @@ def preprocess_jobs(raw_dir: Path) -> pd.DataFrame:
         "company_id",
         "title",
         "company_name",
+        "job_posting_url",
         "salary_annual",
         "location",
         "state",

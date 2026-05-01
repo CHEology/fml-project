@@ -144,6 +144,7 @@ class TestJobMatch:
             "location",
             "experience_level",
             "similarity",
+            "job_posting_url",
         }
         assert set(m.to_dict().keys()) == expected
 
@@ -198,6 +199,20 @@ class TestRetrieverShape:
         r2 = retriever.search_by_vector(v, k=3)
         assert len(r1) == len(r2) == 3
         assert [m.row_id for m in r1] == [m.row_id for m in r2]
+
+    def test_search_preserves_optional_linkedin_url(
+        self, fake_encoder, faiss_index, synthetic_metadata
+    ):
+        metadata = synthetic_metadata.copy()
+        metadata["job_posting_url"] = [
+            f"https://www.linkedin.com/jobs/view/{job_id}"
+            for job_id in metadata["job_id"]
+        ]
+        retriever = Retriever(fake_encoder, faiss_index, metadata)
+
+        result = retriever.search("anything", k=1)[0]
+
+        assert result.job_posting_url.startswith("https://www.linkedin.com/jobs/view/")
 
 
 # ---------------------------------------------------------------------------

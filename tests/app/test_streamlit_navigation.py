@@ -127,6 +127,97 @@ def test_job_rows_show_profile_signals(monkeypatch) -> None:
     assert "Salesforce" not in html
 
 
+def test_live_job_rows_show_provider_link(monkeypatch) -> None:
+    import pandas as pd
+    import streamlit as st
+    from app.components.job_results import render_live_job_results
+
+    rendered: list[str] = []
+
+    def capture_markdown(body: str, *args, **kwargs) -> None:
+        rendered.append(body)
+
+    monkeypatch.setattr(st, "markdown", capture_markdown)
+
+    render_live_job_results(
+        pd.DataFrame(
+            [
+                {
+                    "title": "Machine Learning Engineer",
+                    "company_name": "Example AI",
+                    "location": "New York, NY",
+                    "posting_date": "2026-05-01",
+                    "live_match_score": 91.2,
+                    "job_link": "https://remotive.com/remote-jobs/ml-engineer-1",
+                    "source": "Remotive",
+                }
+            ]
+        )
+    )
+
+    html = "\n".join(rendered)
+    assert "Live results are fetched from public job feeds" in html
+    assert "Machine Learning Engineer" in html
+    assert "91% live fit" in html
+    assert "Current listing from Remotive" in html
+    assert "View posting" in html
+    assert "https://remotive.com/remote-jobs/ml-engineer-1" in html
+
+
+def test_live_job_rows_hide_invalid_links(monkeypatch) -> None:
+    import pandas as pd
+    import streamlit as st
+    from app.components.job_results import render_live_job_results
+
+    rendered: list[str] = []
+
+    def capture_markdown(body: str, *args, **kwargs) -> None:
+        rendered.append(body)
+
+    monkeypatch.setattr(st, "markdown", capture_markdown)
+
+    render_live_job_results(
+        pd.DataFrame(
+            [
+                {
+                    "title": "Machine Learning Engineer",
+                    "company_name": "Example AI",
+                    "location": "New York, NY",
+                    "posting_date": "2026-05-01",
+                    "live_match_score": 91.2,
+                    "job_link": "javascript:alert(1)",
+                }
+            ]
+        )
+    )
+
+    assert "View posting" not in "\n".join(rendered)
+
+
+def test_live_job_status_explains_provider_lookup_issue(monkeypatch) -> None:
+    import streamlit as st
+    from app.components.job_results import render_live_job_status
+
+    rendered: list[str] = []
+
+    def capture_markdown(body: str, *args, **kwargs) -> None:
+        rendered.append(body)
+
+    monkeypatch.setattr(st, "markdown", capture_markdown)
+
+    render_live_job_status(
+        {
+            "query": "Machine Learning Engineer Python",
+            "reason": "No keyless live job providers returned usable rows.",
+        }
+    )
+
+    html = "\n".join(rendered)
+    assert "Live job status" in html
+    assert "keyless live job providers" in html
+    assert "Machine Learning Engineer Python" in html
+
+
 def test_stylesheet_keeps_demo_navigation_and_input_method_rules() -> None:
     css = "\n".join(
         path.read_text(encoding="utf-8")
@@ -237,6 +328,8 @@ demo.add_salary_evidence_note = lambda band, note: band
 demo.apply_quality_discount = lambda band, quality: band
 demo.apply_capability_adjustment = lambda band, capability: band
 demo.feedback_terms = lambda resume_text, matches, cluster: []
+demo.serpdog_api_key = lambda: ""
+demo.fetch_live_jobs_resource = lambda query, exp_level, api_key: pd.DataFrame()
 
 demo.render_demo_page(jobs, True, status)
 """
@@ -250,6 +343,74 @@ demo.render_demo_page(jobs, True, status)
 
     assert at.session_state["demo_stage"] == "results"
     assert at.session_state["demo_scroll_to_top"] is False
+    assert not at.error
+    assert not at.exception
+
+
+def test_demo_pasted_resume_analysis_runs_on_first_click() -> None:
+    script = """
+import numpy as np
+import pandas as pd
+
+from app.demo.state import initialize_session_state
+from app.styles import inject_styles
+import app.pages.demo as demo
+
+initialize_session_state()
+inject_styles("Lavender")
+
+jobs = pd.DataFrame(
+    [
+        {
+            "title": "Software Engineer",
+            "company_name": "Example Co",
+            "location": "New York, NY",
+            "state": "NY",
+            "text": "Python Kubernetes distributed systems observability",
+            "salary_annual": 120000,
+        }
+    ]
+)
+status = [{"label": "retrieval", "path": "", "ready": True, "required_for": "retrieval"}]
+
+demo.load_public_assessment_resource = lambda: None
+demo.validate_resume = lambda public_models, text: {
+    "is_resume": True,
+    "confidence": "high",
+    "score": 1.0,
+    "reasons": [],
+    "signals": [],
+}
+demo.public_resume_signals = lambda public_models, text: None
+demo.load_retriever_resource = lambda: ("retriever", "encoder")
+demo.encode_resume = lambda encoder, text: np.zeros(4, dtype=np.float32)
+demo.retrieve_matches = lambda retriever, jobs, embedding, target_seniority, top_k: pd.DataFrame()
+demo.apply_public_ats_fit = lambda public_models, resume_text, matches: matches
+demo.salary_artifacts_ready = lambda project_root: False
+demo.load_occupation_resource = lambda encoder: None
+demo.load_wage_resource = lambda: None
+demo.seniority_filtered_salary_matches = lambda matches: (pd.DataFrame(), None)
+demo.hybrid_salary_band = lambda salary_matches, neural_band=None, bls_band=None, occupation_match=None: None
+demo.add_salary_evidence_note = lambda band, note: band
+demo.apply_quality_discount = lambda band, quality: band
+demo.apply_capability_adjustment = lambda band, capability: band
+demo.feedback_terms = lambda resume_text, matches, cluster: []
+demo.serpdog_api_key = lambda: ""
+demo.fetch_live_jobs_resource = lambda query, exp_level, api_key: pd.DataFrame()
+
+demo.render_demo_page(jobs, True, status)
+"""
+    at = AppTest.from_string(script, default_timeout=10).run()
+
+    at.radio[0].set_value("Paste resume / CV text").run()
+    at.text_area[0].set_value(
+        "Jane Doe\\nExperience\\n2022 - Present Software Engineer at Example Co\\n"
+        "Education\\nBS Computer Science\\nSkills: Python, SQL"
+    ).run()
+    at.button(key="analyze_pasted_resume").click().run()
+
+    assert at.session_state["demo_stage"] == "results"
+    assert at.session_state["resume_text"].startswith("Jane Doe")
     assert not at.error
     assert not at.exception
 

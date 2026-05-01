@@ -324,7 +324,10 @@ def enrich_retrieval_matches(
             row = pd.Series(dtype=object)
 
         record = row.to_dict()
-        record.update(match.to_dict())
+        match_record = match.to_dict()
+        if not match_record.get("job_posting_url"):
+            match_record.pop("job_posting_url", None)
+        record.update(match_record)
         record["similarity"] = float(match.similarity)
         record["match_score"] = round(float(match.similarity) * 100.0, 2)
         rows.append(record)
@@ -696,6 +699,7 @@ def _ensure_app_columns(frame: pd.DataFrame) -> pd.DataFrame:
         "experience_level": "",
         "work_type": "",
         "text": "",
+        "job_posting_url": "",
     }
     for column, default in defaults.items():
         if column not in frame.columns:

@@ -255,14 +255,14 @@ def render_profile_quality_section(
             f"""
             <div class="profile-quality-hero">
                 <div class="profile-quality-title-row">
-                    <h1 class="snapshot-title">Résumé Quality</h1>
+                    <h1 class="snapshot-title">Profile Quality</h1>
                     <div class="snapshot-stat-row profile-quality-stats">{stats_html}</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        with st.expander("Read more about Résumé Quality"):
+        with st.expander("Read more about Profile Quality"):
             st.markdown(PROFILE_QUALITY_INFO)
 
         public_chips = _public_model_chips(public_signals)
@@ -346,7 +346,7 @@ def _render_resume_evidence(
         <div class="quality-evidence-panel">
             <div class="quality-evidence-header">
                 <div>
-                    <div class="snapshot-label">Submitted résumé / CV evidence</div>
+                    <div class="snapshot-label">Submitted resume/profile evidence</div>
                     <p>{escape(QUALITY_EVIDENCE_INFO)}</p>
                 </div>
                 <div class="quality-evidence-legend">

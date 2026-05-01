@@ -4,7 +4,11 @@ from html import escape
 
 import pandas as pd
 import streamlit as st
-from app.components.job_results import render_job_results
+from app.components.job_results import (
+    render_job_results,
+    render_live_job_results,
+    render_live_job_status,
+)
 from app.components.quality import render_profile_quality_section
 from app.components.resume_upload import (
     extract_uploaded_text,
@@ -36,9 +40,12 @@ from app.runtime import ml as runtime
 from app.runtime.cache import (
     apply_public_ats_fit,
     artifacts_ready,
+    build_live_job_query,
     cluster_position,
     encode_resume,
+    exp_level_for_seniority,
     feedback_terms,
+    fetch_live_jobs_resource,
     hybrid_salary_band,
     learned_quality_signal,
     load_cluster_resource,
@@ -50,9 +57,11 @@ from app.runtime.cache import (
     load_salary_resource,
     load_wage_resource,
     public_resume_signals,
+    rank_live_jobs,
     retrieve_matches,
     salary_artifacts_ready,
     salary_band_from_model,
+    serpdog_api_key,
     validate_resume,
 )
 from ml.resume_assessment import (
@@ -159,15 +168,10 @@ def render_demo_page(
 
         analyze_clicked = False
 
-        def queue_profile_analysis(
-            text_key: str, source_key: str | None = None
-        ) -> None:
-            st.session_state.resume_text = st.session_state.get(text_key, "")
-            if source_key is None:
-                st.session_state.resume_source = "Pasted resume / CV text"
-            else:
-                st.session_state.resume_source = st.session_state.get(source_key, "")
-            st.session_state.pending_analysis = True
+        def start_profile_analysis(text: str, source: str) -> None:
+            st.session_state.resume_text = text
+            st.session_state.resume_source = source
+            st.session_state.assessment = None
 
         st.markdown(
             f"""
@@ -244,15 +248,18 @@ def render_demo_page(
                         "Upload a PDF or TXT file, then run analysis from this panel.",
                         st.session_state.uploaded_resume_text,
                     )
-                    st.button(
+                    if st.button(
                         "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
                         key="analyze_upload_resume",
-                        on_click=queue_profile_analysis,
-                        args=("uploaded_resume_text", "uploaded_resume_source"),
-                    )
+                    ):
+                        start_profile_analysis(
+                            st.session_state.uploaded_resume_text,
+                            st.session_state.uploaded_resume_source,
+                        )
+                        analyze_clicked = True
 
                 elif selected_method == "Paste resume / CV text":
                     st.session_state.pasted_resume_text = st.text_area(
@@ -267,15 +274,18 @@ def render_demo_page(
                         "Only the text currently in this box will be used for analysis.",
                         st.session_state.pasted_resume_text,
                     )
-                    st.button(
+                    if st.button(
                         "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
                         key="analyze_pasted_resume",
-                        on_click=queue_profile_analysis,
-                        args=("pasted_resume_text", None),
-                    )
+                    ):
+                        start_profile_analysis(
+                            st.session_state.pasted_resume_text,
+                            "Pasted resume / CV text",
+                        )
+                        analyze_clicked = True
 
                 elif selected_method == "Import a public resume / CV page":
                     st.markdown(
@@ -340,15 +350,18 @@ def render_demo_page(
                         "",
                         st.session_state.imported_profile_text,
                     )
-                    st.button(
+                    if st.button(
                         "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
                         key="analyze_imported_profile",
-                        on_click=queue_profile_analysis,
-                        args=("imported_profile_text", "imported_profile_source"),
-                    )
+                    ):
+                        start_profile_analysis(
+                            st.session_state.imported_profile_text,
+                            st.session_state.imported_profile_source,
+                        )
+                        analyze_clicked = True
 
                 else:
                     st.info(SAMPLE_RESUME_SOURCE_SUMMARY)
@@ -381,19 +394,19 @@ def render_demo_page(
                         "",
                         st.session_state.sample_resume_text,
                     )
-                    st.button(
+                    if st.button(
                         "Run resume analysis",
                         type="primary",
                         width="stretch",
                         disabled=not bool(current_text),
                         key="analyze_sample_resume",
-                        on_click=queue_profile_analysis,
-                        args=("sample_resume_text", "sample_resume_source"),
-                    )
+                    ):
+                        start_profile_analysis(
+                            st.session_state.sample_resume_text,
+                            st.session_state.sample_resume_source,
+                        )
+                        analyze_clicked = True
 
-        analyze_clicked = bool(st.session_state.get("pending_analysis", False))
-        if analyze_clicked:
-            st.session_state.pending_analysis = False
         current_text = st.session_state.resume_text.strip()
         if analyze_clicked and st.session_state.resume_text.strip():
             if not has_real_data:
@@ -569,6 +582,41 @@ def render_demo_page(
                             job_embeddings = load_job_embedding_resource()
 
                 missing_terms = feedback_terms(resume_text_now, matches, cluster)
+                live_query = build_live_job_query(profile, cluster, matches)
+                live_matches = pd.DataFrame()
+                live_status = {
+                    "configured": False,
+                    "query": live_query,
+                    "reason": "",
+                    "candidate_count": 0,
+                    "result_count": 0,
+                }
+                if not live_query:
+                    live_status["reason"] = (
+                        "No compact live-search query could be built from the current analysis."
+                    )
+                else:
+                    with st.spinner("Checking live job postings..."):
+                        live_candidates = fetch_live_jobs_resource(
+                            live_query,
+                            exp_level_for_seniority(profile.get("seniority")),
+                            serpdog_api_key(),
+                        )
+                        live_status["configured"] = True
+                        live_status["candidate_count"] = int(len(live_candidates))
+                        live_matches = rank_live_jobs(
+                            live_candidates,
+                            encoder,
+                            resume_embedding,
+                            live_query,
+                        )
+                        live_status["result_count"] = int(len(live_matches))
+                        if live_matches.empty:
+                            live_status["reason"] = str(
+                                live_candidates.attrs.get("reason")
+                                or live_matches.attrs.get("reason")
+                                or "Live lookup returned no usable postings for this query."
+                            )
             except Exception as exc:  # pragma: no cover - UI guardrail
                 st.error(f"Analysis failed: {exc}")
                 return
@@ -593,6 +641,8 @@ def render_demo_page(
                 "job_embeddings": job_embeddings,
                 "resume_embedding": resume_embedding,
                 "missing_terms": missing_terms,
+                "live_matches": live_matches,
+                "live_status": live_status,
             }
             st.session_state.demo_stage = "results"
             st.session_state.demo_scroll_to_top = True
@@ -765,6 +815,12 @@ def render_demo_page(
         matches = assessment.get("matches")
         if matches is not None and not isinstance(matches, pd.DataFrame):
             matches = pd.DataFrame(matches)
+        live_matches = assessment.get("live_matches")
+        if live_matches is not None and not isinstance(live_matches, pd.DataFrame):
+            live_matches = pd.DataFrame(live_matches)
+        live_status = assessment.get("live_status")
+        if live_status is not None and not isinstance(live_status, dict):
+            live_status = {}
 
         with st.container(key="market-positioning-section"):
             render_demo_section_header(
@@ -872,6 +928,34 @@ def render_demo_page(
                 render_job_results(
                     matches, profile_terms=_profile_match_terms(assessment)
                 )
+
+        if live_matches is not None and not live_matches.empty:
+            with st.container(key="live-linkedin-postings-section"):
+                render_demo_section_header(
+                    "Live job postings",
+                    "Current job cards reranked against this resume.",
+                    (
+                        "Live postings are fetched from public no-key job feeds, with optional "
+                        "LinkedIn results through Serpdog when configured. The app uses a "
+                        "compact query built from detected profile signals, cluster terms, "
+                        "and the top dataset match title, then reranks candidates with the "
+                        "same embedding model used for resume matching."
+                    ),
+                )
+                render_live_job_results(live_matches)
+        elif live_status and live_status.get("reason"):
+            with st.container(key="live-linkedin-postings-section"):
+                render_demo_section_header(
+                    "Live job postings",
+                    "Current job cards reranked against this resume.",
+                    (
+                        "Live postings use a compact query from detected profile signals, "
+                        "cluster terms, and the top dataset match title. This section is "
+                        "shown when live provider results are available or a lookup issue "
+                        "needs attention."
+                    ),
+                )
+                render_live_job_status(live_status)
 
         render_demo_floating_nav(
             restart_demo=restart_demo,
