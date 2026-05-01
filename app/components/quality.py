@@ -50,28 +50,6 @@ MARKET_GAPS_INFO = (
     "they are shown as related work-on items rather than additional quality red flags."
 )
 
-QUALITY_EVIDENCE_INFO = (
-    "Green highlights are résumé phrases that support the quality score. "
-    "Red highlights are visible wording patterns that weaken the résumé readout. "
-    "Some issues, such as missing sections or lack of bullets, are structural and "
-    "are summarized below the text rather than highlighted inline."
-)
-
-RISK_PHRASES = (
-    "responsible for",
-    "worked on",
-    "helped",
-    "assisted",
-    "various",
-    "some",
-    "many",
-    "several",
-    "team player",
-    "hard worker",
-    "detail-oriented",
-    "passionate",
-)
-
 
 def _chips_html(items: list[str]) -> str:
     if not items:

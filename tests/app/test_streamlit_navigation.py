@@ -38,6 +38,49 @@ def test_extracted_app_modules_are_importable() -> None:
     assert callable(resume_assessment.assess_resume_text)
 
 
+def test_sidebar_artifact_summary_surfaces_pipeline_state() -> None:
+    from app.components.sidebar import artifact_readiness_summary
+
+    ready_status = [
+        {
+            "label": "Quality model",
+            "path": "models/quality_model.pt",
+            "ready": True,
+            "required_for": "quality",
+            "modified_label": "Created May 01, 2026 12:00 PM",
+            "setup_command": "uv run python scripts/train_quality_model.py",
+            "important": True,
+        }
+    ]
+
+    summary, details = artifact_readiness_summary(ready_status)
+
+    assert summary == "Full pipeline established"
+    assert any("Quality model" in detail for detail in details)
+    assert any("Created May 01, 2026 12:00 PM" in detail for detail in details)
+
+    missing_status = [
+        {
+            "label": "Public assessment metrics",
+            "path": "models/public_assessment_metrics.json",
+            "ready": False,
+            "required_for": "public_assessment",
+            "modified_label": "Not created",
+            "setup_command": "uv run python scripts/train_public_assessment_models.py",
+            "important": True,
+        }
+    ]
+
+    summary, details = artifact_readiness_summary(missing_status)
+
+    assert summary == "Pipeline needs setup"
+    assert any("Public Assessment: 0/1 ready" in detail for detail in details)
+    assert any(
+        "uv run python scripts/train_public_assessment_models.py" in detail
+        for detail in details
+    )
+
+
 def test_demo_seniority_ladder_uses_shared_runtime_levels() -> None:
     import app.pages.demo as demo
     from app.runtime.ml import SENIORITY_RANKS
@@ -565,9 +608,13 @@ st.session_state.demo_stage = "actions"
 st.session_state.resume_text = "Python engineer"
 st.session_state.assessment = {
     "resume_text": "Python engineer",
+    "profile": {
+        "track": "Software Engineering",
+        "seniority": "Mid",
+    },
     "cluster": {
         "cluster_id": 0,
-        "label": "Software / Engineering",
+        "label": "Business / Data Analysis",
         "top_terms": ["python"],
         "next_best_cluster_id": 1,
     },
@@ -595,7 +642,11 @@ demo.render_demo_page(jobs, True, [])
     assert action_radios[0].value == "Improve my salary"
     assert len(at.selectbox) == 0
     assert any(
-        "Improve salary within Software / Engineering" in markdown.value
+        "Improve salary within Software Engineering" in markdown.value
+        for markdown in at.markdown
+    )
+    assert not any(
+        "Improve salary within Business / Data Analysis" in markdown.value
         for markdown in at.markdown
     )
     assert not any(
