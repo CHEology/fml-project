@@ -38,3 +38,11 @@ def initialize_session_state() -> None:
         st.session_state.demo_stage = "input"
     if "demo_scroll_to_top" not in st.session_state:
         st.session_state.demo_scroll_to_top = False
+    if "revised_resume_text" not in st.session_state:
+        st.session_state.revised_resume_text = ""
+    if "revised_resume_notes" not in st.session_state:
+        st.session_state.revised_resume_notes = []
+    if "revised_resume_source" not in st.session_state:
+        st.session_state.revised_resume_source = ""
+    if "show_resume_revision_diff" not in st.session_state:
+        st.session_state.show_resume_revision_diff = True

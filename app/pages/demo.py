@@ -6,6 +6,10 @@ import pandas as pd
 import streamlit as st
 from app.components.job_results import render_job_results
 from app.components.quality import render_profile_quality_section
+from app.components.resume_revision import (
+    render_resume_revision_panel,
+    reset_revision_state,
+)
 from app.components.resume_upload import (
     extract_uploaded_text,
     fetch_public_webpage_text,
@@ -95,6 +99,7 @@ def render_demo_page(
         st.session_state.pending_analysis = False
         st.session_state.demo_scroll_to_top = False
         st.session_state.demo_stage = "input"
+        reset_revision_state()
 
     current_text = st.session_state.resume_text.strip()
     assessment = st.session_state.get("assessment")
@@ -315,6 +320,7 @@ def render_demo_page(
                         st.session_state.resume_text = sample_text
                         st.session_state.resume_source = sample_source
                         st.session_state.assessment = None
+                        reset_revision_state()
                         st.rerun()
                     st.text_area(
                         "Random sample resume text",
@@ -339,10 +345,24 @@ def render_demo_page(
                         args=("sample_resume_text", "sample_resume_source"),
                     )
 
+        draft_text = current_text.strip()
         analyze_clicked = bool(st.session_state.get("pending_analysis", False))
         if analyze_clicked:
             st.session_state.pending_analysis = False
         current_text = st.session_state.resume_text.strip()
+
+        with st.container(key="resume-revision-input-section"):
+            render_demo_section_header(
+                "Generate revised resume",
+                "Draft a stronger full resume before or after analysis.",
+                "This rewrite uses the current resume text and targets the weakest quality dimensions with clearer structure, stronger specificity, and placeholder metrics for you to replace with real results.",
+            )
+            render_resume_revision_panel(
+                draft_text,
+                st.session_state.get("assessment"),
+                key_prefix="demo_input",
+            )
+
         if analyze_clicked and st.session_state.resume_text.strip():
             if not has_real_data:
                 st.error(
@@ -527,6 +547,7 @@ def render_demo_page(
             render_scroll_to_top()
             st.session_state.demo_scroll_to_top = False
 
+        current_text = st.session_state.resume_text.strip()
         profile = assessment["profile"]
         structure = assessment["structure"]
         quality = assessment["quality"]
@@ -670,6 +691,18 @@ def render_demo_page(
             missing_sections=[str(section) for section in missing_sections],
             missing_terms=[str(term) for term in missing_terms],
         )
+
+        with st.container(key="resume-revision-results-section"):
+            render_demo_section_header(
+                "Generate revised resume",
+                "Produce a targeted rewrite from the current profile.",
+                "This rewrite keeps the current resume's direction but sharpens it around the weakest quality dimensions so you can compare the before/after version directly.",
+            )
+            render_resume_revision_panel(
+                current_text,
+                assessment,
+                key_prefix="demo_results",
+            )
 
         band = assessment.get("band")
         cluster = assessment.get("cluster")

@@ -33,9 +33,19 @@ apply_public_ats_fit = runtime.apply_public_ats_fit
 validate_resume = runtime.validate_resume
 
 
+def _data_path_signature() -> tuple[bool, int, int]:
+    if not DATA_PATH.exists():
+        return (False, 0, 0)
+    stat = DATA_PATH.stat()
+    return (True, int(stat.st_mtime_ns), int(stat.st_size))
+
+
 @st.cache_data(show_spinner=False)
-def load_jobs() -> tuple[pd.DataFrame, str, bool]:
-    if DATA_PATH.exists():
+def _load_jobs_cached(
+    data_path_signature: tuple[bool, int, int],
+) -> tuple[pd.DataFrame, str, bool]:
+    data_exists = bool(data_path_signature[0])
+    if data_exists and DATA_PATH.exists():
         return (
             load_real_jobs(PROJECT_ROOT),
             str(DATA_PATH.relative_to(PROJECT_ROOT)),
@@ -43,6 +53,10 @@ def load_jobs() -> tuple[pd.DataFrame, str, bool]:
         )
 
     return pd.DataFrame(SYNTHETIC_JOBS), "Sample role catalog", False
+
+
+def load_jobs() -> tuple[pd.DataFrame, str, bool]:
+    return _load_jobs_cached(_data_path_signature())
 
 
 def artifact_status() -> list[dict[str, Any]]:
