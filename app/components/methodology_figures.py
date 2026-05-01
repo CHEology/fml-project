@@ -22,13 +22,13 @@ SALARY_QUANTILES = {
 
 CLUSTER_SNAPSHOT = (
     ("Software / Engineering", 6430),
-    ("Administrative / HR", 5193),
-    ("Operations / Logistics", 5224),
-    ("Sales / Customer Growth", 5173),
-    ("Business / Data Analysis", 4400),
-    ("Healthcare / Clinical", 3545),
-    ("Healthcare / Clinical", 3038),
-    ("Finance / Accounting", 2115),
+    ("Administrative / HR", 5197),
+    ("Operations / Logistics", 5230),
+    ("Sales / Customer Growth", 5167),
+    ("Business / Data Analysis", 4401),
+    ("Healthcare / Clinical", 3546),
+    ("Healthcare / Clinical", 3037),
+    ("Finance / Accounting", 2110),
 )
 
 SALARY_CALIBRATION = {
