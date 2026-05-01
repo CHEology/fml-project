@@ -12,6 +12,11 @@ Current layout:
 - `styles/`: CSS and theme injection.
 - `assets/`: static app assets.
 
+The Market Overview page is the model-context layer for the demo. It can
+explain catalog shape, salary distributions, geography/work-mode mix, and
+cluster labels, but runtime artifact access and model-loading glue still belong
+in `app/runtime/`.
+
 Do not put ML scoring, parsing, or model logic in page files. Shared resume
 assessment belongs in `ml/resume_assessment/`; runtime artifact and model
 loading belongs in `app/runtime/`.
