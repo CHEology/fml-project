@@ -353,10 +353,19 @@ def test_demo_results_can_advance_to_actions_stage() -> None:
     demo_source = (PROJECT_ROOT / "app" / "pages" / "demo.py").read_text(
         encoding="utf-8"
     )
+    nav_source = (PROJECT_ROOT / "app" / "demo" / "components.py").read_text(
+        encoding="utf-8"
+    )
 
     assert 'valid_stages = {"input", "results", "actions"}' in demo_source
     assert 'next_label="Choose actions"' in demo_source
     assert 'next_stage="actions"' in demo_source
+    assert "st.session_state.demo_scroll_to_top = True" in nav_source
+    assert 'if st.session_state.demo_stage == "actions":' in demo_source
+    assert (
+        "render_scroll_to_top()"
+        in demo_source.split('if st.session_state.demo_stage == "actions":')[1]
+    )
     assert "open_profile_actions_bottom" not in demo_source
 
 

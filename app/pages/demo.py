@@ -829,5 +829,11 @@ def render_demo_page(
         return
 
     if st.session_state.demo_stage == "actions":
+        if st.session_state.get("demo_scroll_to_top", False):
+            st.markdown(
+                '<div id="candidate-snapshot-top"></div>', unsafe_allow_html=True
+            )
+            render_scroll_to_top()
+            st.session_state.demo_scroll_to_top = False
         render_actions_page(jobs, assessment, restart_demo=restart_demo)
         return

@@ -57,6 +57,7 @@ def render_demo_floating_nav(
 ) -> None:
     def set_demo_stage(stage: str) -> None:
         st.session_state.demo_stage = stage
+        st.session_state.demo_scroll_to_top = True
 
     with st.container(key="demo-floating-nav"):
         if previous_stage is None and not (next_label and next_stage):
